@@ -157,8 +157,25 @@ function ensureSheet(ss, name) {
 
 // --- SETUP & UTILS ---
 function setup() {
-    var sheetId = getSheetId();
-    var ss = SpreadsheetApp.openById(sheetId);
+    var ss;
+    try {
+        ss = SpreadsheetApp.getActiveSpreadsheet();
+    } catch (e) {
+        Logger.log("⚠️ Could not get active spreadsheet. Trying stored ID...");
+    }
+
+    if (ss) {
+        // We are inside the sheet script editor, so BIND to this sheet
+        var id = ss.getId();
+        PropertiesService.getScriptProperties().setProperty('SHEET_ID', id);
+        Logger.log("🔗 LINKED to Current Sheet: " + ss.getName());
+    } else {
+        // Fallback: Use stored or create new
+        var sheetId = getSheetId();
+        ss = SpreadsheetApp.openById(sheetId);
+    }
+
+    // Format Inventario
     var invSheet = ensureSheet(ss, 'Inventario');
 
     // Apply Formatting
@@ -206,19 +223,11 @@ function getSheetId() {
     var props = PropertiesService.getScriptProperties();
     var id = props.getProperty('SHEET_ID');
     if (!id) {
+        // If no ID found, create a NEW fallback sheet
         var ss = SpreadsheetApp.create("Warehouse_DB");
         id = ss.getId();
         props.setProperty('SHEET_ID', id);
         Logger.log("🆕 New Sheet Created: " + ss.getUrl());
-    } else {
-        try {
-            var ss = SpreadsheetApp.openById(id);
-            Logger.log("ℹ️ Using Existing Sheet: " + ss.getUrl());
-        } catch (e) {
-            Logger.log("⚠️ Stored Sheet ID invalid. Clearing property.");
-            props.deleteProperty('SHEET_ID');
-            return getSheetId(); // Retry
-        }
     }
     return id;
 }

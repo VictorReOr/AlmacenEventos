@@ -809,21 +809,22 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
     // Snapping Lines State
     const [snapLines, setSnapLines] = useState<SnapLine[]>([]);
 
-    // Viewport State (Pan & Zoom) - Hardcoded User Preference (Portrait vs Landscape)
+    // Viewport State (Pan & Zoom) - Hardcoded User Preference    // Initial View State
     const [view, setView] = useState(() => {
         if (rotationMode === 'vertical-ccw') {
             return { x: 292, y: -11, k: 0.908 };
         } else {
-            return { x: 249, y: 78, k: 1.331 };
+            // Updated Horizontal View
+            return { x: 231, y: 43, k: 1.238 };
         }
     });
 
-    // Update view when rotationMode changes to match user preferences
+    // Reset View on Rotation Change (Optional, but good for switching modes)
     React.useEffect(() => {
         if (rotationMode === 'vertical-ccw') {
             setView({ x: 292, y: -11, k: 0.908 });
         } else {
-            setView({ x: 249, y: 78, k: 1.331 });
+            setView({ x: 231, y: 43, k: 1.238 });
         }
     }, [rotationMode]);
 
@@ -1169,27 +1170,11 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
 
     React.useEffect(() => {
         if (!containerRef.current) return;
-
-        // Auto-fit disabled to respect user's fixed starting position (X: 292, Y: -11, K: 0.908)
-        /*
-        const fitMap = () => {
-             // ... existing fit logic ...
-        };
-        fitMap();
-        const resizeObserver = new ResizeObserver(() => {
-            requestAnimationFrame(fitMap);
-        });
-        resizeObserver.observe(containerRef.current);
-        return () => resizeObserver.disconnect();
-        */
     }, [rotationMode, geometry, Object.keys(ubicaciones || {}).length]);
 
     const viewHandlers = bindView();
 
     // Grid Dimensions
-    // SVG Pattern units default to userSpaceOnUse for absolutes?
-    // Actually, if we use patternUnits="userSpaceOnUse", it's in SVG coords.
-    // 0.2 meters * SCALE = pixels. (removed unused smallGridSize)
     const sGrid = 0.2 * SCALE;
     const lGrid = 1.0 * SCALE;
 
@@ -1204,10 +1189,9 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                 viewHandlers.onPointerDown?.(e as any);
 
                 // Background Click to Deselect
-                // Only if target is the SVG/Background and not an object
                 if ((e.target as Element).tagName === 'svg' || (e.target as Element).id === 'bg-rect') {
                     if (onSelectLocation && (!selectedIds || selectedIds.size > 0)) {
-                        onSelectLocation(null as any); // Type hack if needed, or update interface
+                        onSelectLocation(null as any);
                         if (onSelectMultiple) onSelectMultiple([]);
                     }
                 }
@@ -1228,10 +1212,6 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                 >
                     -
                 </button>
-            </div>
-            {/* DEBUG COORDINATES ENABLED */}
-            <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.7)', color: 'white', padding: '5px', borderRadius: '4px', fontSize: '10px', zIndex: 1000, pointerEvents: 'none' }}>
-                X: {Math.round(view.x)}, Y: {Math.round(view.y)}, K: {view.k.toFixed(3)}
             </div>
 
             <svg
