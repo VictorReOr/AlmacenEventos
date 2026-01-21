@@ -1229,7 +1229,7 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                     -
                 </button>
             </div>
-            {/* DEBUG COORDINATES REMOVED */}
+            {/* DEBUG COORDINATES ENABLED */}
             <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.7)', color: 'white', padding: '5px', borderRadius: '4px', fontSize: '10px', zIndex: 1000, pointerEvents: 'none' }}>
                 X: {Math.round(view.x)}, Y: {Math.round(view.y)}, K: {view.k.toFixed(3)}
             </div>
