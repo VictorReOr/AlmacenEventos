@@ -188,9 +188,19 @@ function App() {
     }
     setIsSyncing(true);
     try {
+      // DEBUG: Check state before saving
+      const keys = Object.keys(state.ubicaciones);
+      console.log("Saving state with", keys.length, "items.");
+
+      if (keys.length === 0) {
+        alert("⚠️ ATENCIÓN: El mapa parece estar vacío. No se ha guardado nada.");
+        setIsSyncing(false);
+        return;
+      }
+
       const targetUrl = scriptUrl;
       await GoogleSheetsService.save(targetUrl, state);
-      alert('¡Guardado en Google Sheets con éxito!');
+      alert(`¡Guardado OK! Se enviaron ${keys.length} objetos.`);
     } catch (error) {
       console.error(error);
       alert('Error al guardar: ' + error);
