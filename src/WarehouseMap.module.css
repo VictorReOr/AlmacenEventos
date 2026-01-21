@@ -1,0 +1,27 @@
+.mapContainer {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    background-color: #f9f9f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+}
+
+.clickable {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.clickable:hover {
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .mapContainer {
+        padding: 5px;
+        align-items: flex-start;
+        /* Start from top on mobile */
+    }
+}
