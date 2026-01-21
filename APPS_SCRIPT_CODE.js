@@ -1,176 +1,218 @@
-// --- CONFIGURACIÓN ---
-const SHEET_NAME = "Mapa"; // Nombre de la pestaña
 
-// --- API: LEER DATOS (GET) ---
+// -------------------------------------------------------------------------
+// GOOGLE APPS SCRIPT CODE - DATABASE MODE
+// -------------------------------------------------------------------------
+// Instructions:
+// 1. Copy this code into your Google Apps Script project (overwrite previous).
+// 2. Deploy again as "New Deployment" (Version: New).
+// 3. Update the URL in the App if it changes (usually stays same if you manage deployment right, but safer to check).
+// -------------------------------------------------------------------------
+
 function doGet(e) {
-    return handleResponse(() => {
-        const sheet = getSheet();
-        const data = sheet.getDataRange().getValues();
+    return handleRequest(e);
+}
 
-        // Si la hoja está vacía (solo cabeceras o nada), devolvemos "vacio"
-        if (data.length <= 1) return { status: "empty", locations: [], geometry: [] };
+function doPost(e) {
+    return handleRequest(e);
+}
 
-        // Mapear filas a objetos
-        // Asumimos fila 0 = Cabeceras
-        const headers = data[0];
-        const rows = data.slice(1);
+function handleRequest(e) {
+    var lock = LockService.getScriptLock();
+    lock.tryLock(30000); // Wait up to 30s
 
-        // Buscar indices de columnas clave
-        const colMap = mapHeaders(headers);
+    try {
+        var sheetId = getSheetId();
+        var ss = SpreadsheetApp.openById(sheetId);
 
-        const locations = {};
-        let geometry = [];
+        // --- POST (SAVE FROM APP) ---
+        if (e.postData) {
+            var payload = JSON.parse(e.postData.contents);
+            saveData(ss, payload);
+            return responseJSON({ status: 'success' });
+        }
 
-        rows.forEach(row => {
-            const type = row[colMap.tipo];
+        // --- GET (LOAD TO APP) ---
+        else {
+            var data = loadData(ss);
+            return responseJSON({
+                status: 'success',
+                ubicaciones: data.ubicaciones,
+                geometry: data.geometry
+            });
+        }
 
-            // Si es una fila de "geometry_point", la añadimos a la geometría
-            if (type === 'geometry_point') {
-                geometry.push({
-                    x: Number(row[colMap.x]),
-                    y: Number(row[colMap.y])
-                });
-                return;
-            }
+    } catch (err) {
+        return responseJSON({ status: 'error', message: err.toString() + " Stack: " + err.stack });
+    } finally {
+        lock.releaseLock();
+    }
+}
 
-            // Si es un objeto normal
-            const id = String(row[colMap.id]);
+// --- SAVING LOGIC ---
+function saveData(ss, payload) {
+    // 1. Save Geometry & Config to 'Config' Sheet
+    var configSheet = ensureSheet(ss, 'Config');
+    configSheet.getRange("A1").setValue("Geometry_JSON");
+    configSheet.getRange("B1").setValue(JSON.stringify(payload.geometry || []));
+
+    // 2. Save Ubicaciones to 'Inventario' Sheet (Structured)
+    var invSheet = ensureSheet(ss, 'Inventario');
+    invSheet.clear();
+
+    // Headers
+    var headers = ["ID", "Contenido", "Programa", "Tipo", "X", "Y", "Rotation", "Width", "Depth", "Detalles_JSON"];
+    invSheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold").setBackground("#e0e0e0");
+
+    var rows = [];
+    var ubis = payload.ubicaciones || {};
+
+    // Sort for logical order (Numeric IDs first, then Alpha)
+    var sortedKeys = Object.keys(ubis).sort(function (a, b) {
+        var numA = parseInt(a);
+        var numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+    });
+
+    sortedKeys.forEach(function (key) {
+        var u = ubis[key];
+        // Create Row: ID | Contenido | Programa | Tipo | X | Y | Rot | W | D | JSON
+        rows.push([
+            u.id,
+            u.contenido || "",
+            u.programa || "Vacio",
+            u.tipo,
+            Math.round(u.x * 100) / 100, // Round to 2 decimals for readability
+            Math.round(u.y * 100) / 100,
+            u.rotation,
+            u.width,
+            u.depth,
+            JSON.stringify(u) // Store full object to preserve complex data (like shelf levels)
+        ]);
+    });
+
+    if (rows.length > 0) {
+        invSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    }
+
+    // Formatting
+    invSheet.setFrozenRows(1);
+    invSheet.autoResizeColumns(1, 4); // Resize readable columns
+}
+
+// --- LOADING LOGIC ---
+function loadData(ss) {
+    // 1. Load Geometry
+    var configSheet = ss.getSheetByName('Config');
+    var geometry = [];
+    if (configSheet) {
+        var geoJson = configSheet.getRange("B1").getValue();
+        if (geoJson) geometry = JSON.parse(geoJson);
+    }
+
+    // 2. Load Ubicaciones
+    var invSheet = ss.getSheetByName('Inventario');
+    var ubicaciones = {};
+
+    if (invSheet && invSheet.getLastRow() > 1) {
+        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 10).getValues();
+
+        data.forEach(function (row) {
+            // Row Map: 0:ID, 1:Cont, 2:Prog, 3:Tipo, 4:X, 5:Y, 6:Rot, 7:W, 8:D, 9:JSON
+            var id = row[0];
             if (!id) return;
 
-            const baseObj = {
-                id: id,
-                tipo: type,
-                x: Number(row[colMap.x]),
-                y: Number(row[colMap.y]),
-                width: Number(row[colMap.width]),
-                depth: Number(row[colMap.depth]),
-                rotation: Number(row[colMap.rotation]),
-                programa: row[colMap.programa],
-                contenido: row[colMap.contenido],
-                cantidad: Number(row[colMap.cantidad] || 0),
-                notas: row[colMap.notas]
-            };
-
-            // Intentar parsear JSON extra (inventario, niveles)
-            const jsonStr = row[colMap.datos_json];
-            if (jsonStr && jsonStr !== "") {
-                try {
-                    const extra = JSON.parse(jsonStr);
-                    Object.assign(baseObj, extra);
-                } catch (err) {
-                    // Ignorar error de parseo
-                }
+            // Prefer the JSON source for structural integrity, but override with Sheet edits
+            var u = {};
+            try {
+                u = JSON.parse(row[9]);
+            } catch (e) {
+                // Fallback if JSON broken (manual row add?)
+                u = { id: id, tipo: row[3] || 'palet' };
             }
 
-            locations[id] = baseObj;
-        });
+            // Sync editable fields
+            u.id = row[0]; // ID
+            u.contenido = row[1]; // Contenido
+            u.programa = row[2]; // Programa
+            // Technical fields (X,Y) usually controlled by App, but if User edits them manually we respect it
+            u.x = Number(row[4]);
+            u.y = Number(row[5]);
+            u.rotation = Number(row[6]);
 
-        return {
-            status: "success",
-            ubicaciones: locations,
-            geometry: geometry.length > 0 ? geometry : null
-        };
-    });
+            ubicaciones[id] = u;
+        });
+    }
+
+    return { ubicaciones: ubicaciones, geometry: geometry };
 }
 
-// --- API: GUARDAR DATOS (POST) ---
-function doPost(e) {
-    return handleResponse(() => {
-        if (!e.postData || !e.postData.contents) throw new Error("No data received");
-
-        const payload = JSON.parse(e.postData.contents);
-        const locations = payload.ubicaciones || {};
-        const geometry = payload.geometry || [];
-
-        const sheet = getSheet();
-
-        // Preparar nuevos datos
-        // Cabeceras fijas para asegurar orden
-        const headers = ["id", "tipo", "x", "y", "width", "depth", "rotation", "programa", "contenido", "cantidad", "notas", "datos_json"];
-
-        const newRows = [headers];
-
-        // 1. Añadir Ubicaciones
-        Object.values(locations).forEach(loc => {
-            // Separar datos planos de datos complejos (JSON)
-            // Claves que van a columnas directas
-            const directKeys = ["id", "tipo", "x", "y", "width", "depth", "rotation", "programa", "contenido", "cantidad", "notas"];
-
-            // Todo lo demás va al JSON blob
-            const extraData = {};
-            Object.keys(loc).forEach(k => {
-                if (!directKeys.includes(k) && k !== 'datos_json') {
-                    extraData[k] = loc[k];
-                }
-            });
-
-            const row = headers.map(h => {
-                if (h === 'datos_json') return JSON.stringify(extraData);
-                return loc[h] !== undefined ? loc[h] : "";
-            });
-            newRows.push(row);
-        });
-
-        // 2. Añadir Geometría (como filas especiales)
-        geometry.forEach(pt => {
-            // Usamos tipo 'geometry_point' y guardamos x,y. El resto vacio.
-            // id = geo_INDEX
-            const row = headers.map(h => {
-                if (h === 'tipo') return 'geometry_point';
-                if (h === 'x') return pt.x;
-                if (h === 'y') return pt.y;
-                return "";
-            });
-            newRows.push(row);
-        });
-
-        // Limpiar contenido existente de forma segura
-        const lastRow = sheet.getLastRow();
-        const lastCol = sheet.getLastColumn();
-        if (lastRow > 0 && lastCol > 0) {
-            sheet.getRange(1, 1, lastRow, lastCol).clearContent();
-        }
-
-        // Escribir nuevos datos
-        if (newRows.length > 0) {
-            sheet.getRange(1, 1, newRows.length, headers.length).setValues(newRows);
-        }
-
-        return { status: "success", message: "Data saved successfully", count: newRows.length - 1 };
-    });
-}
-
-// --- HELPERS ---
-
-function getSheet() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(SHEET_NAME);
+function ensureSheet(ss, name) {
+    var sheet = ss.getSheetByName(name);
     if (!sheet) {
-        sheet = ss.insertSheet(SHEET_NAME);
+        sheet = ss.insertSheet(name);
     }
     return sheet;
 }
 
-function mapHeaders(headers) {
-    const map = {};
-    headers.forEach((h, i) => map[h] = i);
-    return map;
+// --- SETUP & UTILS ---
+function setup() {
+    var sheetId = getSheetId();
+    var ss = SpreadsheetApp.openById(sheetId);
+
+    // Format Inventario
+    var invSheet = ensureSheet(ss, 'Inventario');
+
+    // clear formats to avoid conflicts
+    var dataRange = invSheet.getDataRange();
+
+    // Apply Alternating Colors
+    var rule = invSheet.getDataRange().getBandings()[0];
+    if (rule) rule.remove(); // clear existing
+
+    // If range is small (empty sheet), force at least headers
+    var rows = Math.max(invSheet.getLastRow(), 20);
+    var cols = Math.max(invSheet.getLastColumn(), 10);
+    var range = invSheet.getRange(1, 1, rows, cols);
+
+    range.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY);
+
+    // Header Style
+    var headerRange = invSheet.getRange(1, 1, 1, cols);
+    headerRange.setFontWeight("bold")
+        .setBackground("#4db6ac") // Teal/Greenish
+        .setFontColor("white")
+        .setHorizontalAlignment("center");
+
+    // Center Data Columns (ID, Program, Type, Coords)
+    invSheet.getRange(2, 1, rows, 1).setHorizontalAlignment("center"); // ID
+    invSheet.getRange(2, 4, rows, 6).setHorizontalAlignment("center"); // Type + Coords
+
+    Logger.log("✅ Database Formatted Successfully!");
+    Logger.log("📂 OPEN YOUR SHEET HERE: " + ss.getUrl());
 }
 
-function handleResponse(func) {
-    const lock = LockService.getScriptLock();
-    lock.waitLock(30000); // Evitar colisiones de escritura
-
-    try {
-        const result = func();
-        return ContentService
-            .createTextOutput(JSON.stringify(result))
-            .setMimeType(ContentService.MimeType.JSON);
-    } catch (e) {
-        return ContentService
-            .createTextOutput(JSON.stringify({ status: "error", message: e.toString() }))
-            .setMimeType(ContentService.MimeType.JSON);
-    } finally {
-        lock.releaseLock();
+function getSheetId() {
+    var props = PropertiesService.getScriptProperties();
+    var id = props.getProperty('SHEET_ID');
+    if (!id) {
+        var ss = SpreadsheetApp.create("Warehouse_DB");
+        id = ss.getId();
+        props.setProperty('SHEET_ID', id);
+        Logger.log("🆕 New Sheet Created: " + ss.getUrl());
+    } else {
+        try {
+            var ss = SpreadsheetApp.openById(id);
+            Logger.log("ℹ️ Using Existing Sheet: " + ss.getUrl());
+        } catch (e) {
+            Logger.log("⚠️ Stored Sheet ID invalid. Clearing property.");
+            props.deleteProperty('SHEET_ID');
+            return getSheetId(); // Retry
+        }
     }
+    return id;
+}
+
+function responseJSON(data) {
+    return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
