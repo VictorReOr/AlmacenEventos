@@ -19,7 +19,10 @@ function doPost(e) {
 // --- HANDLE REQUEST ---
 function handleRequest(e) {
     var lock = LockService.getScriptLock();
-    lock.tryLock(30000);
+    // Try to get the lock, fail if not possible within 10 seconds
+    if (!lock.tryLock(10000)) {
+        return responseJSON({ status: 'error', message: 'Server is busy. Try again later.' });
+    }
 
     try {
         var sheetId = getSheetId();
@@ -63,7 +66,7 @@ function saveData(ss, payload) {
     invSheet.clear();
 
     // Simple Headers (User Friendly)
-    var headers = ["ID", "Contenido", "Programa", "Tipo"];
+    var headers = ["ID", "Cantidad", "Contenido", "Programa", "Tipo"];
     invSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     var rows = [];
@@ -72,6 +75,7 @@ function saveData(ss, payload) {
     invData.forEach(function (item) {
         rows.push([
             item.id,
+            item.cantidad || 1,
             item.contenido || "",
             item.programa || "",
             item.tipo || ""
@@ -97,24 +101,27 @@ function loadData(ss) {
 
     // 2. Load Inventory User Edits
     var invSheet = ss.getSheetByName('Inventario');
-    var inventory = {};
+    var inventoryRows = [];
 
     if (invSheet && invSheet.getLastRow() > 1) {
-        // ID is Col 1, Content is Col 2, Program is Col 3
-        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 3).getValues();
+        // ID, Cantidad, Contenido, Programa, Tipo (5 Cols)
+        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 5).getValues();
 
         data.forEach(function (row) {
             var id = String(row[0]);
             if (!id) return;
 
-            inventory[id] = {
-                contenido: String(row[1]),
-                programa: String(row[2])
-            };
+            inventoryRows.push({
+                id: id,
+                cantidad: row[1], // Cantidad
+                contenido: String(row[2]), // Contenido
+                programa: String(row[3]), // Programa
+                tipo: String(row[4])      // Tipo
+            });
         });
     }
 
-    return { configJson: configJson, inventory: inventory };
+    return { configJson: configJson, inventoryRows: inventoryRows };
 }
 
 function ensureSheet(ss, name) {

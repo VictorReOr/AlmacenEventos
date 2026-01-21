@@ -64,12 +64,37 @@ const InventoryList: React.FC<{
                             {item.tipo === 'Caja' ? '📦' : '🎾'}
                         </div>
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.contenido} {item.cantidad > 1 && <span style={{ color: '#666' }}>x{item.cantidad}</span>}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.contenido}</div>
                             <div style={{ fontSize: '0.75rem', color: programColors[item.programa] || '#888' }}>{item.programa || item.tipo}</div>
                         </div>
+
+                        {/* Quantity Controls */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 5 }}>
+                            <button
+                                onClick={() => {
+                                    const newQty = Math.max(1, item.cantidad - 1);
+                                    onUpdate(items.map(i => i.id === item.id ? { ...i, cantidad: newQty } : i));
+                                }}
+                                style={{ width: 24, height: 24, padding: 0, borderRadius: 4, border: '1px solid #ddd', background: '#f9f9f9', cursor: 'pointer' }}
+                            >
+                                -
+                            </button>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600, minWidth: 20, textAlign: 'center' }}>{item.cantidad}</span>
+                            <button
+                                onClick={() => {
+                                    const newQty = item.cantidad + 1;
+                                    onUpdate(items.map(i => i.id === item.id ? { ...i, cantidad: newQty } : i));
+                                }}
+                                style={{ width: 24, height: 24, padding: 0, borderRadius: 4, border: '1px solid #ddd', background: '#f9f9f9', cursor: 'pointer' }}
+                            >
+                                +
+                            </button>
+                        </div>
+
                         <button
                             onClick={() => handleDelete(item.id)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize: '1.1rem' }}
+                            title="Eliminar"
                         >
                             🗑️
                         </button>

@@ -42,7 +42,7 @@ export const GoogleSheetsService = {
                         id: crypto.randomUUID(), // Local unique ID for React keys
                         tipo: row.tipo,
                         contenido: row.contenido,
-                        cantidad: row.cantidad,
+                        cantidad: Number(row.cantidad) || 1,
                         programa: row.programa
                     };
 
