@@ -52,10 +52,12 @@ export interface Ubicacion {
   // For Pallets: items directly on it
   items?: ItemInventario[];
 
-  // For Shelves: items organized by level
-  niveles?: NivelEstanteria[];
+  // Specific for Shelves (E1-M1-A1 format)
+  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Value: Content string
+  shelfContents?: Record<string, string>;
 
-  // Metadatos específicos de estantería
+  // Legacy
+  niveles?: NivelEstanteria[];
   estanteriaId?: number;
   mensaje?: string;
 }

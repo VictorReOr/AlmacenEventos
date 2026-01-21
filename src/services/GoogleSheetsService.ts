@@ -1,11 +1,4 @@
-import type { AlmacenState, Ubicacion } from '../types';
-
-interface SheetResponse {
-    status: 'success' | 'error' | 'empty';
-    ubicaciones?: Record<string, Ubicacion>;
-    geometry?: { x: number; y: number }[];
-    message?: string;
-}
+import type { AlmacenState } from '../types';
 
 export const GoogleSheetsService = {
 
