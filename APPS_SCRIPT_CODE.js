@@ -41,7 +41,7 @@ function handleRequest(e) {
             return responseJSON({
                 status: 'success',
                 configJson: data.configJson,
-                inventory: data.inventory
+                inventoryRows: data.inventoryRows
             });
         }
 
