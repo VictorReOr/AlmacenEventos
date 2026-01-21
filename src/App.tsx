@@ -154,7 +154,7 @@ function App() {
 
 
   // --- GOOGLE CLOUD CONFIG ---
-  const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbz9141Mcq2DNiMmFlE372Y_FXJvSa1FWWVQyP4ptCRn2H1YAUGxV9puZFGFChOWLV0/exec');
+  const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbz3PM-qshUZDMRJBm5YdfrLJIhUjrYW9Jet1R8KDtvoMydhx9y92ZeP_iJ_oyhnw0MP/exec');
   const [isSyncing, setIsSyncing] = useState(false);
 
   // --- ADVANCED GRID STATE ---

@@ -52,16 +52,17 @@ function handleRequest(e) {
 function saveData(ss, payload) {
     // 1. Save Geometry & Config to 'Config' Sheet
     var configSheet = ensureSheet(ss, 'Config');
+    configSheet.clear(); // Clear old config
     configSheet.getRange("A1").setValue("Geometry_JSON");
     configSheet.getRange("B1").setValue(JSON.stringify(payload.geometry || []));
 
     // 2. Save Ubicaciones to 'Inventario' Sheet (Structured)
     var invSheet = ensureSheet(ss, 'Inventario');
-    invSheet.clear();
+    invSheet.clear(); // Clear all old data AND formats
 
     // Headers
     var headers = ["ID", "Contenido", "Programa", "Tipo", "X", "Y", "Rotation", "Width", "Depth", "Detalles_JSON"];
-    invSheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold").setBackground("#e0e0e0");
+    invSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     var rows = [];
     var ubis = payload.ubicaciones || {};
@@ -95,9 +96,8 @@ function saveData(ss, payload) {
         invSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
     }
 
-    // Formatting
-    invSheet.setFrozenRows(1);
-    invSheet.autoResizeColumns(1, 4); // Resize readable columns
+    // Apply Formatting AFTER saving
+    formatInventorySheet(invSheet);
 }
 
 // --- LOADING LOGIC ---
@@ -119,7 +119,7 @@ function loadData(ss) {
 
         data.forEach(function (row) {
             // Row Map: 0:ID, 1:Cont, 2:Prog, 3:Tipo, 4:X, 5:Y, 6:Rot, 7:W, 8:D, 9:JSON
-            var id = row[0];
+            var id = String(row[0]);
             if (!id) return;
 
             // Prefer the JSON source for structural integrity, but override with Sheet edits
@@ -132,9 +132,9 @@ function loadData(ss) {
             }
 
             // Sync editable fields
-            u.id = row[0]; // ID
-            u.contenido = row[1]; // Contenido
-            u.programa = row[2]; // Programa
+            u.id = id;
+            u.contenido = String(row[1]);
+            u.programa = String(row[2]);
             // Technical fields (X,Y) usually controlled by App, but if User edits them manually we respect it
             u.x = Number(row[4]);
             u.y = Number(row[5]);
@@ -159,37 +159,47 @@ function ensureSheet(ss, name) {
 function setup() {
     var sheetId = getSheetId();
     var ss = SpreadsheetApp.openById(sheetId);
-
-    // Format Inventario
     var invSheet = ensureSheet(ss, 'Inventario');
 
-    // clear formats to avoid conflicts
-    var dataRange = invSheet.getDataRange();
-
-    // Apply Alternating Colors
-    var rule = invSheet.getDataRange().getBandings()[0];
-    if (rule) rule.remove(); // clear existing
-
-    // If range is small (empty sheet), force at least headers
-    var rows = Math.max(invSheet.getLastRow(), 20);
-    var cols = Math.max(invSheet.getLastColumn(), 10);
-    var range = invSheet.getRange(1, 1, rows, cols);
-
-    range.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY);
-
-    // Header Style
-    var headerRange = invSheet.getRange(1, 1, 1, cols);
-    headerRange.setFontWeight("bold")
-        .setBackground("#4db6ac") // Teal/Greenish
-        .setFontColor("white")
-        .setHorizontalAlignment("center");
-
-    // Center Data Columns (ID, Program, Type, Coords)
-    invSheet.getRange(2, 1, rows, 1).setHorizontalAlignment("center"); // ID
-    invSheet.getRange(2, 4, rows, 6).setHorizontalAlignment("center"); // Type + Coords
+    // Apply Formatting
+    formatInventorySheet(invSheet);
 
     Logger.log("✅ Database Formatted Successfully!");
     Logger.log("📂 OPEN YOUR SHEET HERE: " + ss.getUrl());
+}
+
+function formatInventorySheet(sheet) {
+    var rows = Math.max(sheet.getLastRow(), 20);
+    var cols = Math.max(sheet.getLastColumn(), 10);
+
+    // Clear old banding to prevent errors
+    var bandings = sheet.getBandings();
+    if (bandings) {
+        bandings.forEach(function (b) { b.remove(); });
+    }
+
+    // Apply New Banding
+    var range = sheet.getRange(1, 1, rows, cols);
+    range.applyRowBanding(SpreadsheetApp.BandingTheme.TEAL); // Using Teal to match header
+
+    // Header Style
+    var headerRange = sheet.getRange(1, 1, 1, cols);
+    headerRange.setFontWeight("bold")
+        .setBackground("#009688") // Darker Teal
+        .setFontColor("white")
+        .setHorizontalAlignment("center")
+        .setVerticalAlignment("middle")
+        .setWrap(true);
+
+    // Center Data Columns
+    // ID (1), Programa (3), Tipo (4), Coords (5-9)
+    if (rows > 1) {
+        sheet.getRange(2, 1, rows - 1, 1).setHorizontalAlignment("center");
+        sheet.getRange(2, 4, rows - 1, 6).setHorizontalAlignment("center");
+    }
+
+    // Autosize readable columns
+    sheet.autoResizeColumns(1, 4);
 }
 
 function getSheetId() {
