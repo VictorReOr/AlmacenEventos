@@ -48,18 +48,25 @@ export interface Ubicacion {
   cantidad?: number;
   notas?: string;
 
-  // NEW: Detailed Inventory
-  // For Pallets: items directly on it
-  items?: ItemInventario[];
+  // RELATIONAL INVENTORY (New Standard)
+  items?: InventoryItem[]; // For Pallets: items directly on it
 
-  // Specific for Shelves (E1-M1-A1 format)
-  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Value: Content string
-  shelfContents?: Record<string, string>;
+  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Value: List of items
+  shelfItems?: Record<string, InventoryItem[]>;
 
-  // Legacy
+  // Legacy (Deprecated)
+  shelfContents?: Record<string, string>; // Checking if we can migrate this to items with ID "E1-M1-A1"
   niveles?: NivelEstanteria[];
   estanteriaId?: number;
   mensaje?: string;
+}
+
+export interface InventoryItem {
+  id: string; // UUID or random ID
+  tipo: 'Caja' | 'Material';
+  contenido: string; // "Balones Nike"
+  cantidad: number; // 1
+  programa: string; // "Liga LED"
 }
 
 export interface AlmacenState {

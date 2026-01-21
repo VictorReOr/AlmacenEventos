@@ -5,23 +5,16 @@ export const GoogleSheetsService = {
     // Load data from Google Sheet
     async load(scriptUrl: string): Promise<AlmacenState | null> {
         try {
-            const response = await fetch(scriptUrl, {
-                method: 'GET',
-            });
-
+            const response = await fetch(scriptUrl, { method: 'GET' });
             const data: any = await response.json();
 
             if (data.status === 'success') {
-                // 1. Get Technical State (Geometry + Objects Position) from Config
-                // The Apps Script now returns { geometry: [], fullState: {} (optional), inventory: [] }
-                // We need to parse the "fullState" if available to get positions.
-
+                // 1. Base State (Geometry + Positions)
                 let loadedState: AlmacenState = {
                     ubicaciones: {},
                     geometry: data.geometry || []
                 };
 
-                // Try to load the technical state (positions)
                 if (data.configJson) {
                     try {
                         const parsedConfig = JSON.parse(data.configJson);
@@ -31,34 +24,51 @@ export const GoogleSheetsService = {
                     }
                 }
 
-                // 2. Apply Inventory Data (Business Data)
-                // The inventory comes as a list of rows properties
-                const inventory = data.inventory || {};
-                // Inventory is Record<id, {contenido, programa, ...}>
+                // 2. Apply Relational Inventory
+                // data.inventoryRows is now an Array of { id, tipo, contenido, cantidad, programa }
+                const rows = data.inventoryRows || [];
 
-                Object.entries(inventory).forEach(([rowId, rowData]: [string, any]) => {
-                    // Check if it's a Shelf Sub-Level (E1-M1-A1)
+                // Reset items to empty arrays first (to avoid stale data if re-loading)
+                Object.values(loadedState.ubicaciones).forEach(u => {
+                    u.items = [];
+                    u.shelfItems = {};
+                    // Clear legacy
+                    u.contenido = "";
+                });
+
+                rows.forEach((row: any) => {
+                    const rowId = row.id;
+                    const item: any = {
+                        id: crypto.randomUUID(), // Local unique ID for React keys
+                        tipo: row.tipo,
+                        contenido: row.contenido,
+                        cantidad: row.cantidad,
+                        programa: row.programa
+                    };
+
+                    // Check for Shelf Sub-Location (E1-M1-A1)
                     const shelfMatch = rowId.match(/^(.+)-M(\d+)-A(\d+)$/);
 
                     if (shelfMatch) {
-                        // It's a Shelf Level!
-                        const parentId = shelfMatch[1]; // E1
-                        const modIdx = shelfMatch[2];   // 1
-                        const levelIdx = shelfMatch[3]; // 1
-                        const key = `M${modIdx}-A${levelIdx}`;
+                        const parentId = shelfMatch[1];
+                        const subKey = `M${shelfMatch[2]}-A${shelfMatch[3]}`; // M1-A1
 
                         if (loadedState.ubicaciones[parentId]) {
                             const parent = loadedState.ubicaciones[parentId];
-                            if (!parent.shelfContents) parent.shelfContents = {};
+                            if (!parent.shelfItems) parent.shelfItems = {};
+                            if (!parent.shelfItems[subKey]) parent.shelfItems[subKey] = [];
 
-                            parent.shelfContents[key] = rowData.contenido || "";
-                            // Ideally we could store program per level too, but for now just content
+                            parent.shelfItems[subKey].push(item);
                         }
                     } else {
-                        // It's a normal object (Pallet)
+                        // Standard Pallet
                         if (loadedState.ubicaciones[rowId]) {
-                            loadedState.ubicaciones[rowId].contenido = rowData.contenido;
-                            loadedState.ubicaciones[rowId].programa = rowData.programa;
+                            const u = loadedState.ubicaciones[rowId];
+                            if (!u.items) u.items = [];
+                            u.items.push(item);
+
+                            // Legacy sync for visual compatibility (optional)
+                            if (!u.contenido) u.contenido = item.contenido;
                         }
                     }
                 });
@@ -66,7 +76,6 @@ export const GoogleSheetsService = {
                 return loadedState;
 
             } else if (data.status === 'empty') {
-                console.log("Sheet is empty.");
                 return null;
             } else {
                 throw new Error(data.message || "Unknown error loading sheet");
@@ -81,54 +90,53 @@ export const GoogleSheetsService = {
     // Save data to Google Sheet
     async save(scriptUrl: string, state: AlmacenState): Promise<void> {
         try {
-            // Prepared Logic:
-            // 1. Payload.configJson = JSON.stringify(state) -> Saves everything to Config tab (Backup/Technical)
-            // 2. Payload.inventoryRows = [] -> Generated List for user
-
             const inventoryRows: any[] = [];
 
-            // Sort keys for nicer sheet order
+            // Sort keys just for deterministic order
             const keys = Object.keys(state.ubicaciones).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
             keys.forEach(id => {
                 const u = state.ubicaciones[id];
-
-                // SKIPS
                 if (u.tipo === 'muro' || u.tipo === 'puerta' || u.tipo === 'zona_carga') return;
 
+                // 1. SHELVES
                 if (u.tipo === 'estanteria_modulo') {
-                    // EXPAND SHELF
-                    // Calculate Modules: Width / 1.0 (approx)
-                    const modules = Math.max(1, Math.round(u.width / 1.0));
+                    if (u.shelfItems) {
+                        Object.entries(u.shelfItems).forEach(([subKey, items]) => {
+                            // subKey is "M1-A1" -> RowID is "E1-M1-A1"
+                            const rowId = `${u.id}-${subKey}`;
 
-                    for (let m = 1; m <= modules; m++) {
-                        for (let a = 1; a <= 4; a++) {
-                            const subId = `${u.id}-M${m}-A${a}`;
-                            const contentKey = `M${m}-A${a}`;
-                            const val = u.shelfContents?.[contentKey] || "";
-
-                            inventoryRows.push({
-                                id: subId,
-                                contenido: val,
-                                programa: u.programa, // Inherit program from parent? Or just leave empty
-                                tipo: 'Estanteria Nivel'
+                            items.forEach(item => {
+                                inventoryRows.push({
+                                    id: rowId,
+                                    tipo: item.tipo,
+                                    contenido: item.contenido,
+                                    cantidad: item.cantidad,
+                                    programa: item.programa
+                                });
                             });
-                        }
+                        });
                     }
-                } else {
-                    // PALLET (Standard)
-                    inventoryRows.push({
-                        id: u.id,
-                        contenido: u.contenido || "",
-                        programa: u.programa,
-                        tipo: 'Palet'
-                    });
+                }
+                // 2. PALLETS
+                else {
+                    if (u.items && u.items.length > 0) {
+                        u.items.forEach(item => {
+                            inventoryRows.push({
+                                id: u.id,
+                                tipo: item.tipo,
+                                contenido: item.contenido,
+                                cantidad: item.cantidad,
+                                programa: item.programa
+                            });
+                        });
+                    }
                 }
             });
 
             const payload = {
-                configJson: JSON.stringify(state), // Full Technical State
-                inventoryRows: inventoryRows       // Clean Business List
+                configJson: JSON.stringify(state),
+                inventoryRows: inventoryRows
             };
 
             const response = await fetch(scriptUrl, {
