@@ -16,9 +16,10 @@ function doPost(e) {
     return handleRequest(e);
 }
 
+// --- HANDLE REQUEST ---
 function handleRequest(e) {
     var lock = LockService.getScriptLock();
-    lock.tryLock(30000); // Wait up to 30s
+    lock.tryLock(30000);
 
     try {
         var sheetId = getSheetId();
@@ -36,13 +37,13 @@ function handleRequest(e) {
             var data = loadData(ss);
             return responseJSON({
                 status: 'success',
-                ubicaciones: data.ubicaciones,
-                geometry: data.geometry
+                configJson: data.configJson,
+                inventory: data.inventory
             });
         }
 
     } catch (err) {
-        return responseJSON({ status: 'error', message: err.toString() + " Stack: " + err.stack });
+        return responseJSON({ status: 'error', message: err.toString() });
     } finally {
         lock.releaseLock();
     }
@@ -50,45 +51,30 @@ function handleRequest(e) {
 
 // --- SAVING LOGIC ---
 function saveData(ss, payload) {
-    // 1. Save Geometry & Config to 'Config' Sheet
+    // 1. CONFIG SHEET (Technical Backup)
     var configSheet = ensureSheet(ss, 'Config');
-    configSheet.clear(); // Clear old config
-    configSheet.getRange("A1").setValue("Geometry_JSON");
-    configSheet.getRange("B1").setValue(JSON.stringify(payload.geometry || []));
+    configSheet.clear();
+    configSheet.getRange("A1").setValue("FULL_STATE_JSON");
+    // payload.configJson contains the full App State (geometry, objects, positions)
+    configSheet.getRange("B1").setValue(payload.configJson || "{}");
 
-    // 2. Save Ubicaciones to 'Inventario' Sheet (Structured)
+    // 2. INVENTARIO SHEET (User View)
     var invSheet = ensureSheet(ss, 'Inventario');
-    invSheet.clear(); // Clear all old data AND formats
+    invSheet.clear();
 
-    // Headers
-    var headers = ["ID", "Contenido", "Programa", "Tipo", "X", "Y", "Rotation", "Width", "Depth", "Detalles_JSON"];
+    // Simple Headers (User Friendly)
+    var headers = ["ID", "Contenido", "Programa", "Tipo"];
     invSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     var rows = [];
-    var ubis = payload.ubicaciones || {};
+    var invData = payload.inventoryRows || []; // Expecting clean array from App
 
-    // Sort for logical order (Numeric IDs first, then Alpha)
-    var sortedKeys = Object.keys(ubis).sort(function (a, b) {
-        var numA = parseInt(a);
-        var numB = parseInt(b);
-        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-        return a.localeCompare(b);
-    });
-
-    sortedKeys.forEach(function (key) {
-        var u = ubis[key];
-        // Create Row: ID | Contenido | Programa | Tipo | X | Y | Rot | W | D | JSON
+    invData.forEach(function (item) {
         rows.push([
-            u.id,
-            u.contenido || "",
-            u.programa || "Vacio",
-            u.tipo,
-            Math.round(u.x * 100) / 100, // Round to 2 decimals for readability
-            Math.round(u.y * 100) / 100,
-            u.rotation,
-            u.width,
-            u.depth,
-            JSON.stringify(u) // Store full object to preserve complex data (like shelf levels)
+            item.id,
+            item.contenido || "",
+            item.programa || "",
+            item.tipo || ""
         ]);
     });
 
@@ -96,55 +82,39 @@ function saveData(ss, payload) {
         invSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
     }
 
-    // Apply Formatting AFTER saving
+    // Apply Formatting
     formatInventorySheet(invSheet);
 }
 
 // --- LOADING LOGIC ---
 function loadData(ss) {
-    // 1. Load Geometry
+    // 1. Load Technical Config
     var configSheet = ss.getSheetByName('Config');
-    var geometry = [];
+    var configJson = "{}";
     if (configSheet) {
-        var geoJson = configSheet.getRange("B1").getValue();
-        if (geoJson) geometry = JSON.parse(geoJson);
+        configJson = configSheet.getRange("B1").getValue();
     }
 
-    // 2. Load Ubicaciones
+    // 2. Load Inventory User Edits
     var invSheet = ss.getSheetByName('Inventario');
-    var ubicaciones = {};
+    var inventory = {};
 
     if (invSheet && invSheet.getLastRow() > 1) {
-        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 10).getValues();
+        // ID is Col 1, Content is Col 2, Program is Col 3
+        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 3).getValues();
 
         data.forEach(function (row) {
-            // Row Map: 0:ID, 1:Cont, 2:Prog, 3:Tipo, 4:X, 5:Y, 6:Rot, 7:W, 8:D, 9:JSON
             var id = String(row[0]);
             if (!id) return;
 
-            // Prefer the JSON source for structural integrity, but override with Sheet edits
-            var u = {};
-            try {
-                u = JSON.parse(row[9]);
-            } catch (e) {
-                // Fallback if JSON broken (manual row add?)
-                u = { id: id, tipo: row[3] || 'palet' };
-            }
-
-            // Sync editable fields
-            u.id = id;
-            u.contenido = String(row[1]);
-            u.programa = String(row[2]);
-            // Technical fields (X,Y) usually controlled by App, but if User edits them manually we respect it
-            u.x = Number(row[4]);
-            u.y = Number(row[5]);
-            u.rotation = Number(row[6]);
-
-            ubicaciones[id] = u;
+            inventory[id] = {
+                contenido: String(row[1]),
+                programa: String(row[2])
+            };
         });
     }
 
-    return { ubicaciones: ubicaciones, geometry: geometry };
+    return { configJson: configJson, inventory: inventory };
 }
 
 function ensureSheet(ss, name) {
@@ -209,10 +179,9 @@ function formatInventorySheet(sheet) {
         .setWrap(true);
 
     // Center Data Columns
-    // ID (1), Programa (3), Tipo (4), Coords (5-9)
+    // All columns centered
     if (rows > 1) {
-        sheet.getRange(2, 1, rows - 1, 1).setHorizontalAlignment("center");
-        sheet.getRange(2, 4, rows - 1, 6).setHorizontalAlignment("center");
+        sheet.getRange(2, 1, rows - 1, cols).setHorizontalAlignment("center");
     }
 
     // Autosize readable columns

@@ -16,18 +16,66 @@ export const GoogleSheetsService = {
                 method: 'GET',
             });
 
-            const data: SheetResponse = await response.json();
+            const data: any = await response.json();
 
-            if (data.status === 'success' && data.ubicaciones) {
-                return {
-                    ubicaciones: data.ubicaciones,
-                    geometry: data.geometry || [] // If null from sheet, use defaults later? handled in App.
+            if (data.status === 'success') {
+                // 1. Get Technical State (Geometry + Objects Position) from Config
+                // The Apps Script now returns { geometry: [], fullState: {} (optional), inventory: [] }
+                // We need to parse the "fullState" if available to get positions.
+
+                let loadedState: AlmacenState = {
+                    ubicaciones: {},
+                    geometry: data.geometry || []
                 };
+
+                // Try to load the technical state (positions)
+                if (data.configJson) {
+                    try {
+                        const parsedConfig = JSON.parse(data.configJson);
+                        loadedState = { ...loadedState, ...parsedConfig };
+                    } catch (e) {
+                        console.error("Error parsing Config JSON", e);
+                    }
+                }
+
+                // 2. Apply Inventory Data (Business Data)
+                // The inventory comes as a list of rows properties
+                const inventory = data.inventory || {};
+                // Inventory is Record<id, {contenido, programa, ...}>
+
+                Object.entries(inventory).forEach(([rowId, rowData]: [string, any]) => {
+                    // Check if it's a Shelf Sub-Level (E1-M1-A1)
+                    const shelfMatch = rowId.match(/^(.+)-M(\d+)-A(\d+)$/);
+
+                    if (shelfMatch) {
+                        // It's a Shelf Level!
+                        const parentId = shelfMatch[1]; // E1
+                        const modIdx = shelfMatch[2];   // 1
+                        const levelIdx = shelfMatch[3]; // 1
+                        const key = `M${modIdx}-A${levelIdx}`;
+
+                        if (loadedState.ubicaciones[parentId]) {
+                            const parent = loadedState.ubicaciones[parentId];
+                            if (!parent.shelfContents) parent.shelfContents = {};
+
+                            parent.shelfContents[key] = rowData.contenido || "";
+                            // Ideally we could store program per level too, but for now just content
+                        }
+                    } else {
+                        // It's a normal object (Pallet)
+                        if (loadedState.ubicaciones[rowId]) {
+                            loadedState.ubicaciones[rowId].contenido = rowData.contenido;
+                            loadedState.ubicaciones[rowId].programa = rowData.programa;
+                        }
+                    }
+                });
+
+                return loadedState;
+
             } else if (data.status === 'empty') {
-                console.log("Sheet is empty, using defaults.");
-                return null; // Signal to use defaults
+                console.log("Sheet is empty.");
+                return null;
             } else {
-                console.error("Error loading sheet:", data.message);
                 throw new Error(data.message || "Unknown error loading sheet");
             }
 
@@ -40,20 +88,60 @@ export const GoogleSheetsService = {
     // Save data to Google Sheet
     async save(scriptUrl: string, state: AlmacenState): Promise<void> {
         try {
-            // Beacon API allows sending data even if tab closes, but fetch is fine for manual saves
-            // We use no-cors if just trigger, but here we want response ideally.
-            // Google Apps Script Web App REQUIRES 'text/plain' or similar to avoid preflight OPTIONS issues usually, 
-            // OR use standard POST which follows redirects properly.
+            // Prepared Logic:
+            // 1. Payload.configJson = JSON.stringify(state) -> Saves everything to Config tab (Backup/Technical)
+            // 2. Payload.inventoryRows = [] -> Generated List for user
 
-            // To handle CORS with Apps Script, simple GET/POST from browser usually works 
-            // if the script is published as "Anyone".
+            const inventoryRows: any[] = [];
+
+            // Sort keys for nicer sheet order
+            const keys = Object.keys(state.ubicaciones).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+            keys.forEach(id => {
+                const u = state.ubicaciones[id];
+
+                // SKIPS
+                if (u.tipo === 'muro' || u.tipo === 'puerta' || u.tipo === 'zona_carga') return;
+
+                if (u.tipo === 'estanteria_modulo') {
+                    // EXPAND SHELF
+                    // Calculate Modules: Width / 1.0 (approx)
+                    const modules = Math.max(1, Math.round(u.width / 1.0));
+
+                    for (let m = 1; m <= modules; m++) {
+                        for (let a = 1; a <= 4; a++) {
+                            const subId = `${u.id}-M${m}-A${a}`;
+                            const contentKey = `M${m}-A${a}`;
+                            const val = u.shelfContents?.[contentKey] || "";
+
+                            inventoryRows.push({
+                                id: subId,
+                                contenido: val,
+                                programa: u.programa, // Inherit program from parent? Or just leave empty
+                                tipo: 'Estanteria Nivel'
+                            });
+                        }
+                    }
+                } else {
+                    // PALLET (Standard)
+                    inventoryRows.push({
+                        id: u.id,
+                        contenido: u.contenido || "",
+                        programa: u.programa,
+                        tipo: 'Palet'
+                    });
+                }
+            });
+
+            const payload = {
+                configJson: JSON.stringify(state), // Full Technical State
+                inventoryRows: inventoryRows       // Clean Business List
+            };
 
             const response = await fetch(scriptUrl, {
                 method: 'POST',
-                // Apps Script POST requires string body. 
-                // Content-Type text/plain prevents CORS preflight OPTIONS request which GAS doesn't handle well.
                 headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify(state)
+                body: JSON.stringify(payload)
             });
 
             const result = await response.json();

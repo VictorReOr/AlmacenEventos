@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { Ubicacion, Programa, ItemInventario, Caja, Material } from './types';
+import React, { useState, useMemo } from 'react';
+import type { Ubicacion, Programa } from './types';
 
 interface PropertiesPanelProps {
     location: Ubicacion;
@@ -8,130 +8,38 @@ interface PropertiesPanelProps {
     programColors: Record<string, string>;
 }
 
-// --- HELPER COMPONENTS ---
-
-const ItemList: React.FC<{
-    items: ItemInventario[];
-    onUpdateItems: (items: ItemInventario[]) => void;
-}> = ({ items, onUpdateItems }) => {
-
-    // Add New Item
-    const handleAddItem = (type: 'material' | 'caja') => {
-        const newItem: ItemInventario = type === 'material'
-            ? { id: Date.now().toString(), nombre: 'Nuevo Material', cantidad: 1, unidad: 'uds' }
-            : { id: Date.now().toString(), nombre: 'Nueva Caja', contenido: [] };
-
-        onUpdateItems([...items, newItem]);
-    };
-
-    const handleRemoveItem = (index: number) => {
-        const newItems = [...items];
-        newItems.splice(index, 1);
-        onUpdateItems(newItems);
-    };
-
-    const handleUpdateItem = (index: number, updated: ItemInventario) => {
-        const newItems = [...items];
-        newItems[index] = updated;
-        onUpdateItems(newItems);
-    };
-
-    return (
-        <div style={{ marginTop: 10 }}>
-            <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
-                <button
-                    onClick={() => handleAddItem('caja')}
-                    style={{ flex: 1, padding: '6px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ddd', background: '#fff' }}
-                >+ Caja</button>
-                <button
-                    onClick={() => handleAddItem('material')}
-                    style={{ flex: 1, padding: '6px', cursor: 'pointer', borderRadius: '4px', border: '1px solid #ddd', background: '#fff' }}
-                >+ Material</button>
-            </div>
-
-            {items.length === 0 && <div style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic', fontSize: '0.85rem' }}>Vacío</div>}
-
-            {items.map((item, idx) => (
-                <div key={item.id} style={{ border: '1px solid var(--color-border)', padding: 8, marginBottom: 8, borderRadius: 6, background: '#fff' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--color-text-secondary)' }}>
-                            {'contenido' in item ? '📦 CAJA' : '🔩 MATERIAL'}
-                        </span>
-                        <button onClick={() => handleRemoveItem(idx)} style={{ color: '#ef4444', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>&times;</button>
-                    </div>
-
-                    {/* EDIT NAME */}
-                    <input
-                        type="text"
-                        value={item.nombre}
-                        onChange={(e) => handleUpdateItem(idx, { ...item, nombre: e.target.value })}
-                        style={{ width: '100%', marginBottom: 5, fontSize: '0.9rem', padding: '4px', border: '1px solid #eee', borderRadius: '4px' }}
-                    />
-
-                    {/* IF MATERIAL: SHOW QTY */}
-                    {!('contenido' in item) && (
-                        <div style={{ display: 'flex', gap: 5 }}>
-                            <input
-                                type="number"
-                                value={(item as Material).cantidad}
-                                onChange={(e) => handleUpdateItem(idx, { ...item, cantidad: Number(e.target.value) })}
-                                style={{ width: 60, fontSize: '0.9rem', padding: '4px', border: '1px solid #eee', borderRadius: '4px' }}
-                            />
-                            <input
-                                type="text"
-                                value={(item as Material).unidad || ''}
-                                onChange={(e) => handleUpdateItem(idx, { ...item, unidad: e.target.value })}
-                                placeholder="uds"
-                                style={{ width: 50, fontSize: '0.9rem', padding: '4px', border: '1px solid #eee', borderRadius: '4px' }}
-                            />
-                        </div>
-                    )}
-
-                    {/* IF BOX: RECURSIVE LIST */}
-                    {'contenido' in item && (
-                        <div style={{ paddingLeft: 10, borderLeft: '2px solid #f3f4f6' }}>
-                            <ItemList
-                                items={(item as Caja).contenido}
-                                onUpdateItems={(newContent) => handleUpdateItem(idx, { ...item, contenido: newContent } as Caja)}
-                            />
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-};
-
-
-// --- MAIN PANEL ---
-
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors }) => {
-
-    // For Shelves: Selected Level State
-    const [selectedLevel, setSelectedLevel] = useState<1 | 2 | 3 | 4>(1);
 
     const handleChange = (field: keyof Ubicacion, value: any) => {
         onUpdate({ ...location, [field]: value });
     };
 
-    // Update Levels helper
-    const handleUpdateLevel = (levelNum: number, newItems: ItemInventario[]) => {
-        if (!location.niveles) return;
-        const newLevels = location.niveles.map(l =>
-            l.nivel === levelNum ? { ...l, items: newItems } : l
-        );
-        handleChange('niveles', newLevels);
+    // --- SHELF LOGIC ---
+    const isShelf = location.tipo === 'estanteria_modulo';
+
+    // Calculate Modules based on Width (approx 1m per module)
+    const moduleCount = useMemo(() => {
+        if (!isShelf) return 0;
+        return Math.max(1, Math.round(location.width / 1.0));
+    }, [location.width, isShelf]);
+
+    const [selectedModule, setSelectedModule] = useState(1);
+    const [selectedLevel, setSelectedLevel] = useState(1);
+
+    const handleShelfContentChange = (val: string) => {
+        const key = `M${selectedModule}-A${selectedLevel}`;
+        const newContents = { ...(location.shelfContents || {}) };
+        newContents[key] = val;
+        handleChange('shelfContents', newContents);
     };
 
-    // Update Pallet Items helper
-    const handleUpdatePalletItems = (newItems: ItemInventario[]) => {
-        handleChange('items', newItems);
-    };
+    const currentShelfContent = location.shelfContents?.[`M${selectedModule}-A${selectedLevel}`] || "";
+
 
     return (
         <div className="properties-panel">
             <div className="properties-header">
-                <h2>{location.tipo === 'estanteria_modulo' ? 'Estantería' : 'Propiedades'}</h2>
+                <h2>{isShelf ? 'Estantería Multi-Nivel' : 'Propiedades Palet'}</h2>
                 <button className="close-btn" onClick={onClose}>&times;</button>
             </div>
 
@@ -140,119 +48,154 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 {/* --- HEADER INFO --- */}
                 <div className="prop-group">
                     <label>ID Identificador</label>
-                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                         #{location.id}
+                        {isShelf && <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: 8 }}>({moduleCount} Módulos)</span>}
                     </div>
                 </div>
 
-                {location.tipo !== 'estanteria_modulo' && (
-                    <div className="prop-group">
-                        <label>Programa / Estado</label>
-                        <select
-                            value={location.programa}
-                            onChange={(e) => handleChange('programa', e.target.value as Programa)}
-                        >
-                            {Object.keys(programColors).map(p => (
-                                <option key={p} value={p}>{p}</option>
-                            ))}
-                        </select>
-                    </div>
+                {/* --- PALET: CONTENT EDITOR --- */}
+                {!isShelf && (
+                    <>
+                        <div className="prop-group">
+                            <label>Programa / Cliente</label>
+                            <select
+                                value={location.programa}
+                                onChange={(e) => handleChange('programa', e.target.value as Programa)}
+                                style={{
+                                    padding: '8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    fontWeight: 'bold',
+                                    color: programColors[location.programa] || '#333'
+                                }}
+                            >
+                                {Object.keys(programColors).map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="prop-group">
+                            <label>Contenido / Carga</label>
+                            <textarea
+                                rows={4}
+                                value={location.contenido || ''}
+                                onChange={(e) => handleChange('contenido', e.target.value)}
+                                placeholder="Descripción de la carga..."
+                                style={{ fontSize: '1rem' }}
+                            />
+                        </div>
+                    </>
                 )}
 
-                {/* --- ESTANTERÍA VISUALIZER (Option B) --- */}
-                {location.tipo === 'estanteria_modulo' && location.niveles && (
-                    <div className="prop-group">
-                        <label>Niveles (Seleccionar)</label>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column-reverse', // Level 1 at bottom
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            background: '#f9fafb',
-                            marginTop: 5
-                        }}>
-                            {[1, 2, 3, 4].map((lvl) => {
-                                const levelData = location.niveles?.find(l => l.nivel === lvl);
-                                const itemCount = levelData?.items.length || 0;
-                                const isSelected = selectedLevel === lvl;
+                {/* --- SHELF: MATRIX EDITOR --- */}
+                {isShelf && (
+                    <div style={{ marginTop: 10 }}>
 
-                                return (
-                                    <div
-                                        key={lvl}
-                                        onClick={() => setSelectedLevel(lvl as any)}
-                                        style={{
-                                            height: 40,
-                                            borderTop: lvl === 4 ? 'none' : '1px solid #e5e7eb',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '0 12px',
-                                            cursor: 'pointer',
-                                            background: isSelected ? 'rgba(0, 122, 51, 0.1)' : 'transparent',
-                                            color: isSelected ? 'var(--color-primary)' : 'var(--color-text-main)',
-                                            fontWeight: isSelected ? 600 : 400,
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        <span>Nivel {lvl}</span>
-                                        <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                                            {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                                        </span>
-                                    </div>
-                                );
-                            })}
+                        {/* 1. MODULE SELECTOR */}
+                        <div style={{ marginBottom: 15 }}>
+                            <label style={{ fontSize: '0.85rem', color: '#666' }}>1. Selecciona Módulo</label>
+                            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5 }}>
+                                {Array.from({ length: moduleCount }).map((_, i) => {
+                                    const m = i + 1;
+                                    const isSel = selectedModule === m;
+                                    return (
+                                        <button
+                                            key={m}
+                                            onClick={() => setSelectedModule(m)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                borderRadius: '4px',
+                                                border: isSel ? '2px solid var(--color-primary)' : '1px solid #ddd',
+                                                background: isSel ? 'rgba(0,122,51,0.1)' : '#fff',
+                                                fontWeight: isSel ? 'bold' : 'normal',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            M{m}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 2. LEVEL SELECTOR (Visual Stack) */}
+                        <div style={{ marginBottom: 15 }}>
+                            <label style={{ fontSize: '0.85rem', color: '#666' }}>2. Selecciona Altura</label>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column-reverse', // Level 1 at bottom
+                                gap: 4,
+                                background: '#f5f5f5',
+                                padding: 8,
+                                borderRadius: 6
+                            }}>
+                                {[1, 2, 3, 4].map(lvl => {
+                                    const isSel = selectedLevel === lvl;
+                                    const hasContent = !!location.shelfContents?.[`M${selectedModule}-A${lvl}`];
+
+                                    return (
+                                        <div
+                                            key={lvl}
+                                            onClick={() => setSelectedLevel(lvl)}
+                                            style={{
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                background: isSel ? 'var(--color-primary)' : (hasContent ? '#dcfce7' : '#fff'),
+                                                color: isSel ? '#fff' : '#333',
+                                                border: isSel ? 'none' : '1px solid #ddd',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                transition: 'all 0.1s'
+                                            }}
+                                        >
+                                            <span style={{ fontWeight: 'bold' }}>Nivel {lvl}</span>
+                                            {hasContent && !isSel && <span style={{ fontSize: '0.75rem' }}>📦</span>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* 3. CONTENT EDITOR */}
+                        <div className="prop-group">
+                            <label style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                                Contenido: {location.id} - M{selectedModule} - A{selectedLevel}
+                            </label>
+                            <textarea
+                                rows={3}
+                                value={currentShelfContent}
+                                onChange={(e) => handleShelfContentChange(e.target.value)}
+                                placeholder="Escribe el material aquí..."
+                                style={{
+                                    fontSize: '1.1rem',
+                                    padding: 10,
+                                    border: '2px solid var(--color-primary)',
+                                    borderRadius: 6
+                                }}
+                                autoFocus
+                            />
                         </div>
                     </div>
                 )}
 
-                {/* --- INVENTORY LIST --- */}
-                <div style={{ marginTop: 24, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
-                    <label style={{ fontWeight: 600, color: 'var(--color-text-main)', display: 'block', marginBottom: 8 }}>
-                        {location.tipo === 'estanteria_modulo'
-                            ? `Contenido Nivel ${selectedLevel}`
-                            : 'Contenido / Carga'
-                        }
-                    </label>
 
-                    {location.tipo === 'estanteria_modulo' && location.niveles ? (
-                        <ItemList
-                            items={location.niveles.find(l => l.nivel === selectedLevel)?.items || []}
-                            onUpdateItems={(items) => handleUpdateLevel(selectedLevel, items)}
-                        />
-                    ) : (
-                        <ItemList
-                            items={location.items || []}
-                            onUpdateItems={handleUpdatePalletItems}
-                        />
-                    )}
-                </div>
-
-                {/* Legacy Fields (Hidden for shelves or minimized) */}
+                {/* --- ADVANCED (Rotation, etc) --- */}
                 <div style={{ marginTop: 24, padding: 12, background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
                     <details>
                         <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                            ⚙️ Opciones Avanzadas
+                            ⚙️ Opciones Técnicas
                         </summary>
                         <div style={{ marginTop: 12 }}>
                             <div className="prop-group">
-                                <label>Notas Adicionales</label>
-                                <textarea
-                                    rows={3}
-                                    value={location.notas || ''}
-                                    onChange={(e) => handleChange('notas', e.target.value)}
-                                    placeholder="Escribe aquí..."
+                                <label>Rotación (Grados)</label>
+                                <input
+                                    type="number"
+                                    value={Math.round(location.rotation)}
+                                    onChange={(e) => handleChange('rotation', Number(e.target.value))}
                                 />
-                            </div>
-                            <div className="prop-row">
-                                <div className="prop-group">
-                                    <label>Rotación (Grados)</label>
-                                    <input
-                                        type="number"
-                                        value={Math.round(location.rotation)}
-                                        onChange={(e) => handleChange('rotation', Number(e.target.value))}
-                                    />
-                                </div>
                             </div>
                         </div>
                     </details>
