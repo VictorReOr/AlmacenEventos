@@ -1,0 +1,147 @@
+.wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.open {
+    width: 300px;
+    /* Expand width */
+}
+
+.iconBtn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.iconBtn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.searchContainer {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 20px;
+    padding: 0 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    animation: expand 0.2s ease-out;
+}
+
+@keyframes expand {
+    from {
+        width: 40px;
+        opacity: 0;
+    }
+
+    to {
+        width: 100%;
+        opacity: 1;
+    }
+}
+
+.searchIcon {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    margin-right: 6px;
+}
+
+.input {
+    border: none;
+    outline: none;
+    padding: 8px;
+    flex: 1;
+    font-size: 0.9rem;
+    background: transparent;
+    min-width: 0;
+}
+
+.closeBtn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.closeBtn:hover {
+    color: #475569;
+}
+
+/* --- RESULTS MENU --- */
+.resultsMenu {
+    position: absolute;
+    top: 110%;
+    /* Below input */
+    right: 0;
+    /* Align right or left */
+    left: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.resultItem {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8fafc;
+    transition: background 0.1s;
+}
+
+.resultItem:last-child {
+    border-bottom: none;
+}
+
+.resultItem:hover {
+    background-color: #f1f5f9;
+}
+
+.resLabel {
+    font-weight: 500;
+    color: #1e293b;
+    font-size: 0.9rem;
+}
+
+.resDetail {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.noResults {
+    position: absolute;
+    top: 110%;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+}

@@ -495,266 +495,250 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
         // Handled in PointerUp
     };
 
-    // VISUAL RENDERING
+
+    // VISUAL RENDERING - ESTILO TÉCNICO ANDALUZ
     const renderVisuals = () => {
         let content;
+
+        // Colores Institucionales (Hardcoded en SVG para consistencia)
+        const C_VERDE = "#007A33";
+        const C_GRIS_OSCURO = "#333333";
+        const C_GRIS_CLARO = "#f5f5f5";
+        const C_BORDE = "#9e9e9e";
+
         if (u.tipo === 'estanteria_modulo') {
             const uprightW = Math.max(3, 0.08 * SCALE);
             const numModules = Math.round(u.width / SHELF_MODULE_WIDTH);
 
-            // Dividers: Orientation depends on Rotation Mode
+            // Dividers
             const dividers = [];
             for (let i = 1; i < numModules; i++) {
                 if (rotationMode === 'vertical-ccw') {
-                    // Vertical Mode: Length is along X (finalSvgW). Dividers are Vertical lines.
                     const xPos = -finalSvgW / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(
-                        <rect key={i} x={xPos - 1} y={-finalSvgH / 2} width={2} height={finalSvgH} fill="black" />
-                    );
+                    dividers.push(<rect key={i} x={xPos - 0.5} y={-finalSvgH / 2} width={1} height={finalSvgH} fill={C_BORDE} />);
                 } else {
-                    // Horizontal Mode: Length is along Y (finalSvgH). Dividers are Horizontal lines.
                     const yPos = -finalSvgH / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(
-                        <rect key={i} x={-finalSvgW / 2} y={yPos - 1} width={finalSvgW} height={2} fill="black" />
-                    );
+                    dividers.push(<rect key={i} x={-finalSvgW / 2} y={yPos - 0.5} width={finalSvgW} height={1} fill={C_BORDE} />);
                 }
             }
 
             content = (
                 <g>
-                    {/* Shadow for Depth */}
-                    <rect x={-finalSvgW / 2 + 3} y={-finalSvgH / 2 + 3} width={finalSvgW} height={finalSvgH} fill="rgba(0,0,0,0.2)" rx={2} />
+                    {/* Sombra suave */}
+                    <rect x={-finalSvgW / 2 + 2} y={-finalSvgH / 2 + 2} width={finalSvgW} height={finalSvgH} fill="rgba(0,0,0,0.1)" rx={1} />
 
-                    {/* Selection Glow (Outer Ring) */}
-                    {isSelected && <rect x={-finalSvgW / 2 - 2} y={-finalSvgH / 2 - 2} width={finalSvgW + 4} height={finalSvgH + 4} fill="none" stroke="#00E5FF" strokeWidth={3} rx={2} />}
+                    {/* Selección (Borde Verde Institucional) */}
+                    {isSelected && <rect x={-finalSvgW / 2 - 3} y={-finalSvgH / 2 - 3} width={finalSvgW + 6} height={finalSvgH + 6} fill="none" stroke={C_VERDE} strokeWidth={2} rx={2} strokeDasharray="4,2" />}
 
-                    {/* Main Body - Industrial Blue Grey */}
+                    {/* Cuerpo Principal - Blanco Técnico */}
                     <rect
                         x={-finalSvgW / 2}
                         y={-finalSvgH / 2}
                         width={finalSvgW}
                         height={finalSvgH}
-                        fill={isValid ? "#cfd8dc" : "#ffebee"}
-                        stroke={isValid ? "#546e7a" : "red"}
-                        strokeWidth={2}
-                        rx={2}
+                        fill="#ffffff"
+                        stroke={isValid ? C_BORDE : "#d32f2f"}
+                        strokeWidth={1}
+                        rx={1}
                     />
 
-                    {/* Ends (Uprights) - Distinct Visuals */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={uprightW} fill="#455a64" rx={1} />
-                    <rect x={-finalSvgW / 2} y={finalSvgH / 2 - uprightW} width={finalSvgW} height={uprightW} fill="#455a64" rx={1} />
+                    {/* Postes (Gris Técnico) */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={uprightW} fill={C_GRIS_OSCURO} rx={0.5} />
+                    <rect x={-finalSvgW / 2} y={finalSvgH / 2 - uprightW} width={finalSvgW} height={uprightW} fill={C_GRIS_OSCURO} rx={0.5} />
 
-                    {/* Internal Dividers */}
                     {dividers}
 
-                    {/* Text: Rotated for Readability with background Pill for contrast */}
+                    {/* Texto Identificativo */}
                     <g transform={`rotate(${-currentRot})`}>
-                        {/* Green Pill matching Corporate Colors */}
-                        <rect x={-20} y={-9} width={40} height={18} rx={4} fill="#007a33" stroke="#004d20" strokeWidth={1} />
-                        <text x={0} y={0} fontSize={11} fontWeight="700" fill="#ffffff" textAnchor="middle" dy="0.35em" style={{ userSelect: 'none', pointerEvents: 'none' }}>{u.contenido}</text>
+                        <rect x={-20} y={-9} width={40} height={18} rx={4} fill={C_VERDE} />
+                        <text x={0} y={0} fontSize={10} fontWeight="600" fill="#ffffff" textAnchor="middle" dy="0.35em" style={{ userSelect: 'none', pointerEvents: 'none' }}>{u.contenido}</text>
                     </g>
                 </g>
             );
-        } else if (u.tipo === 'zona_carga') { // Van (Detailed Visuals)
-            // Determine orientation based on aspect ratio
-            const isHorizontal = finalSvgW > finalSvgH;
-            const L = isHorizontal ? finalSvgW : finalSvgH; // Length
-            const W = isHorizontal ? finalSvgH : finalSvgW; // Width
+        } else if (u.tipo === 'zona_carga') {
+            // FURGONETA: Diseño detallado estilo técnico
+            // NOTE: In Vertical Mode ('vertical-ccw'), the map is rotated -90deg.
+            // We want the van to appear 'upright' relative to the screen usually, or aligned with walls.
+            // 'currentRot' is the object's physical rotation.
+            // visualRot adjusts it for the display mode.
 
-            // Assume Front is usually "Right" (+X) if Horizontal, or "Bottom" (+Y) if Vertical (in Local Space)
-            // We'll organize logic relative to a "Standard Horizontal" frame and rotate if needed?
-            // Actually, easier to just draw based on `isHorizontal`.
-
-            // Colors
-            const bodyColor = "#cfd8dc"; // Grey Blue
-            const cabinColor = "#cfd8dc"; // Grey Blue
-            const glassColor = "#0277bd"; // Darker Blue
-            const wheelColor = "#263238"; // Dark Grey
-
-            // Rotation Fix for Vertical Mode:
-            // User wants Van to face Door (Top/Up). 
-            // - Up on Screen = -90 degrees in SVG space.
-            // - Current Physical Rotation = currentRot (e.g. 94 deg, Down).
-            // - We need Net Rotation = -90.
-            // - So Inner Rotation = -90 - currentRot.
-            // - Note: We add this to the Parent transform which is +currentRot.
-            // - Net = currentRot + (-90 - currentRot) = -90.
             const visualRot = (rotationMode === 'vertical-ccw') ? (-90 - currentRot) : 0;
 
-            // Note: finalRot var is unused, removing it.
+            // Dimensions in the local SVG coordinate system (before rotation)
+            const isHorizontalShape = finalSvgW > finalSvgH;
+
+            // To draw the van correctly, we need to know its 'length' axis.
+            // Assuming the Van is always drawn along the longest axis.
+            const L = isHorizontalShape ? finalSvgW : finalSvgH;
+            const W = isHorizontalShape ? finalSvgH : finalSvgW;
+
+            // Colores Técnicos Limpios para Vehículo
+            const colorBody = "#e0e0e0";    // Gris Plata Limpio
+            const colorCabin = "#cfd8dc";   // Gris Azulado Claro
+            const colorGlass = "#81d4fa";   // Azul Cian Claro (Cristal)
+            const colorWheel = "#263238";   // Gris Muy Oscuro (Ruedas)
+            const colorLight = "#fff176";   // Amarillo Pálido (Luces)
 
             content = (
                 <g transform={`rotate(${visualRot})`}>
-                    {/* Selection Highlight */}
-                    {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#00E5FF" strokeWidth={3} rx={8} />}
+                    {/* Highlight Selección */}
+                    {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke={C_VERDE} strokeWidth={2} rx={6} />}
 
-                    {/* WHEELS (4x) - Draw before body */}
-                    {isHorizontal ? (
+                    {/* RUEDAS (4x) */}
+                    {isHorizontalShape ? (
                         <>
-                            {/* Front-Top, Front-Bottom, Rear-Top, Rear-Bottom */}
-                            <rect x={L / 2 - L * 0.15} y={-W / 2 - 4} width={L * 0.12} height={6} fill={wheelColor} rx={2} />
-                            <rect x={L / 2 - L * 0.15} y={W / 2 - 2} width={L * 0.12} height={6} fill={wheelColor} rx={2} />
-                            <rect x={-L / 2 + L * 0.05} y={-W / 2 - 4} width={L * 0.12} height={6} fill={wheelColor} rx={2} />
-                            <rect x={-L / 2 + L * 0.05} y={W / 2 - 2} width={L * 0.12} height={6} fill={wheelColor} rx={2} />
+                            <rect x={L / 2 - L * 0.15} y={-W / 2 - 2} width={L * 0.12} height={4} fill={colorWheel} rx={1} />
+                            <rect x={L / 2 - L * 0.15} y={W / 2 - 2} width={L * 0.12} height={4} fill={colorWheel} rx={1} />
+                            <rect x={-L / 2 + L * 0.05} y={-W / 2 - 2} width={L * 0.12} height={4} fill={colorWheel} rx={1} />
+                            <rect x={-L / 2 + L * 0.05} y={W / 2 - 2} width={L * 0.12} height={4} fill={colorWheel} rx={1} />
                         </>
                     ) : (
                         <>
-                            {/* Vertical Orientation (Front=Top, facing Door) */}
-                            {/* Front Wheels (Top) */}
-                            <rect x={-W / 2 - 4} y={-L / 2 + L * 0.15} width={6} height={L * 0.12} fill={wheelColor} rx={2} />
-                            <rect x={W / 2 - 2} y={-L / 2 + L * 0.15} width={6} height={L * 0.12} fill={wheelColor} rx={2} />
-                            {/* Rear Wheels (Bottom) */}
-                            <rect x={-W / 2 - 4} y={L / 2 - L * 0.05 - L * 0.12} width={6} height={L * 0.12} fill={wheelColor} rx={2} />
-                            <rect x={W / 2 - 2} y={L / 2 - L * 0.05 - L * 0.12} width={6} height={L * 0.12} fill={wheelColor} rx={2} />
+                            <rect x={-W / 2 - 2} y={-L / 2 + L * 0.15} width={4} height={L * 0.12} fill={colorWheel} rx={1} />
+                            <rect x={W / 2 - 2} y={-L / 2 + L * 0.15} width={4} height={L * 0.12} fill={colorWheel} rx={1} />
+                            <rect x={-W / 2 - 2} y={L / 2 - L * 0.05 - L * 0.12} width={4} height={L * 0.12} fill={colorWheel} rx={1} />
+                            <rect x={W / 2 - 2} y={L / 2 - L * 0.05 - L * 0.12} width={4} height={L * 0.12} fill={colorWheel} rx={1} />
                         </>
                     )}
 
-                    {/* MAIN BODY */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill={bodyColor} stroke="#546e7a" strokeWidth={1} rx={4} />
+                    {/* CARROCERÍA PRINCIPAL */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill={colorBody} stroke="#9e9e9e" strokeWidth={1} rx={2} />
 
-                    {/* CABIN / HOOD */}
-                    {isHorizontal ? (
-                        // Horizontal: Hood at Right (+X)
+                    {/* CABINA / CAPÓ */}
+                    {isHorizontalShape ? (
                         <path d={`
                             M ${L / 2 - L * 0.25} ${-W / 2} 
-                            L ${L / 2 - 4} ${-W / 2} 
-                            Q ${L / 2} ${-W / 2} ${L / 2} ${-W / 2 + 4} 
-                            L ${L / 2} ${W / 2 - 4} 
-                            Q ${L / 2} ${W / 2} ${L / 2 - 4} ${W / 2}
+                            L ${L / 2 - 2} ${-W / 2} 
+                            Q ${L / 2} ${-W / 2} ${L / 2} ${-W / 2 + 2} 
+                            L ${L / 2} ${W / 2 - 2} 
+                            Q ${L / 2} ${W / 2} ${L / 2 - 2} ${W / 2}
                             L ${L / 2 - L * 0.25} ${W / 2} 
                             Z
-                        `} fill={cabinColor} stroke="none" />
+                        `} fill={colorCabin} stroke="none" />
                     ) : (
-                        // Vertical: Hood at Top (-Y, facing Door)
                         <path d={`
                             M ${-W / 2} ${-L / 2 + L * 0.25}
-                            L ${-W / 2} ${-L / 2 + 4}
-                            Q ${-W / 2} ${-L / 2} ${-W / 2 + 4} ${-L / 2}
-                            L ${W / 2 - 4} ${-L / 2}
-                            Q ${W / 2} ${-L / 2} ${W / 2} ${-L / 2 + 4}
+                            L ${-W / 2} ${-L / 2 + 2}
+                            Q ${-W / 2} ${-L / 2} ${-W / 2 + 2} ${-L / 2}
+                            L ${W / 2 - 2} ${-L / 2}
+                            Q ${W / 2} ${-L / 2} ${W / 2} ${-L / 2 + 2}
                             L ${W / 2} ${-L / 2 + L * 0.25}
                             Z
-                        `} fill={cabinColor} stroke="none" />
+                        `} fill={colorCabin} stroke="none" />
                     )}
 
-                    {/* WINDSHIELD */}
-                    {isHorizontal ? (
-                        <rect x={L / 2 - L * 0.24} y={-W / 2 + 3} width={L * 0.08} height={W - 6} fill={glassColor} rx={1} />
+                    {/* PARABRISAS (Cristal) */}
+                    {isHorizontalShape ? (
+                        <rect x={L / 2 - L * 0.24} y={-W / 2 + 2} width={L * 0.08} height={W - 4} fill={colorGlass} rx={1} />
                     ) : (
-                        // Vertical: Top
-                        <rect x={-W / 2 + 3} y={-L / 2 + L * 0.24 - L * 0.08} width={W - 6} height={L * 0.08} fill={glassColor} rx={1} />
+                        <rect x={-W / 2 + 2} y={-L / 2 + L * 0.24 - L * 0.08} width={W - 4} height={L * 0.08} fill={colorGlass} rx={1} />
                     )}
 
-                    {/* HEADLIGHTS (Yellow) */}
-                    {isHorizontal ? (
+                    {/* LUCES */}
+                    {isHorizontalShape ? (
                         <>
-                            <circle cx={L / 2} cy={-W / 2 + W * 0.2} r={3} fill="#ffeb3b" stroke="#fbc02d" strokeWidth={1} />
-                            <circle cx={L / 2} cy={W / 2 - W * 0.2} r={3} fill="#ffeb3b" stroke="#fbc02d" strokeWidth={1} />
-                        </>
-                    ) : (
-                        // Vertical: Top
-                        <>
-                            <circle cx={-W / 2 + W * 0.2} cy={-L / 2} r={3} fill="#ffeb3b" stroke="#fbc02d" strokeWidth={1} />
-                            <circle cx={W / 2 - W * 0.2} cy={-L / 2} r={3} fill="#ffeb3b" stroke="#fbc02d" strokeWidth={1} />
-                        </>
-                    )}
-
-                    {/* SIDE MIRRORS */}
-                    {isHorizontal ? (
-                        <>
-                            <rect x={L / 2 - L * 0.24} y={-W / 2 - 6} width={4} height={6} fill={bodyColor} stroke="#455a64" strokeWidth={1} rx={1} />
-                            <rect x={L / 2 - L * 0.24} y={W / 2} width={4} height={6} fill={bodyColor} stroke="#455a64" strokeWidth={1} rx={1} />
+                            <circle cx={L / 2} cy={-W / 2 + W * 0.2} r={2} fill={colorLight} />
+                            <circle cx={L / 2} cy={W / 2 - W * 0.2} r={2} fill={colorLight} />
                         </>
                     ) : (
-                        // Vertical: Top
                         <>
-                            <rect x={-W / 2 - 6} y={-L / 2 + L * 0.24 - 4} width={6} height={4} fill={bodyColor} stroke="#455a64" strokeWidth={1} rx={1} />
-                            <rect x={W / 2} y={-L / 2 + L * 0.24 - 4} width={6} height={4} fill={bodyColor} stroke="#455a64" strokeWidth={1} rx={1} />
+                            <circle cx={-W / 2 + W * 0.2} cy={-L / 2} r={2} fill={colorLight} />
+                            <circle cx={W / 2 - W * 0.2} cy={-L / 2} r={2} fill={colorLight} />
                         </>
                     )}
 
-                    <text x={0} y={0} fontSize={10} fontWeight="bold" fill="#37474f" textAnchor="middle" dy="0.3em" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none', textShadow: '0px 1px 1px rgba(255,255,255,0.5)' }}>FURGONETA</text>
+                    {/* ESPEJOS RETROVISORES */}
+                    {isHorizontalShape ? (
+                        <>
+                            <rect x={L / 2 - L * 0.22} y={-W / 2 - 3} width={3} height={3} fill={colorBody} stroke="#757575" strokeWidth={0.5} />
+                            <rect x={L / 2 - L * 0.22} y={W / 2} width={3} height={3} fill={colorBody} stroke="#757575" strokeWidth={0.5} />
+                        </>
+                    ) : (
+                        <>
+                            <rect x={-W / 2 - 3} y={-L / 2 + L * 0.22 - 3} width={3} height={3} fill={colorBody} stroke="#757575" strokeWidth={0.5} />
+                            <rect x={W / 2} y={-L / 2 + L * 0.22 - 3} width={3} height={3} fill={colorBody} stroke="#757575" strokeWidth={0.5} />
+                        </>
+                    )}
+
+                    <text x={0} y={0} fontSize={9} fontWeight="600" fill="#455a64" textAnchor="middle" dy="0.3em" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>FURGONETA</text>
                 </g>
             );
+
         } else if (u.tipo === 'puerta') {
+            // Estilo Técnico para Puertas: Arcos finos azules
             const isVertical = finalSvgH > finalSvgW;
             const r = isVertical ? finalSvgH / 2 : finalSvgW / 2;
-            const strokeColor = isSelected ? "#00E5FF" : "#333";
-            const strokeW = isSelected ? 3 : 1;
-            const arcColor = "#2196F3";
+            const strokeColor = isSelected ? C_VERDE : C_GRIS_OSCURO;
+            const arcColor = "#0288d1"; // Azul info
 
+            let doorContent;
+            // ... [Lógica de geometría de puerta intacta] ...
             if (isVertical) {
-                // Vertical Door (Long along Y) - Open to Left (-X)
-                content = (
-                    <g>
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke={strokeColor} strokeWidth={strokeW} />
-                        {/* Leaf 1 (Top) */}
-                        <line x1={0} y1={-finalSvgH / 2} x2={-r} y2={-finalSvgH / 2} stroke={strokeColor} strokeWidth={3} />
-                        <path d={`M ${-r} ${-finalSvgH / 2} A ${r} ${r} 0 0 0 ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={2} strokeDasharray="4,2" />
-                        {/* Leaf 2 (Bottom) */}
-                        <line x1={0} y1={finalSvgH / 2} x2={-r} y2={finalSvgH / 2} stroke={strokeColor} strokeWidth={3} />
-                        <path d={`M ${-r} ${finalSvgH / 2} A ${r} ${r} 0 0 1 ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={2} strokeDasharray="4,2" />
-
-                        <text x={r} y={0} fontSize={10} fill="#333" textAnchor="middle" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>{u.contenido}</text>
-                    </g>
+                doorContent = (
+                    <>
+                        <line x1={0} y1={-finalSvgH / 2} x2={-r} y2={-finalSvgH / 2} stroke={strokeColor} strokeWidth={2} />
+                        <path d={`M ${-r} ${-finalSvgH / 2} A ${r} ${r} 0 0 0 ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={1} strokeDasharray="4,2" />
+                        <line x1={0} y1={finalSvgH / 2} x2={-r} y2={finalSvgH / 2} stroke={strokeColor} strokeWidth={2} />
+                        <path d={`M ${-r} ${finalSvgH / 2} A ${r} ${r} 0 0 1 ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={1} strokeDasharray="4,2" />
+                    </>
                 );
             } else {
-                // Horizontal Door (Long along X)
                 const rH = finalSvgW / 2;
-
-                // Explicitly define Leaf Endpoint (Y coordinate relative to center)
-                // Normal Mode (Top Wall): Opens UP (Outside) -> Negative Y.
-                // Vertical-CCW Mode (Top Wall): Opens DOWN (Inside) -> Positive Y.
-
                 const isVerticalMode = rotationMode === 'vertical-ccw';
                 const leafEnd = isVerticalMode ? rH : -rH;
-                const textPos = isVerticalMode ? (rH + 15) : -(rH + 15);
-
-                // Arc Sweep Logic:
-                // If going to Positive Y (Vertical Mode), we need Sweep 0?
-                // Test: Start (-W/2, +H). End (-W/2, 0). 
-                // Wait. Path logic:
-                // M ${-finalSvgW / 2} ${leafEnd} A ... 0 0.
-
                 const arcSweep1 = isVerticalMode ? 0 : 1;
                 const arcSweep2 = isVerticalMode ? 1 : 0;
-
-                content = (
-                    <g>
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke={strokeColor} strokeWidth={strokeW} />
-                        {/* Leaf 1 (Left) */}
-                        <line x1={-finalSvgW / 2} y1={0} x2={-finalSvgW / 2} y2={leafEnd} stroke={strokeColor} strokeWidth={3} />
-                        <path d={`M ${-finalSvgW / 2} ${leafEnd} A ${rH} ${rH} 0 0 ${arcSweep1} ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={2} strokeDasharray="4,2" />
-                        {/* Leaf 2 (Right) */}
-                        <line x1={finalSvgW / 2} y1={0} x2={finalSvgW / 2} y2={leafEnd} stroke={strokeColor} strokeWidth={3} />
-                        <path d={`M ${finalSvgW / 2} ${leafEnd} A ${rH} ${rH} 0 0 ${arcSweep2} ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={2} strokeDasharray="4,2" />
-
-                        <text x={0} y={textPos} fontSize={10} fill="#333" textAnchor="middle" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>{u.contenido}</text>
-                    </g>
+                doorContent = (
+                    <>
+                        <line x1={-finalSvgW / 2} y1={0} x2={-finalSvgW / 2} y2={leafEnd} stroke={strokeColor} strokeWidth={2} />
+                        <path d={`M ${-finalSvgW / 2} ${leafEnd} A ${rH} ${rH} 0 0 ${arcSweep1} ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={1} strokeDasharray="4,2" />
+                        <line x1={finalSvgW / 2} y1={0} x2={finalSvgW / 2} y2={leafEnd} stroke={strokeColor} strokeWidth={2} />
+                        <path d={`M ${finalSvgW / 2} ${leafEnd} A ${rH} ${rH} 0 0 ${arcSweep2} ${0} ${0}`} fill="none" stroke={arcColor} strokeWidth={1} strokeDasharray="4,2" />
+                    </>
                 );
             }
+
+            content = (
+                <g>
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke="none" />
+                    {doorContent}
+                    <text x={0} y={0} fontSize={9} fill={C_GRIS_OSCURO} textAnchor="middle" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>{u.contenido}</text>
+                </g>
+            );
+
         } else if (u.tipo === 'muro') {
             content = (
                 <g>
-                    {/* SOLID WALL with Shadow */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="#374151" stroke="none" filter="url(#wall-shadow)" />
+                    {/* MURO: Línea sólida técnica, gris muy oscuro */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="#424242" stroke="none" />
                 </g>
             );
-        } else { // Pallet
+        } else { // Palet
+            // PALET: Estilo limpio, borde de color funcional, fondo blanco
             content = (
                 <g>
-                    {isSelected && <rect x={-finalSvgW / 2 - 6} y={-finalSvgH / 2 - 6} width={finalSvgW + 12} height={finalSvgH + 12} fill="none" stroke="#00E5FF" strokeWidth={5} rx={4} />}
+                    {isSelected && <rect x={-finalSvgW / 2 - 3} y={-finalSvgH / 2 - 3} width={finalSvgW + 6} height={finalSvgH + 6} fill="none" stroke={C_VERDE} strokeWidth={2} rx={2} />}
 
-                    {/* Base Color */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill={color} stroke={stroke} strokeWidth={1} fillOpacity={isDragging ? 0.8 : 1} rx={2} />
+                    {/* Fondo Blanco Limpio */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="white" stroke={isValid ? "#bdbdbd" : "#e57373"} strokeWidth={1} rx={1} />
 
-                    {/* Texture Overlay */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="url(#box-texture)" pointerEvents="none" opacity="0.4" rx={2} />
+                    {/* Header de Color (Semántico) - Pequeña franja arriba */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH * 0.25} fill={color} rx={1} clipPath="inset(0 0 75% 0 round 1px 1px 0 0)" />
 
-                    {/* Text Label - Always Horizontal */}
+                    {/* ID */}
                     <g transform={`rotate(${-currentRot})`}>
-                        <text x={0} y={0} fontSize={10} textAnchor="middle" dy="0.3em" fill="#000" pointerEvents="none">{u.id}</text>
-                        {u.cantidad && u.cantidad > 0 && <text x={0} y={10} fontSize={8} fill="black" fontWeight="bold" pointerEvents="none" textAnchor="middle">x{u.cantidad}</text>}
+                        <text x={0} y={5} fontSize={10} textAnchor="middle" fill="#212121" fontWeight="500" style={{ pointerEvents: 'none' }}>{u.id}</text>
+                        {/* Indicators */}
+                        {u.cajas && u.cajas.length > 0 && (
+                            <rect x={-finalSvgW / 2 + 3} y={finalSvgH / 2 - 9} width={6} height={6} fill={C_VERDE} rx={1}>
+                                <title>Contiene Cajas</title>
+                            </rect>
+                        )}
+                        {u.materiales && u.materiales.length > 0 && (
+                            <circle cx={-finalSvgW / 2 + (u.cajas?.length ? 15 : 6)} cy={finalSvgH / 2 - 6} r={3} fill="#FB8C00">
+                                <title>Contiene Material Suelto</title>
+                            </circle>
+                        )}
                     </g>
                 </g>
             );
@@ -809,47 +793,87 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
     // Snapping Lines State
     const [snapLines, setSnapLines] = useState<SnapLine[]>([]);
 
-    // Viewport State (Pan & Zoom) - Hardcoded User Preference    // Initial View State
-    const [view, setView] = useState(() => {
+    // Viewport State (Pan & Zoom)
+    const [view, setView] = useState({ x: 0, y: 0, k: 1 }); // Start clean, auto-fit will handle it
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Coordinate Transform Helper (Memoized to be used in effects)
+    const toSVG = React.useCallback((uX: number, uY: number) => {
         if (rotationMode === 'vertical-ccw') {
-            return { x: 292, y: -11, k: 0.908 };
-        } else {
-            // Updated Horizontal View
-            return { x: 231, y: 43, k: 1.238 };
-        }
-    });
-
-    // Reset View on Rotation Change (Optional, but good for switching modes)
-    React.useEffect(() => {
-        if (rotationMode === 'vertical-ccw') {
-            setView({ x: 292, y: -11, k: 0.908 });
-        } else {
-            setView({ x: 231, y: 43, k: 1.238 });
-        }
-    }, [rotationMode]);
-
-    // Coordinate Transform: User(x,y) -> SVG(svgX, svgY)
-    // svgX = y * SCALE
-    // svgY = x * SCALE
-    // Coordinate Transform: 
-    // Normal: svgX = y * SCALE, svgY = x * SCALE (Old Warehouse Logic: X=Vertical on screen)
-    // Vertical-CCW (-90): Swap axes?
-    // Let's deduce:
-    // Normal: (uX, uY) -> (uY * SCALE, uX * SCALE) -> (ScreenX, ScreenY)
-    // Vertical CCW: Top of warehouse is now LEFT of screen.
-    // ScreenX = uX * SCALE
-    // ScreenY = -uY * SCALE (flipping axis?)
-
-    // Actually simpler: Rotate the point (svgX, svgY) by -90 around center? 
-    // No, we want the whole coordinate system to be rotated.
-
-    const toSVG = (uX: number, uY: number) => {
-        if (rotationMode === 'vertical-ccw') {
-            // ... (rest of toSVG implementation) ...
             return { x: uX * SCALE, y: (29 - uY) * SCALE };
         }
         return { x: uY * SCALE, y: uX * SCALE };
-    };
+    }, [rotationMode]); // Added rotationMode to dependencies
+
+    // --- AUTO-FIT LOGIC ---
+    const fitToScreen = React.useCallback(() => {
+        if (!containerRef.current || !geometry || geometry.length === 0) return;
+
+        const { clientWidth: cw, clientHeight: ch } = containerRef.current;
+        if (cw === 0 || ch === 0) return;
+
+        // 1. Calculate Bounding Box in SVG Space
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+        geometry.forEach(p => {
+            const s = toSVG(p.x, p.y);
+            // Ensure values are finite to prevent NaN propagation
+            if (Number.isFinite(s.x) && Number.isFinite(s.y)) {
+                if (s.x < minX) minX = s.x;
+                if (s.x > maxX) maxX = s.x;
+                if (s.y < minY) minY = s.y;
+                if (s.y > maxY) maxY = s.y;
+            }
+        });
+
+        // Safety check if no valid points found
+        if (minX === Infinity || minY === Infinity) {
+            console.warn("fitToScreen: Invalid geometry bounds (infinity)");
+            return;
+        }
+
+        const svgW = maxX - minX;
+        const svgH = maxY - minY;
+
+        // Prevent division by zero if geometry is a single point or line
+        if (svgW <= 0 || svgH <= 0) {
+            setView({ x: cw / 2, y: ch / 2, k: 1 });
+            return;
+        }
+
+        const svgCX = (minX + maxX) / 2;
+        const svgCY = (minY + maxY) / 2;
+
+        // 2. Calculate Scale
+        const PADDING = 40;
+        const availableW = Math.max(10, cw - PADDING * 2);
+        const availableH = Math.max(10, ch - PADDING * 2);
+
+        const scaleX = availableW / svgW;
+        const scaleY = availableH / svgH;
+        // Limit zoom to reasonable values to avoid white screens
+        const newK = Math.min(Math.max(Math.min(scaleX, scaleY), 0.1), 3);
+
+        // 3. Center logic
+        const newX = (cw / 2) - (svgCX * newK);
+        const newY = (ch / 2) - (svgCY * newK);
+
+        // Only update if values are valid
+        if (Number.isFinite(newX) && Number.isFinite(newY) && Number.isFinite(newK)) {
+            setView({ x: newX, y: newY, k: newK });
+        }
+    }, [geometry, toSVG]);
+
+    // Trigger Fit
+    React.useLayoutEffect(() => {
+        if (!containerRef.current) return;
+        fitToScreen();
+        const ro = new ResizeObserver(() => {
+            if (containerRef.current && containerRef.current.clientWidth > 0) fitToScreen();
+        });
+        ro.observe(containerRef.current);
+        return () => ro.disconnect();
+    }, [fitToScreen]);
 
     useImperativeHandle(ref, () => ({
         getViewCenter: () => {
@@ -1166,11 +1190,9 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
     };
 
     // --- AUTO FIT ON LOAD & RESIZE ---
-    const containerRef = React.useRef<HTMLDivElement>(null);
+    // containerRef is declared at top
+    // React.useEffect replaced by top-level logic
 
-    React.useEffect(() => {
-        if (!containerRef.current) return;
-    }, [rotationMode, geometry, Object.keys(ubicaciones || {}).length]);
 
     const viewHandlers = bindView();
 
@@ -1211,6 +1233,13 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                     title="Zoom Out"
                 >
                     -
+                </button>
+                <button
+                    onClick={fitToScreen}
+                    style={{ padding: '5px 10px', cursor: 'pointer' }}
+                    title="Centrar Mapa"
+                >
+                    🎯
                 </button>
             </div>
 

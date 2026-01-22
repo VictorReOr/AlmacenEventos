@@ -1,171 +1,121 @@
 import React, { useState, useMemo } from 'react';
-import type { Ubicacion, InventoryItem } from './types';
+import type { Ubicacion, Caja, MaterialEnCaja } from './types';
+import styles from './components/UI/PropertiesPanel.module.css';
+import { BoxDetailPanel } from './components/UI/BoxDetailPanel';
+
+
 
 interface PropertiesPanelProps {
     location: Ubicacion;
     onUpdate: (u: Ubicacion) => void;
     onClose: () => void;
     programColors: Record<string, string>;
+    onAssistantAction: (action: { type: string, payload: any }) => void;
 }
 
-// --- SUB-COMPONENT: INVENTORY LIST MANAGER ---
-const InventoryList: React.FC<{
-    items: InventoryItem[],
-    onUpdate: (items: InventoryItem[]) => void,
-    programColors: Record<string, string>,
-    defaultProgram: string
-}> = ({ items, onUpdate, programColors, defaultProgram }) => {
+// --- SUB-COMPONENT: BOX CARD ---
+const BoxCard: React.FC<{
+    box: Caja;
+    onDelete: () => void;
+    programColors: Record<string, string>;
+    onViewDetail: () => void;
+}> = ({ box, onDelete, programColors, onViewDetail }) => {
 
-    // New Item State
-    const [newItemType, setNewItemType] = useState<'Caja' | 'Material'>('Caja');
-    const [newItemDesc, setNewItemDesc] = useState('');
-    const [newItemQty, setNewItemQty] = useState(1);
-    const [newItemProgram, setNewItemProgram] = useState(defaultProgram);
-
-    const handleAdd = () => {
-        if (!newItemDesc.trim()) return;
-        const newItem: InventoryItem = {
-            id: crypto.randomUUID(),
-            tipo: newItemType,
-            contenido: newItemDesc,
-            cantidad: newItemQty,
-            programa: newItemProgram
-        };
-        onUpdate([...items, newItem]);
-        setNewItemDesc(''); // Reset desc
-        setNewItemQty(1);
-    };
-
-    const handleDelete = (id: string) => {
-        onUpdate(items.filter(i => i.id !== id));
-    };
+    const badgeColor = programColors[box.programa] || '#e2e8f0';
+    const totalItems = box.contenido.reduce((acc, m) => acc + m.cantidad, 0);
 
     return (
-        <div style={{ marginTop: 10 }}>
-            {/* EXISTING ITEMS LIST */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 15 }}>
-                {items.length === 0 && (
-                    <div style={{ padding: 10, background: '#f5f5f5', color: '#888', fontStyle: 'italic', fontSize: '0.9rem', textAlign: 'center' }}>
-                        Sin contenido. Añade algo abajo. 👇
-                    </div>
-                )}
-                {items.map(item => (
-                    <div key={item.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        background: '#fff',
-                        border: '1px solid #eee',
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                    }}>
-                        <div style={{ fontSize: '1.2rem' }}>
-                            {item.tipo === 'Caja' ? '📦' : '🎾'}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.contenido}</div>
-                            <div style={{ fontSize: '0.75rem', color: programColors[item.programa] || '#888' }}>{item.programa || item.tipo}</div>
-                        </div>
-
-                        {/* Quantity Controls */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginRight: 5 }}>
-                            <button
-                                onClick={() => {
-                                    const newQty = Math.max(1, item.cantidad - 1);
-                                    onUpdate(items.map(i => i.id === item.id ? { ...i, cantidad: newQty } : i));
-                                }}
-                                style={{ width: 24, height: 24, padding: 0, borderRadius: 4, border: '1px solid #ddd', background: '#f9f9f9', cursor: 'pointer' }}
-                            >
-                                -
-                            </button>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600, minWidth: 20, textAlign: 'center' }}>{item.cantidad}</span>
-                            <button
-                                onClick={() => {
-                                    const newQty = item.cantidad + 1;
-                                    onUpdate(items.map(i => i.id === item.id ? { ...i, cantidad: newQty } : i));
-                                }}
-                                style={{ width: 24, height: 24, padding: 0, borderRadius: 4, border: '1px solid #ddd', background: '#f9f9f9', cursor: 'pointer' }}
-                            >
-                                +
-                            </button>
-                        </div>
-
-                        <button
-                            onClick={() => handleDelete(item.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, fontSize: '1.1rem' }}
-                            title="Eliminar"
-                        >
-                            🗑️
-                        </button>
-                    </div>
-                ))}
+        <div className={styles.boxCard} onClick={onViewDetail} style={{ cursor: 'pointer' }}>
+            <div className={styles.cardHeader}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className={styles.boxIdBadge} style={{ backgroundColor: badgeColor, color: '#333' }}>
+                        📦 CAJA
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: '1rem', marginTop: 4 }}>
+                        {box.descripcion}
+                    </span>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#64748b' }}>
+                    {box.id}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        style={{ marginLeft: 8, border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}
+                        title="Eliminar Caja"
+                    >
+                        &times;
+                    </button>
+                </div>
             </div>
 
-            {/* ADD ITEM FORM */}
-            <div style={{ background: '#f0fdf4', padding: 10, borderRadius: 8, border: '1px solid #bbf7d0' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#166534', marginBottom: 8 }}>Añadir Elemento:</div>
-
-                <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
-                    <select
-                        value={newItemType}
-                        onChange={(e) => setNewItemType(e.target.value as any)}
-                        style={{ padding: 4, borderRadius: 4, border: '1px solid #ddd', flex: 1 }}
-                    >
-                        <option value="Caja">📦 Caja</option>
-                        <option value="Material">🎾 Material</option>
-                    </select>
-                    <input
-                        type="number"
-                        min={1}
-                        value={newItemQty}
-                        onChange={(e) => setNewItemQty(Number(e.target.value))}
-                        style={{ width: 50, padding: 4, borderRadius: 4, border: '1px solid #ddd' }}
-                    />
+            <div className={styles.cardBody}>
+                <div className={styles.materialRow}>
+                    <span className={styles.materialName}>Materiales</span>
+                    <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{totalItems}</span>
                 </div>
-
-                <textarea
-                    value={newItemDesc}
-                    onChange={(e) => setNewItemDesc(e.target.value)}
-                    placeholder="Descripción (ej: Balones Nike)"
-                    rows={2}
-                    style={{ width: '100%', padding: 6, borderRadius: 4, border: '1px solid #ddd', marginBottom: 8, fontSize: '0.9rem' }}
-                />
-
-                <select
-                    value={newItemProgram}
-                    onChange={(e) => setNewItemProgram(e.target.value)}
-                    style={{ width: '100%', padding: 4, borderRadius: 4, border: '1px solid #ddd', marginBottom: 8, fontSize: '0.85rem' }}
-                >
-                    {Object.keys(programColors).map(p => (
-                        <option key={p} value={p}>{p}</option>
-                    ))}
-                </select>
-
-                <button
-                    onClick={handleAdd}
-                    disabled={!newItemDesc.trim()}
-                    style={{
-                        width: '100%',
-                        padding: '6px',
-                        background: '#16a34a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        fontWeight: 'bold',
-                        cursor: newItemDesc.trim() ? 'pointer' : 'not-allowed',
-                        opacity: newItemDesc.trim() ? 1 : 0.6
-                    }}
-                >
-                    + Añadir
-                </button>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+                    Clic para ver contenido
+                </div>
             </div>
         </div>
     );
 };
 
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors }) => {
+// --- SUB-COMPONENT: LOOSE ITEM CARD ---
+const LooseItemCard: React.FC<{
+    item: MaterialEnCaja;
+    onUpdate: (newItem: MaterialEnCaja) => void;
+    onDelete: () => void;
+}> = ({ item, onUpdate, onDelete }) => {
+    return (
+        <div className={styles.boxCard} style={{ borderColor: '#FFB74D', backgroundColor: '#FFF8E1' }}>
+            <div className={styles.cardHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🔹</span>
+                    <input
+                        value={item.nombre}
+                        onChange={(e) => onUpdate({ ...item, nombre: e.target.value })}
+                        style={{
+                            border: 'none',
+                            background: 'transparent',
+                            fontWeight: 600,
+                            fontSize: '1rem',
+                            flex: 1,
+                            borderBottom: '1px dashed #ccc'
+                        }}
+                    />
+                </div>
+                <button onClick={onDelete} style={{ background: 'none', border: 'none', color: '#E57373', cursor: 'pointer', fontSize: '1.2rem' }}>
+                    &times;
+                </button>
+            </div>
+
+            <div className={styles.cardBody} style={{ padding: '8px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Cantidad ({item.estado})</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                            onClick={() => onUpdate({ ...item, cantidad: Math.max(0, item.cantidad - 1) })}
+                            style={{ width: 24, height: 24, borderRadius: 12, border: '1px solid #ccc', cursor: 'pointer', background: '#fff' }}
+                        >-</button>
+                        <span style={{ fontWeight: 'bold' }}>{item.cantidad}</span>
+                        <button
+                            onClick={() => onUpdate({ ...item, cantidad: item.cantidad + 1 })}
+                            style={{ width: 24, height: 24, borderRadius: 12, border: '1px solid #ccc', cursor: 'pointer', background: '#fff' }}
+                        >+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors, onAssistantAction }) => {
+
+    // --- VIEW STATE ---
+    const [viewedBoxId, setViewedBoxId] = useState<string | null>(null);
 
     const handleChange = (field: keyof Ubicacion, value: any) => {
         onUpdate({ ...location, [field]: value });
@@ -182,65 +132,146 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
     const [selectedModule, setSelectedModule] = useState(1);
     const [selectedLevel, setSelectedLevel] = useState(1);
 
-    // --- SHELF ITEMS HANDLER ---
-    const handleShelfItemsUpdate = (newItems: InventoryItem[]) => {
-        const key = `M${selectedModule}-A${selectedLevel}`;
-        const newShelfItems = { ...(location.shelfItems || {}) };
-        newShelfItems[key] = newItems;
-        handleChange('shelfItems', newShelfItems);
+    // --- ACCESS HELPERS ---
+
+    // Get Boxes list based on context
+    const getBoxes = (): Caja[] => {
+        if (isShelf) {
+            // In Shelf, we look for key "MX-AX"
+            const key = `M${selectedModule}-A${selectedLevel}`;
+            const box = location.cajasEstanteria?.[key];
+            return box ? [box] : [];
+        } else {
+            // In Pallet, simple list
+            return location.cajas || [];
+        }
     };
 
-    // Get current items for selected shelf cell
-    const currentShelfItems = location.shelfItems?.[`M${selectedModule}-A${selectedLevel}`] || [];
+    const currentBoxes = getBoxes();
 
 
-    // --- PALLET ITEMS HANDLER ---
-    const handlePalletItemsUpdate = (newItems: InventoryItem[]) => {
-        handleChange('items', newItems);
+
+    // Helper to update boxes list
+    const updateBoxes = (newBoxes: Caja[]) => {
+        if (isShelf) {
+            const key = `M${selectedModule}-A${selectedLevel}`;
+            const newMap = { ...(location.cajasEstanteria || {}) };
+            if (newBoxes.length > 0) {
+                newMap[key] = newBoxes[0]; // Rule: Only 1 box per slot
+            } else {
+                delete newMap[key];
+            }
+            handleChange('cajasEstanteria', newMap);
+        } else {
+            handleChange('cajas', newBoxes);
+        }
     };
 
-    const currentPalletItems = location.items || [];
+    // --- LOOSE ITEMS HELPERS (Pallet Only for now) ---
+    const looseItems = location.materiales || [];
+
+    const updateLooseItems = (newItems: MaterialEnCaja[]) => {
+        handleChange('materiales', newItems);
+    };
+
+    const handleAddLooseItem = () => {
+        const newItem: MaterialEnCaja = {
+            id: `M-${crypto.randomUUID().slice(0, 4)}`,
+            materialId: 'gen-mat',
+            nombre: 'Nuevo Material',
+            cantidad: 1,
+            estado: 'operativo'
+        };
+        updateLooseItems([...looseItems, newItem]);
+    };
 
 
+    // Get currently viewed box object
+    const viewedBox = viewedBoxId
+        ? (isShelf
+            ? Object.values(location.cajasEstanteria || {}).find(b => b.id === viewedBoxId)
+            : location.cajas?.find(b => b.id === viewedBoxId))
+        : null;
+
+
+    // Add Item Logic
+    const handleAddBox = () => {
+        if (isShelf && currentBoxes.length > 0) {
+            alert("❌ Regla: Una posición de estantería solo puede tener 1 caja.");
+            return;
+        }
+
+        const newBox: Caja = {
+            id: `C-${crypto.randomUUID().slice(0, 4).toUpperCase()}`,
+            descripcion: isShelf ? 'Nueva Caja Estantería' : 'Nueva Caja',
+            programa: location.programa || 'Vacio',
+            contenido: []
+        };
+
+        if (isShelf) {
+            // Replace/Set
+            updateBoxes([newBox]);
+        } else {
+            // Append
+            updateBoxes([...currentBoxes, newBox]);
+        }
+    };
+
+    // --- RENDER DETAIL VIEW IF ACTIVE ---
+    if (viewedBox) {
+        return (
+            <>
+                <div className={styles.panelOverlay} onClick={onClose} />
+                <BoxDetailPanel
+                    box={viewedBox}
+                    parentLocation={location}
+                    onBack={() => setViewedBoxId(null)}
+                    programColors={programColors}
+                    onAssistantAction={onAssistantAction}
+                    onUpdateBox={(updatedBox) => {
+                        // Update logic
+                        if (isShelf) {
+                            const key = Object.keys(location.cajasEstanteria || {}).find(k => location.cajasEstanteria![k].id === updatedBox.id);
+                            if (key) {
+                                const newMap = { ...location.cajasEstanteria };
+                                newMap[key] = updatedBox;
+                                handleChange('cajasEstanteria', newMap);
+                            }
+                        } else {
+                            const newBoxes = (location.cajas || []).map(b => b.id === updatedBox.id ? updatedBox : b);
+                            handleChange('cajas', newBoxes);
+                        }
+                    }}
+                />
+            </>
+        )
+    }
+
+    // --- RENDER MAIN LIST VIEW ---
     return (
-        <div className="properties-panel">
-            <div className="properties-header">
-                <h2>{isShelf ? 'Estantería Multi-Nivel' : 'Propiedades Palet'}</h2>
-                <button className="close-btn" onClick={onClose}>&times;</button>
-            </div>
-
-            <div className="properties-content">
-
-                {/* --- HEADER INFO --- */}
-                <div className="prop-group">
-                    <label>ID Identificador</label>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                        #{location.id}
-                        {isShelf && <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: 8 }}>({moduleCount} Módulos)</span>}
+        <>
+            <div className={styles.panelOverlay} onClick={onClose} />
+            <div className={styles.panel}>
+                {/* HEADER */}
+                <div className={styles.header}>
+                    <div className={styles.headerTitle}>
+                        <span className={styles.palletId}>
+                            {isShelf ? `Estantería #${location.id}` : `Palet #${location.id}`}
+                        </span>
+                        <span className={styles.palletDesc}>
+                            {isShelf ? `Módulo ${selectedModule} • Nivel ${selectedLevel}` : (location.contenido || "Desc. Palet")}
+                        </span>
                     </div>
+                    <button className={styles.closeBtn} onClick={onClose}>&times;</button>
                 </div>
 
-                {/* --- PALET EDITOR --- */}
-                {!isShelf && (
-                    <div className="prop-group">
-                        <label>Inventario</label>
-                        <InventoryList
-                            items={currentPalletItems}
-                            onUpdate={handlePalletItemsUpdate}
-                            programColors={programColors}
-                            defaultProgram={location.programa || "Vacio"}
-                        />
-                    </div>
-                )}
+                {/* CONTENT */}
+                <div className={styles.content}>
 
-                {/* --- SHELF EDITOR --- */}
-                {isShelf && (
-                    <div style={{ marginTop: 10 }}>
-
-                        {/* 1. MODULE SELECTOR */}
-                        <div style={{ marginBottom: 15 }}>
-                            <label style={{ fontSize: '0.85rem', color: '#666' }}>1. Selecciona Módulo</label>
-                            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5 }}>
+                    {/* SHELF NAVIGATOR */}
+                    {isShelf && (
+                        <div style={{ marginBottom: 20, paddingBottom: 15, borderBottom: '1px dashed #e2e8f0' }}>
+                            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 8 }}>
                                 {Array.from({ length: moduleCount }).map((_, i) => {
                                     const m = i + 1;
                                     const isSel = selectedModule === m;
@@ -249,12 +280,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                             key={m}
                                             onClick={() => setSelectedModule(m)}
                                             style={{
-                                                padding: '8px 12px',
+                                                padding: '6px 10px',
                                                 borderRadius: '4px',
                                                 border: isSel ? '2px solid var(--color-primary)' : '1px solid #ddd',
-                                                background: isSel ? 'rgba(0,122,51,0.1)' : '#fff',
+                                                background: isSel ? '#e8f5e9' : '#fff',
                                                 fontWeight: isSel ? 'bold' : 'normal',
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
                                             }}
                                         >
                                             M{m}
@@ -262,85 +294,122 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                     );
                                 })}
                             </div>
-                        </div>
-
-                        {/* 2. LEVEL SELECTOR */}
-                        <div style={{ marginBottom: 15 }}>
-                            <label style={{ fontSize: '0.85rem', color: '#666' }}>2. Selecciona Altura</label>
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column-reverse',
-                                gap: 4,
-                                background: '#f5f5f5',
-                                padding: 8,
-                                borderRadius: 6
-                            }}>
+                            <div style={{ display: 'flex', gap: 5 }}>
                                 {[1, 2, 3, 4].map(lvl => {
                                     const isSel = selectedLevel === lvl;
-                                    const cellItems = location.shelfItems?.[`M${selectedModule}-A${lvl}`] || [];
-                                    const hasContent = cellItems.length > 0;
-
                                     return (
-                                        <div
+                                        <button
                                             key={lvl}
                                             onClick={() => setSelectedLevel(lvl)}
                                             style={{
-                                                padding: '8px',
+                                                flex: 1,
+                                                padding: '6px',
                                                 borderRadius: '4px',
-                                                background: isSel ? 'var(--color-primary)' : (hasContent ? '#dcfce7' : '#fff'),
-                                                color: isSel ? '#fff' : '#333',
-                                                border: isSel ? 'none' : '1px solid #ddd',
+                                                background: isSel ? 'var(--color-primary)' : '#f1f5f9',
+                                                color: isSel ? '#fff' : '#475569',
+                                                border: 'none',
                                                 cursor: 'pointer',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
+                                                fontSize: '0.8rem',
+                                                fontWeight: 500
                                             }}
                                         >
-                                            <span style={{ fontWeight: 'bold' }}>Nivel {lvl}</span>
-                                            {hasContent && !isSel && <span style={{ fontSize: '0.75rem' }}>📦 {cellItems.length}</span>}
-                                        </div>
+                                            Nv {lvl}
+                                        </button>
                                     );
                                 })}
                             </div>
                         </div>
+                    )}
 
-                        {/* 3. CONTENT EDITOR (Specific for this cell) */}
-                        <div className="prop-group">
-                            <label style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
-                                Contenido: M{selectedModule} - A{selectedLevel}
-                            </label>
-                            <InventoryList
-                                items={currentShelfItems}
-                                onUpdate={handleShelfItemsUpdate}
-                                programColors={programColors}
-                                defaultProgram="Vacio"
-                            />
-                        </div>
-                    </div>
-                )}
-
-
-                {/* --- ADVANCED --- */}
-                <div style={{ marginTop: 24, padding: 12, background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
-                    <details>
-                        <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                            ⚙️ Opciones Técnicas
-                        </summary>
-                        <div style={{ marginTop: 12 }}>
-                            <div className="prop-group">
-                                <label>Rotación (Grados)</label>
-                                <input
-                                    type="number"
-                                    value={Math.round(location.rotation)}
-                                    onChange={(e) => handleChange('rotation', Number(e.target.value))}
-                                />
+                    {/* BOXES LIST */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {currentBoxes.length === 0 ? (
+                            <div className={styles.emptyState}>
+                                {isShelf ? `Hueco Vacío (M${selectedModule}-N${selectedLevel})` : `📦 Palet sin cajas`}
+                                <br />
+                                <span style={{ fontSize: '0.85rem' }}>Usa "+ Añadir Caja" para registrar entrada.</span>
                             </div>
+                        ) : (
+                            currentBoxes.map(box => (
+                                <BoxCard
+                                    key={box.id}
+                                    box={box}
+                                    programColors={programColors}
+                                    onDelete={() => {
+                                        if (window.confirm("¿Retirar esta caja?")) {
+                                            if (isShelf) {
+                                                updateBoxes([]);
+                                            } else {
+                                                updateBoxes(currentBoxes.filter(b => b.id !== box.id));
+                                            }
+                                        }
+                                    }}
+                                    onViewDetail={() => setViewedBoxId(box.id)}
+                                />
+                            ))
+                        )}
+                    </div>
+
+                    {/* SEPARATOR IF BOTH EXIST */}
+                    {currentBoxes.length > 0 && looseItems.length > 0 && (
+                        <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #e2e8f0' }} />
+                    )}
+
+                    {/* LOOSE ITEMS LIST (Only for Pallets currently) */}
+                    {!isShelf && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {looseItems.length > 0 && (
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                                    Material Suelto
+                                </div>
+                            )}
+                            {looseItems.map(item => (
+                                <LooseItemCard
+                                    key={item.id}
+                                    item={item}
+                                    onUpdate={(newItem) => {
+                                        updateLooseItems(looseItems.map(i => i.id === newItem.id ? newItem : i));
+                                    }}
+                                    onDelete={() => {
+                                        if (window.confirm("¿Eliminar este material suelto?")) {
+                                            updateLooseItems(looseItems.filter(i => i.id !== item.id));
+                                        }
+                                    }}
+                                />
+                            ))}
                         </div>
-                    </details>
+                    )}
                 </div>
 
+                {/* FOOTER ACTIONS */}
+                <div className={styles.footer}>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                        <button className={styles.primaryAction} onClick={handleAddBox} style={{ flex: 1 }}>
+                            + Caja
+                        </button>
+                        {!isShelf && (
+                            <button className={styles.secondaryAction} onClick={handleAddLooseItem} style={{ flex: 1, backgroundColor: '#FFF8E1', color: '#F57C00', borderColor: '#FFE0B2' }}>
+                                + Material
+                            </button>
+                        )}
+                    </div>
+
+                    {!isShelf && (
+                        <button className={styles.secondaryAction} onClick={() => {
+                            onAssistantAction({
+                                type: 'MOVE_PALLET',
+                                payload: {
+                                    sourceId: location.id,
+                                    contentName: location.contenido
+                                }
+                            });
+                        }}>
+                            🚚 Mover Palet
+                        </button>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 

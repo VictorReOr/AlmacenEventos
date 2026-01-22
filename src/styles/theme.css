@@ -1,0 +1,87 @@
+:root {
+    /* --- IDENTIDAD J. ANDALUCÍA (INSTITUCIONAL & PRO) --- */
+
+    /* Primarios: Verde Andaluz y Variantes */
+    --color-primary-dark: #005a20;
+    /* Verde Oscuro Sólido */
+    --color-primary: #007A33;
+    /* Verde Andaluz Corporativo */
+    --color-primary-light: #4caf82;
+    /* Verde Acento Claro */
+    --color-primary-subtle: #e8f5e9;
+    /* Verde muy pálido (fondos) */
+
+    /* Funcionales: Claridad Operativa */
+    --color-action: #d32f2f;
+    /* Rojo Acción (Borrar/Alerta) */
+    --color-action-hover: #b71c1c;
+    --color-success: #007A33;
+    /* Usamos el verde corp también para éxito */
+    --color-warning: #ed6c02;
+    /* Naranja Técnico (Precaución) */
+    --color-info: #0288d1;
+    /* Azul Información */
+
+    /* Neutros - Escala de Grises Limpia (Light Mode) */
+    --color-text-main: #333333;
+    /* Negro Suave para lectura */
+    --color-text-dim: #666666;
+    /* Gris Medio para secundarios */
+    --color-border: #e0e0e0;
+    /* Bordes sutiles */
+    --color-bg-app: #f5f5f5;
+    /* Gris muy claro (Fondo Pantalla) */
+    --color-bg-card: #ffffff;
+    /* Blanco Puro (Tarjetas/Paneles) */
+    --color-bg-overlay: rgba(0, 0, 0, 0.4);
+    /* Overlay suavizado */
+
+    /* Sombras y Elevación - Sutil y Moderno */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Espaciado */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+
+    /* Layout */
+    --header-height: 56px;
+    /* Más compacto y estándar material */
+    --footer-height: 60px;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+}
+
+body {
+    background-color: var(--color-bg-app);
+    color: var(--color-text-main);
+    font-family: 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Tipografía Institucional */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    margin: 0;
+    font-weight: 500;
+    /* Menos pesado, más moderno */
+    color: var(--color-primary-dark);
+    letter-spacing: -0.01em;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}

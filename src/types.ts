@@ -1,4 +1,3 @@
-
 export type Programa = string; // Was strict union, now dynamic
 
 export const PROGRAM_COLORS: Record<string, string> = {
@@ -9,66 +8,70 @@ export const PROGRAM_COLORS: Record<string, string> = {
   'Vacio': '#E0E0E0'      // Grey
 };
 
-// --- INVENTORY TYPES ---
+// --- SOLID BASE MODEL TYPES ---
 
+// 3. CONTENIDO
 export interface Material {
-  id: string;
-  nombre: string;
+  id: string; // "m1", "m2"
+  nombre: string; // "Balones Nike"
+  // Catalog info, not inventory
+}
+
+export interface MaterialEnCaja {
+  id: string; // Unique ID for this record
+  materialId: string; // Ref to Material catalog (optional for now, can use name)
+  nombre: string; // Copied for display speed
   cantidad: number;
-  unidad?: string; // e.g., 'uds', 'kg', 'cajas'
+  estado: 'operativo' | 'prestamo' | 'baja';
 }
 
+// 2. CONTENEDORES
 export interface Caja {
-  id: string;
-  nombre: string; // e.g., "Caja 1", "Pack A"
-  contenido: Material[];
+  id: string; // "C-1023"
+  descripcion: string; // "Caja de Balones"
+  programa: string;
+  contenido: MaterialEnCaja[];
 }
 
-export type ItemInventario = Material | Caja;
-
-export interface NivelEstanteria {
-  nivel: 1 | 2 | 3 | 4;
-  items: ItemInventario[];
-}
-
+// 1. ESTRUCTURA FISICA & UBICACIONES
 export interface Ubicacion {
-  id: string;      // "1", "2", ...
+  id: string;
   tipo: 'palet' | 'estanteria_modulo' | 'zona_carga' | 'puerta' | 'muro';
   programa: Programa;
-  contenido: string;
+  contenido: string; // Human readable label
 
   // Physical Properties
-  x: number;       // Meters (User Coords)
-  y: number;       // Meters (User Coords)
-  rotation: number;// Degrees (0-360)
-  width: number;   // Meters (X-size usually)
-  depth: number;   // Meters (Y-size usually)
+  x: number;
+  y: number;
+  rotation: number;
+  width: number;
+  depth: number;
 
-  // Extended Data
-  cantidad?: number;
+  // --- NEW STRICT STRUCTURE ---
+
+  // For Pallets => List of Boxes
+  cajas?: Caja[];
+
+  // For Shelves => Matrix of Boxes
+  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Box (0 or 1)
+  // We can treat shelves as having specific slots.
+  // To keep compatibility with Map rendering loop, we just need a way to look up content.
+  // Let's use `cajasEstanteria` map.
+  cajasEstanteria?: Record<string, Caja>;
+
+  // For loose materials (not in boxes) on Pallets
+  materiales?: MaterialEnCaja[];
+
+
+  // Legacy/Optional props to be cleaned up or kept for UI helpers
   notas?: string;
 
-  // RELATIONAL INVENTORY (New Standard)
-  items?: InventoryItem[]; // For Pallets: items directly on it
-
-  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Value: List of items
-  shelfItems?: Record<string, InventoryItem[]>;
-
-  // Legacy (Deprecated)
-  shelfContents?: Record<string, string>; // Checking if we can migrate this to items with ID "E1-M1-A1"
-  niveles?: NivelEstanteria[];
-  estanteriaId?: number;
-  mensaje?: string;
+  // DEPRECATED COMPATIBILITY LAYERS (To be phased out)
+  items?: any[]; // Removed or mapped to 'cajas'
+  shelfItems?: any; // Mapped to 'cajasEstanteria'
 }
 
-export interface InventoryItem {
-  id: string; // UUID or random ID
-  tipo: 'Caja' | 'Material';
-  contenido: string; // "Balones Nike"
-  cantidad: number; // 1
-  programa: string; // "Liga LED"
-}
-
+// State Wrapper
 export interface AlmacenState {
   ubicaciones: Record<string, Ubicacion>;
   geometry: { x: number; y: number }[];

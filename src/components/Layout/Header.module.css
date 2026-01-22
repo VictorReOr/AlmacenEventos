@@ -1,0 +1,49 @@
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 var(--space-md);
+    background-color: var(--color-primary);
+    /* Verde Andaluz #007A33 */
+    color: white;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    z-index: var(--z-ui);
+}
+
+.left,
+.right {
+    display: flex;
+    align-items: center;
+    min-width: 48px;
+    /* Táctil mínimo accesible */
+    height: 100%;
+}
+
+.center {
+    flex: 1;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.9);
+    /* Blanco con leve transparencia */
+    font-weight: 400;
+    margin-top: -2px;
+}

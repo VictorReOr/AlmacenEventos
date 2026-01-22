@@ -1,7 +1,18 @@
-import type { Ubicacion } from './types';
+import type { Ubicacion, Caja, MaterialEnCaja } from './types';
 
 export const SHELF_MODULE_WIDTH = 1.0;
 export const SHELF_DEPTH = 0.45;
+
+const generateDummyBox = (id: string, program: string): Caja => {
+    return {
+        id: `BOX-${id}-${Math.floor(Math.random() * 1000)}`,
+        descripcion: `Caja ${id}`,
+        programa: program,
+        contenido: [
+            { id: crypto.randomUUID(), materialId: 'm1', nombre: 'Material Genérico', cantidad: 5, estado: 'operativo' }
+        ]
+    };
+};
 
 export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>, geometry: { x: number; y: number }[] } => {
 
@@ -11,6 +22,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
         { "x": 10.123777578084171, "y": 26.945009114327945 },
         { "x": -0.8602329973537217, "y": 27.000000000000004 }
     ];
+
 
     const ubicaciones: Record<string, Ubicacion> = {
         "1": {
@@ -1057,6 +1069,14 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "niveles": []
         }
     };
+
+    // --- DATA MIGRATION / INITIALIZATION ---
+    // Populate boxes for non-empty pallets to match new Data Model
+    Object.values(ubicaciones).forEach(u => {
+        if (u.tipo === 'palet' && u.programa !== 'Vacio' && (!u.cajas || u.cajas.length === 0)) {
+            u.cajas = [generateDummyBox(u.id, u.programa)];
+        }
+    });
 
     return { ubicaciones, geometry: geometryFinal };
 };

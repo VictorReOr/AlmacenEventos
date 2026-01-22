@@ -1,0 +1,164 @@
+.container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.clickable:active {
+    transform: scale(0.95);
+}
+
+/* Tamaños */
+.sm {
+    width: 40px;
+    height: 40px;
+}
+
+.md {
+    width: 60px;
+    height: 60px;
+}
+
+.lg {
+    width: 80px;
+    height: 80px;
+}
+
+.avatarWrapper {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: white;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 2px solid white;
+    z-index: 2;
+    overflow: visible;
+    /* Permitir anillos fuera */
+}
+
+.image {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    z-index: 3;
+}
+
+/* Badge */
+.badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background-color: var(--color-action);
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Estados y Animaciones */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(39, 171, 131, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(39, 171, 131, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(39, 171, 131, 0);
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-4px);
+    }
+
+    75% {
+        transform: translateX(4px);
+    }
+}
+
+/* Implementación de estados */
+.pulseRing {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    border: 3px solid var(--color-primary-light);
+    animation: pulse 1.5s infinite ease-out;
+    z-index: 1;
+}
+
+.spinRing {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--color-warning);
+    animation: spin 1s infinite linear;
+    z-index: 1;
+}
+
+.successGlow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    animation: successPulse 2s infinite;
+    border: 2px solid var(--color-success);
+}
+
+.errorShake {
+    animation: shake 0.4s ease-in-out;
+    border: 2px solid var(--color-action);
+    border-radius: 50%;
+}
+
+/* .listening .image {
+  filter: brightness(1.1); 
+} */

@@ -1,0 +1,58 @@
+.shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    /* Fix para móviles con barra de navegación dinámica */
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    background-color: var(--color-bg-app);
+}
+
+.headerArea {
+    height: var(--header-height);
+    flex-shrink: 0;
+    z-index: var(--z-ui);
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+.mainArea {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    /* El mapa maneja su propio scroll/pan */
+    z-index: var(--z-map);
+}
+
+.overlayArea {
+    position: absolute;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    /* Dejar pasar clicks al mapa */
+    z-index: var(--z-overlay);
+}
+
+.overlayArea>* {
+    pointer-events: auto;
+    /* Reactivar clicks en los hijos del overlay */
+}
+
+.footerArea {
+    /* En móvil, esto puede ser la barra inferior fija */
+    /* height: var(--footer-height); */
+    z-index: var(--z-ui);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+}
+
+.footerArea>* {
+    pointer-events: auto;
+}

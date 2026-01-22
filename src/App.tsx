@@ -1,18 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
+// Components
+import { AppShell } from './components/Layout/AppShell';
+import { Header } from './components/Layout/Header';
+import { AssistantCharacter } from './components/Assistant/AssistantCharacter';
+import { AssistantChat } from './components/Assistant/AssistantChat';
 import WarehouseMap from './WarehouseMap';
 import PropertiesPanel from './PropertiesPanel';
+import { ConfigModal } from './ConfigModal';
+import { QuickSearch } from './components/UI/QuickSearch';
+
+// Logic & Types
 import { PROGRAM_COLORS } from './types';
 import type { Ubicacion, AlmacenState } from './types';
 import { generateInitialState } from './data';
 import type { WarehouseMapRef } from './WarehouseMap';
 import { GoogleSheetsService } from './services/GoogleSheetsService';
-import { ConfigModal } from './ConfigModal';
-import { Chatbot } from './components/Chatbot';
-import almacenitoIcon from './assets/almacenito.png';
+
+// Styles
 import './App.css';
-
-
 
 // --- HISTORY HOOK ---
 const useHistory = (initialState: AlmacenState) => {
@@ -23,9 +29,7 @@ const useHistory = (initialState: AlmacenState) => {
 
   const pushState = (newState: AlmacenState) => {
     const nextHistory = [...history.slice(0, pointer + 1), newState];
-    // Limit history to 50
     if (nextHistory.length > 50) nextHistory.shift();
-
     setHistory(nextHistory);
     setPointer(nextHistory.length - 1);
   };
@@ -41,71 +45,12 @@ const useHistory = (initialState: AlmacenState) => {
   return { state: currentState, pushState, undo, redo, canUndo: pointer > 0, canRedo: pointer < history.length - 1 };
 };
 
-// --- TOOLBAR COMPONENT ---
-interface ToolbarProps {
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  onAlignRow: () => void;
-  onRotateLeft: () => void;
-  onRotateRight: () => void;
-  selectedId: string | null;
-  onCreatePallet: () => void;
-  onDeleteSelection: () => void;
-}
-
-const Toolbar: React.FC<ToolbarProps> = ({
-  onUndo, onRedo, canUndo, canRedo,
-  onAlignRow, onRotateLeft, onRotateRight, selectedId,
-  onCreatePallet, onDeleteSelection
-}) => {
-  return (
-    <div className="toolbar">
-      <div className="toolbar-group">
-        <button onClick={onUndo} disabled={!canUndo} title="Deshacer (Ctrl+Z)">
-          ↩ Deshacer
-        </button>
-        <button onClick={onRedo} disabled={!canRedo} title="Rehacer (Ctrl+Y)">
-          ↪ Rehacer
-        </button>
-      </div>
-      <div className="toolbar-separator" />
-      <div className="toolbar-group">
-        <button onClick={onRotateLeft} disabled={!selectedId} title="Rotar -90º">
-          ↺ -90º
-        </button>
-        <button onClick={onRotateRight} disabled={!selectedId} title="Rotar +90º">
-          ↻ +90º
-        </button>
-      </div>
-      <div className="toolbar-separator" />
-      <div className="toolbar-group">
-        <button onClick={onAlignRow} disabled={!selectedId} title="Alinear Fila">
-          ⇥ Alinear Fila
-        </button>
-      </div>
-
-      <div className="toolbar-separator" />
-
-      <div className="toolbar-group">
-        <button onClick={onCreatePallet} title="Crear Palet (N)">
-          ➕ Palet
-        </button>
-        <button onClick={onDeleteSelection} disabled={!selectedId} title="Eliminar Palets (Supr)" style={selectedId ? { color: '#ef5350' } : {}}>
-          🗑 Elimin
-        </button>
-      </div>
-    </div>
-  );
-};
-
 function App() {
-  console.log("App component mounting...");
-  // Initialize state generator (once)
+  console.log("App component mounting (Refactored)...");
+
+  // --- STATE INITIALIZATION ---
   const getInitialState = () => {
     try {
-      console.log("Generating initial state...");
       const saved = localStorage.getItem('warehouse_V72_VERTICAL');
       const codeState = generateInitialState();
       const defaults = { ubicaciones: codeState.ubicaciones, geometry: codeState.geometry };
@@ -127,7 +72,6 @@ function App() {
       return defaults;
     } catch (e) {
       console.error("Error in getInitialState", e);
-      // Fallback
       const codeState = generateInitialState();
       return { ubicaciones: codeState.ubicaciones, geometry: codeState.geometry };
     }
@@ -135,124 +79,69 @@ function App() {
 
   const { state, pushState, undo, redo, canUndo, canRedo } = useHistory(getInitialState());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false); // Chatbot State
-  // Logo Drag State
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [pendingAssistantAction, setPendingAssistantAction] = useState<{ type: string, payload: any } | null>(null);
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
-  const mapRef = React.useRef<WarehouseMapRef>(null);
+  const mapRef = useRef<WarehouseMapRef>(null);
 
-  // --- VERTICAL LAYOUT DETECTION ---
+  // Layout Detection
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
-
   useEffect(() => {
-    const handleResize = () => {
-      setIsPortrait(window.innerHeight > window.innerWidth);
-    };
+    const handleResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-
-
-  // --- GOOGLE CLOUD CONFIG ---
+  // Sync & Config
   const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbz3PM-qshUZDMRJBm5YdfrLJIhUjrYW9Jet1R8KDtvoMydhx9y92ZeP_iJ_oyhnw0MP/exec');
   const [isSyncing, setIsSyncing] = useState(false);
-
-  // --- ADVANCED GRID STATE ---
   const [showGrid, setShowGrid] = useState(false);
-
-  // --- CONFIG / COLORS STATE ---
+  const [showConfig, setShowConfig] = useState(false);
   const [programColors, setProgramColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('program_colors_config');
     return saved ? JSON.parse(saved) : PROGRAM_COLORS;
   });
-  const [showConfig, setShowConfig] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem('google_script_url', scriptUrl);
-  }, [scriptUrl]);
+  // Effects
+  useEffect(() => { localStorage.setItem('google_script_url', scriptUrl); }, [scriptUrl]);
+  useEffect(() => { localStorage.setItem('warehouse_V73.1_SHELVES_FIX', JSON.stringify(state)); }, [state]);
+  useEffect(() => { localStorage.setItem('program_colors_config', JSON.stringify(programColors)); }, [programColors]);
 
-  useEffect(() => {
-    localStorage.setItem('warehouse_V73.1_SHELVES_FIX', JSON.stringify(state));
-  }, [state]);
-
-  useEffect(() => {
-    localStorage.setItem('program_colors_config', JSON.stringify(programColors));
-  }, [programColors]);
-
-
-  // Handle Cloud Save/Load
+  // --- HANDLERS (Same as before) ---
   const handleSaveToCloud = async () => {
-    if (!scriptUrl) {
-      setShowConfig(true);
-      return;
-    }
+    if (!scriptUrl) { setShowConfig(true); return; }
     setIsSyncing(true);
     try {
-      // DEBUG: Check state before saving
       const keys = Object.keys(state.ubicaciones);
-      console.log("Saving state with", keys.length, "items.");
-
-      if (keys.length === 0) {
-        alert("⚠️ ATENCIÓN: El mapa parece estar vacío. No se ha guardado nada.");
-        setIsSyncing(false);
-        return;
-      }
-
-      const targetUrl = scriptUrl;
-      await GoogleSheetsService.save(targetUrl, state);
-      alert(`¡Guardado OK! Se enviaron ${keys.length} objetos.`);
+      if (keys.length === 0) { alert("⚠️ El mapa está vacío."); return; }
+      await GoogleSheetsService.save(scriptUrl, state);
+      alert(`¡Guardado OK! (${keys.length} items)`);
     } catch (error) {
       console.error(error);
-      alert('Error al guardar: ' + error);
-    } finally {
-      setIsSyncing(false);
-    }
+      alert('Error: ' + error);
+    } finally { setIsSyncing(false); }
   };
 
   const handleLoadFromCloud = async () => {
-    if (!scriptUrl) {
-      setShowConfig(true);
-      return;
-    }
-    if (!confirm("¿Seguro que quieres cargar desde la nube? Se sobrescribirán los cambios no guardados.")) return;
-
+    if (!scriptUrl) { setShowConfig(true); return; }
+    if (!confirm("Se sobrescribirán los cambios locales. ¿Continuar?")) return;
     setIsSyncing(true);
     try {
       const data = await GoogleSheetsService.load(scriptUrl);
-      if (data) {
-        pushState(data);
-        alert('¡Cargado desde Google Sheets con éxito!');
-      } else {
-        alert('La hoja parece estar vacía o hubo un problema.');
-      }
+      if (data) { pushState(data); alert('¡Cargado con éxito!'); }
+      else { alert('Error: Datos vacíos.'); }
     } catch (error) {
       console.error(error);
-      alert('Error al cargar: ' + error);
-    } finally {
-      setIsSyncing(false);
-    }
+      alert('Error: ' + error);
+    } finally { setIsSyncing(false); }
   };
 
-  const handleSaveConfig = (newColors: Record<string, string>, newScriptUrl: string) => {
-    setProgramColors(newColors);
-    setScriptUrl(newScriptUrl);
-  };
-
-
-  // Handle Updates
   const handleUpdate = (updated: Ubicacion | Ubicacion[]) => {
     const updates = Array.isArray(updated) ? updated : [updated];
     if (updates.length === 0) return;
-
     const nextUbicaciones = { ...state.ubicaciones };
-    updates.forEach(u => {
-      nextUbicaciones[u.id] = u;
-    });
-
-    pushState({
-      ...state,
-      ubicaciones: nextUbicaciones
-    });
+    updates.forEach(u => { nextUbicaciones[u.id] = u; });
+    pushState({ ...state, ubicaciones: nextUbicaciones });
   };
 
   // Range Selection Helper
@@ -263,11 +152,9 @@ function App() {
       if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return a.localeCompare(b);
     });
-
     const idx1 = allIds.indexOf(startId);
     const idx2 = allIds.indexOf(endId);
     if (idx1 === -1 || idx2 === -1) return [endId];
-
     const min = Math.min(idx1, idx2);
     const max = Math.max(idx1, idx2);
     return allIds.slice(min, max + 1);
@@ -296,269 +183,69 @@ function App() {
     }
   };
 
-  const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
-
-  // --- ACTIONS ---
-
   const handleCreatePallet = () => {
     const center = mapRef.current?.getViewCenter() || { x: 5, y: 10 };
-    const allIds = Object.keys(state.ubicaciones)
-      .map(id => parseInt(id, 10))
-      .filter(n => !isNaN(n));
-
+    const allIds = Object.keys(state.ubicaciones).map(id => parseInt(id, 10)).filter(n => !isNaN(n));
     const nextId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
-
     const newPallet: Ubicacion = {
-      id: nextId.toString(),
-      tipo: 'palet',
-      programa: 'Vacio',
-      contenido: nextId.toString(),
-      x: center.x,
-      y: center.y,
-      width: 0.8,
-      depth: 1.2,
-      rotation: 0
+      id: nextId.toString(), tipo: 'palet', programa: 'Vacio', contenido: nextId.toString(),
+      x: center.x, y: center.y, width: 0.8, depth: 1.2, rotation: 0
     };
-
-    const nextUbicaciones = { ...state.ubicaciones, [newPallet.id]: newPallet };
-    const newState = { ...state, ubicaciones: nextUbicaciones };
-
-    pushState(newState);
+    handleUpdate(newPallet);
   };
 
   const handleDeleteSelection = () => {
     if (selectedIds.size === 0) return;
-
     const newUbicaciones = { ...state.ubicaciones };
     let changed = false;
-
     selectedIds.forEach(id => {
-      const u = newUbicaciones[id];
-      if (u && u.tipo === 'palet') {
+      if (newUbicaciones[id]?.tipo === 'palet') {
         delete newUbicaciones[id];
         changed = true;
       }
     });
-
     if (changed) {
-      const newState = { ...state, ubicaciones: newUbicaciones };
-      pushState(newState);
+      pushState({ ...state, ubicaciones: newUbicaciones });
       setSelectedIds(new Set());
     }
   };
 
-  // Keyboard Movement
-  useEffect(() => {
-    const handleArrowKeys = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+  const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
 
-      if (selectedIds.size === 0) return;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        const step = e.shiftKey ? 0.5 : 0.05;
-        let dx = 0;
-        let dy = 0;
-
-        switch (e.key) {
-          case 'ArrowUp': dx = -step; break;
-          case 'ArrowDown': dx = step; break;
-          case 'ArrowLeft': dy = -step; break;
-          case 'ArrowRight': dy = step; break;
-        }
-
-        const updates: Ubicacion[] = [];
-        selectedIds.forEach(id => {
-          const u = state.ubicaciones[id];
-          if (u) {
-            updates.push({ ...u, x: u.x + dx, y: u.y + dy });
-          }
-        });
-        handleUpdate(updates);
-      }
-    };
-
-    window.addEventListener('keydown', handleArrowKeys);
-    return () => window.removeEventListener('keydown', handleArrowKeys);
-  }, [selectedIds, state.ubicaciones]);
-
-  const handleRotate = (deg: number) => {
-    if (selectedIds.size === 0) return;
-    const updates: Ubicacion[] = [];
-    selectedIds.forEach(id => {
-      const u = state.ubicaciones[id];
-      if (u) {
-        updates.push({ ...u, rotation: (u.rotation + deg) % 360 });
-      }
-    });
-    handleUpdate(updates);
-  };
-
-  const handleAlignRow = () => {
-    if (!selectedLocation) return;
-    const targetX = selectedLocation.x;
-    const targetRot = selectedLocation.rotation;
-
-    const candidates = Object.values(state.ubicaciones).filter(u =>
-      u.tipo === 'palet' &&
-      u.id !== selectedLocation.id &&
-      Math.abs(u.rotation - targetRot) < 5 &&
-      Math.abs(u.x - targetX) < 1.0
-    );
-
-    if (candidates.length === 0) return;
-
-    const newUbicaciones = { ...state.ubicaciones };
-    let changed = false;
-
-    candidates.forEach(c => {
-      newUbicaciones[c.id] = { ...c, x: targetX, rotation: targetRot };
-      changed = true;
-    });
-
-    if (changed) {
-      pushState({ ...state, ubicaciones: newUbicaciones });
-    }
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        e.preventDefault();
-        undo();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-        e.preventDefault();
-        redo();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
-
-
-
+  // --- RENDER ---
   return (
-    <div className="app-container">
-      {/* CONFIG MODAL */}
-      {showConfig && (
-        <ConfigModal
-          initialColors={programColors}
-          scriptUrl={scriptUrl}
-          onSave={handleSaveConfig}
-          onClose={() => setShowConfig(false)}
-        />
-      )}
+    <div className="app-layer">
+      <AppShell
+        header={
+          <Header
+            title="SGA Eventos"
+            subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
+            leftAction={
+              <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
+                ⚙️
+              </button>
+            }
+            rightAction={
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <QuickSearch
+                  ubicaciones={state.ubicaciones}
+                  onSelectLocation={(id) => handleSelectLocation(id)}
+                />
 
-      {/* CHATBOT */}
-      <Chatbot
-        ubicaciones={state.ubicaciones}
-        onSelectLocation={(id) => handleSelectLocation(id, { toggle: true })}
-        isOpen={isChatbotOpen}
-        onClose={() => setIsChatbotOpen(false)}
-      />
+                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-      {/* FLOATING HEADER */}
-      <div className="app-header">
-
-        {/* LEFT: Almacenito Logo (Image - Fixed Position) */}
-        <div
-          style={{
-            width: 120,
-            height: 50,
-            position: 'relative',
-            zIndex: 3000,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <img
-            src={almacenitoIcon}
-            alt="Almacenito"
-            className="header-logo-hover"
-            onClick={() => setIsChatbotOpen(!isChatbotOpen)}
-            style={{
-              width: 350,
-              height: 350,
-              objectFit: 'contain',
-              position: 'absolute',
-              // Fixed Coordinates
-              top: isPortrait ? -85 : -84,
-              left: isPortrait ? -77 : -20,
-              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              pointerEvents: 'auto'
-            }}
-          />
-        </div>
-
-        <div style={{ flex: 1 }} /> {/* Spacer to push everything else to right */}
-
-        {!isPortrait && (
-          <div className="header-separator" style={{ height: 60, margin: '0 20px', backgroundColor: 'rgba(255,255,255,0.3)' }} />
-        )}
-
-        {/* RIGHT: Stacked Legend & Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: isPortrait ? 'center' : 'flex-end', overflow: 'hidden' }}>
-
-          {/* Row 1: Legend (Single Line) */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            justifyContent: isPortrait ? 'center' : 'flex-end',
-            flexWrap: isPortrait ? 'wrap' : 'nowrap',
-            overflowX: isPortrait ? 'visible' : 'auto',
-            maxWidth: '100%',
-            paddingBottom: '4px',
-            scrollbarWidth: 'none'
-          }}>
-            {Object.entries(programColors).map(([prog, color]) => (
-              <div key={prog} className="legend-item" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                <span className="color-box" style={{ background: color }}></span>
-                <span>{prog}</span>
+                <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                  {showGrid ? '▦' : '□'}
+                </button>
+                <button onClick={handleLoadFromCloud} disabled={isSyncing} className="icon-btn" title="Cargar">☁️</button>
+                <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">💾</button>
+                <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">↩</button>
+                <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">↪</button>
               </div>
-            ))}
-          </div>
-
-          {/* Row 2: Controls */}
-          <div className="header-controls" style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: isPortrait ? 'center' : 'flex-end' }}>
-            <button className="print-btn" onClick={() => window.print()} title="Imprimir">
-              🖨️
-            </button>
-
-            <button className="print-btn" onClick={handleLoadFromCloud} disabled={isSyncing} title="Cargar">
-              ☁️
-            </button>
-
-            <button className="print-btn" onClick={handleSaveToCloud} disabled={isSyncing} title="Guardar">
-              {isSyncing ? '...' : '💾'}
-            </button>
-
-            <button
-              className="print-btn"
-              onClick={() => setShowGrid(!showGrid)}
-              title={showGrid ? "Ocultar Rejilla" : "Mostrar Rejilla"}
-            >
-              {showGrid ? '▦' : '□'}
-            </button>
-
-            <button className="print-btn" onClick={() => setShowConfig(true)}>⚙️</button>
-
-            <button className="print-btn" onClick={() => {
-              if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-              } else {
-                document.exitFullscreen();
-              }
-            }}>📺</button>
-          </div>
-
-        </div>
-      </div>
-
-      <div className="main-content">
-        <main style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+            }
+          />
+        }
+        main={
           <WarehouseMap
             ref={mapRef}
             ubicaciones={state.ubicaciones}
@@ -567,42 +254,99 @@ function App() {
             selectedIds={selectedIds}
             onUpdate={handleUpdate}
             geometry={state.geometry}
-            onUpdateGeometry={(newGeo) => {
-              pushState({ ...state, geometry: newGeo });
-            }}
+            onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
             rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
             showGrid={showGrid}
             programColors={programColors}
           />
-        </main>
+        }
+        overlay={
+          <>
+            {/* Modal de Configuración */}
+            {showConfig && (
+              <ConfigModal
+                initialColors={programColors}
+                scriptUrl={scriptUrl}
+                onSave={(colors, url) => {
+                  setProgramColors(colors);
+                  setScriptUrl(url);
+                  setShowConfig(false);
+                }}
+                onClose={() => setShowConfig(false)}
+              />
+            )}
 
-        {selectedLocation && (
-          <PropertiesPanel
-            location={selectedLocation}
-            onUpdate={handleUpdate}
-            onClose={() => setSelectedIds(new Set())}
-            programColors={programColors}
-          />
-        )}
-      </div>
+            {/* Chatbot Window */}
+            <AssistantChat
+              ubicaciones={state.ubicaciones}
+              selectedId={selectedLocation?.id}
+              onSelectLocation={(id) => handleSelectLocation(id)}
+              onUpdate={handleUpdate}
+              isOpen={isChatbotOpen}
+              onClose={() => setIsChatbotOpen(false)}
+              initialAction={pendingAssistantAction}
+              onClearAction={() => setPendingAssistantAction(null)}
+            />
 
-      <div style={{ borderTop: '1px solid #ccc', zIndex: 10, background: 'white' }}>
-        <Toolbar
-          onUndo={undo}
-          onRedo={redo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onAlignRow={handleAlignRow}
-          onRotateLeft={() => handleRotate(-90)}
-          onRotateRight={() => handleRotate(90)}
-          selectedId={selectedIds.size > 0 ? Array.from(selectedIds)[0] : null}
-          onCreatePallet={handleCreatePallet}
-          onDeleteSelection={handleDeleteSelection}
-        />
-      </div>
+            {/* Panel de Propiedades (Legacy) */}
+            {selectedLocation && (
+              <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
+                <PropertiesPanel
+                  location={selectedLocation}
+                  onUpdate={handleUpdate}
+                  onClose={() => setSelectedIds(new Set())}
+                  programColors={programColors}
+                  onAssistantAction={(action) => {
+                    setPendingAssistantAction(action);
+                    setIsChatbotOpen(true);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Asistente Flotante (Botón Principal) */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 20,
+                right: 20,
+                zIndex: 200
+              }}
+            >
+              <AssistantCharacter
+                size="lg"
+                state={isChatbotOpen ? 'listening' : 'idle'}
+                onClick={() => setIsChatbotOpen(!isChatbotOpen)}
+                hasNotification={false}
+              />
+            </div>
+
+            {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
+            <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>
+              <button
+                className="fab-btn"
+                onClick={handleCreatePallet}
+                title="Crear Palet"
+                style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+              >
+                +
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  className="fab-btn"
+                  onClick={handleDeleteSelection}
+                  title="Eliminar"
+                  style={{ background: 'var(--color-action)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                >
+                  🗑
+                </button>
+              )}
+            </div>
+          </>
+        }
+      />
     </div>
   );
 }
+
 export default App;
-
-
