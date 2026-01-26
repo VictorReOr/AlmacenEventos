@@ -1,0 +1,99 @@
+/* Print Styles */
+@media print {
+    /* Hide the entire App UI by default when printing starts, 
+     * but we will selectively show what we need. 
+     * Actually, it's better to explicitly hide the interactive parts. 
+     */
+
+    /* Hide Navigation, Panels, Assistants, etc. */
+    .no-print,
+    .properties-panel,
+    /* We need to target specific UI components based on how they are rendered in App.tsx */
+    [class*="Header_header"],
+    [class*="Assistant_"],
+    [class*="ConfigModal_"],
+    button {
+        display: none !important;
+    }
+
+    /* Reset body margins for full page print */
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    /* PRINT VIEW CONTAINER (LIST MODE) */
+    .print-view-container {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        z-index: 9999;
+        padding: 2cm;
+    }
+
+    /* MAP MODE SPECIAL HANDLING */
+    /* If we are printing the map, we want the map container to be visible and everything else gone. */
+    body.printing-map [class*="WarehouseMap_container"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        height: 100% !important;
+        transform: none !important;
+        border: none !important;
+        overflow: visible !important;
+    }
+
+    body.printing-map .print-view-container {
+        display: none !important;
+        /* In map mode, don't show the list container */
+    }
+
+    /* Table Styles for List Mode */
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 12px;
+    }
+
+    .print-table th,
+    .print-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    .print-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+
+    .print-header {
+        margin-bottom: 20px;
+        border-bottom: 2px solid #333;
+        padding-bottom: 10px;
+    }
+
+    .print-header h1 {
+        font-size: 24px;
+        margin: 0;
+        color: #333;
+    }
+
+    .print-header p {
+        margin: 5px 0 0;
+        color: #666;
+    }
+}
+
+/* Hide Print View during normal usage */
+.print-view-container {
+    display: none;
+}

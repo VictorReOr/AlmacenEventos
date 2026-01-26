@@ -11,6 +11,9 @@ import WarehouseMap from './WarehouseMap';
 import PropertiesPanel from './PropertiesPanel';
 import { ConfigModal } from './ConfigModal';
 import { QuickSearch } from './components/UI/QuickSearch';
+import { PrintModal } from './components/UI/PrintModal';
+import type { PrintOptions } from './components/UI/PrintModal';
+import { PrintView } from './components/Print/PrintView';
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
@@ -21,6 +24,9 @@ import { GoogleSheetsService } from './services/GoogleSheetsService';
 
 // Styles
 import './App.css';
+
+import './styles/print.css';
+import { useIsMobile } from './hooks/useIsMobile';
 
 // --- HISTORY HOOK ---
 const useHistory = (initialState: AlmacenState) => {
@@ -105,11 +111,12 @@ function App() {
       const padding = 20;   // Initial CSS right/bottom spacing
 
       // Calculate max movement allowed
+      // Relaxed bounds to prevent sticking
       return {
-        left: -window.innerWidth + (width + padding),
-        right: padding,
-        top: -window.innerHeight + (height + padding),
-        bottom: padding
+        left: -window.innerWidth * 1.2,
+        right: 50,
+        top: -window.innerHeight * 1.2,
+        bottom: 50
       };
     },
     rubberband: true,
@@ -132,6 +139,15 @@ function App() {
     const saved = localStorage.getItem('program_colors_config');
     return saved ? JSON.parse(saved) : PROGRAM_COLORS;
   });
+
+  // Print State
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printData, setPrintData] = useState<Ubicacion[] | null>(null);
+
+
+
+  const [isSelectionMode, setIsSelectionMode] = useState(false); // New state for mobile selection
+  const isMobile = useIsMobile();
 
   // Effects
   useEffect(() => { localStorage.setItem('google_script_url', scriptUrl); }, [scriptUrl]);
@@ -193,14 +209,22 @@ function App() {
 
   const handleSelectLocation = (id: string | null, modifiers: { toggle?: boolean, range?: boolean } = {}) => {
     if (id === null) {
+      // If we are in selection mode, clicking empty space might NOT clear selection? 
+      // Usually users expect "click outside" to clear. Let's keep it clearing for now 
+      // OR make it so only the explicit "Clear" button clears in mobile mode.
+      // For now, standard behavior: click background -> clear.
       setSelectedIds(new Set());
       setLastFocusedId(null);
       return;
     }
+
+    // Force toggle behavior if Selection Mode is active (and it's not a range select)
+    const shouldToggle = modifiers.toggle || (isSelectionMode && !modifiers.range);
+
     if (modifiers.range && lastFocusedId) {
       const rangeIds = resolveRange(lastFocusedId, id);
       setSelectedIds(new Set(rangeIds));
-    } else if (modifiers.toggle) {
+    } else if (shouldToggle) {
       setSelectedIds(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
@@ -241,11 +265,55 @@ function App() {
     }
   };
 
+  // PRINT HANDLER
+  const handlePrint = (options: PrintOptions) => {
+    setShowPrintModal(false);
+
+    // 1. Filter Data
+    let dataToPrint: Ubicacion[] = [];
+    const allUbicaciones = Object.values(state.ubicaciones);
+
+    if (options.scope === 'ALL') {
+      dataToPrint = allUbicaciones;
+    } else if (options.scope === 'SELECTION') {
+      dataToPrint = allUbicaciones.filter(u => selectedIds.has(u.id));
+    } else if (options.scope === 'PROGRAM' && options.programString) {
+      dataToPrint = allUbicaciones.filter(u => u.programa === options.programString);
+    }
+
+    if (dataToPrint.length === 0) {
+      alert("No hay elementos para imprimir con la selección actual.");
+      return;
+    }
+
+    // 2. Handle Format
+    if (options.format === 'LIST') {
+      setPrintData(dataToPrint);
+      // Give React a moment to render the PrintView before triggering print
+      setTimeout(() => {
+        window.print();
+        setPrintData(null); // Clear after print dialog closes
+      }, 500);
+    } else {
+      // MAP MODE
+      document.body.classList.add('printing-map');
+      setTimeout(() => {
+        window.print();
+        document.body.classList.remove('printing-map');
+      }, 500);
+    }
+  };
+
   const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
 
   // --- RENDER ---
   return (
     <div className="app-layer">
+      {/* PRINT VIEW CONTAINER (Only visible during print list mode) */}
+      {printData && (
+        <PrintView data={printData} />
+      )}
+
       <AppShell
         header={
           <Header
@@ -263,6 +331,25 @@ function App() {
                   onSelectLocation={(id) => handleSelectLocation(id)}
                 />
 
+                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
+                {/* Selection Mode Toggle */}
+                <button
+                  onClick={() => setIsSelectionMode(!isSelectionMode)}
+                  className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                  title={isSelectionMode ? "Modo Selección Activo (Clic para desactivar)" : "Activar Modo Selección Múltiple"}
+                >
+                  {isSelectionMode ? '☑️' : '☐'}
+                </button>
+
+
+
+
+                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
+                <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir Inventario">
+                  🖨️
+                </button>
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
                 <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
@@ -289,6 +376,7 @@ function App() {
             rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
             showGrid={showGrid}
             programColors={programColors}
+            isMobile={isMobile}
           />
         }
         overlay={
@@ -307,6 +395,15 @@ function App() {
               />
             )}
 
+            {/* Modal de Impresión */}
+            <PrintModal
+              isOpen={showPrintModal}
+              onClose={() => setShowPrintModal(false)}
+              onPrint={handlePrint}
+              programs={Object.keys(programColors).filter(p => !['Vacio', 'Otros'].includes(p))}
+              hasSelection={selectedIds.size > 0}
+            />
+
             {/* Chatbot Window */}
             <AssistantChat
               ubicaciones={state.ubicaciones}
@@ -320,7 +417,7 @@ function App() {
             />
 
             {/* Panel de Propiedades (Legacy) */}
-            {selectedLocation && (
+            {selectedLocation && !isSelectionMode && (
               <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
                 <PropertiesPanel
                   location={selectedLocation}

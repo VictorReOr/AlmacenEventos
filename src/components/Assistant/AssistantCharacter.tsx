@@ -30,7 +30,13 @@ export const AssistantCharacter: React.FC<AssistantCharacterProps> = ({
             onClick={onClick}
         >
             <div className={`${styles.avatarWrapper} ${styles[state]}`}>
-                <img src={almacenitoIcon} alt="Almacenito Asistente" className={styles.image} />
+                <img
+                    src={almacenitoIcon}
+                    alt="Almacenito Asistente"
+                    className={styles.image}
+                    draggable={false}
+                    style={{ userSelect: 'none', pointerEvents: 'none' }}
+                />
 
                 {/* Anillos de estado (animaciones) */}
                 {state === 'listening' && <div className={styles.pulseRing} />}

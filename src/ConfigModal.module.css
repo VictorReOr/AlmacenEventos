@@ -232,3 +232,19 @@
         opacity: 1;
     }
 }
+
+@media (max-width: 600px) {
+    .modal {
+        padding: 16px;
+        max-height: 90vh;
+        width: 95%;
+    }
+
+    .header {
+        font-size: 1.1rem;
+    }
+
+    .button {
+        padding: 10px 16px;
+    }
+}

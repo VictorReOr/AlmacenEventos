@@ -23,6 +23,7 @@ interface WarehouseMapProps {
     rotationMode?: 'normal' | 'vertical-ccw';
     showGrid?: boolean;
     programColors?: Record<string, string>; // Optional to stay backward compatible or default
+    isMobile?: boolean;
 }
 
 export interface WarehouseMapRef {
@@ -54,7 +55,7 @@ interface DraggablePalletProps {
     programColors: Record<string, string>;
 }
 
-const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors }) => {
+const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile }) => {
     const isLeaderDragging = dragState?.id === u.id;
     const isGroupDragging = dragState?.groupIds?.includes(u.id);
 
@@ -86,14 +87,19 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
     // --- MOVE GESTURE WITH SNAPPING ---
     const rawPos = useRef({ x: u.x, y: u.y }); // Tracks unsnapped position
     const dragMeta = useRef({ groupIds: [] as string[] }); // Sync storage for drag session
+    const selectionHandled = useRef(false); // Fix for double-fire bug
 
     const bindMove = useGesture({
         onDragStart: ({ event }) => {
             event.stopPropagation();
             hasDragged.current = false;
+            selectionHandled.current = false;
             // console.log('Drag Start', u.id, 'Selected:', isSelected, 'SelectedIds:', Array.from(selectedIds));
             if (!isSelected) {
-                onSelectLocation(u.id);
+                const isCtrl = (event as any).ctrlKey || (event as any).metaKey;
+                const isShift = (event as any).shiftKey;
+                onSelectLocation(u.id, { toggle: isCtrl, range: isShift });
+                selectionHandled.current = true;
             }
 
             setInteractionMode('move');
@@ -279,7 +285,7 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
             }
         }
     }, {
-        drag: { filterTaps: true, threshold: 5 },
+        drag: { filterTaps: true, threshold: isMobile ? 12 : 8 },
         eventOptions: { passive: false }
     });
 
@@ -470,10 +476,12 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
         }
 
         // RELIABLE CLICK SELECTION (Manual Distance Check)
-        // If movement is < 5 pixels, treat as click.
+        // If movement is small, treat as click.
+        // Mobile needs more tolerance (12px), Desktop needs precision but not too strict (8px)
+        const clickThreshold = isMobile ? 12 : 8;
         const dist = Math.hypot(e.clientX - startClickPos.current.x, e.clientY - startClickPos.current.y);
 
-        if (dist < 5 && !isLongPressed.current) {
+        if (dist < clickThreshold && !isLongPressed.current && !selectionHandled.current) {
             e.stopPropagation();
             const isCtrl = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
@@ -1186,6 +1194,7 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                     zoomScale={view.k}
                     rotationMode={rotationMode}
                     programColors={programColors}
+                    isMobile={!!props.isMobile}
                 />
             );
         });

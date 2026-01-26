@@ -20,9 +20,9 @@
 
 @media (max-width: 600px) {
   .icon-btn {
-    padding: 4px;
-    margin: 0 2px;
-    min-width: 28px;
+    padding: 8px;
+    margin: 0 4px;
+    min-width: 40px;
   }
 }
 
@@ -33,6 +33,11 @@
 .icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.icon-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .fab-btn:active {
