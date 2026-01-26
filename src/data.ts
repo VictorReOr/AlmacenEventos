@@ -1,4 +1,4 @@
-import type { Ubicacion, Caja, MaterialEnCaja } from './types';
+import type { Ubicacion, Caja } from './types';
 import { INITIAL_INVENTORY_UPDATES } from './initialInventory';
 
 export const SHELF_MODULE_WIDTH = 1.0;

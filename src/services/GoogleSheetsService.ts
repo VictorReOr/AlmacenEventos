@@ -102,11 +102,11 @@ export const GoogleSheetsService = {
                 // 1. SHELVES
                 if (u.tipo === 'estanteria_modulo') {
                     if (u.shelfItems) {
-                        Object.entries(u.shelfItems).forEach(([subKey, items]) => {
+                        Object.entries(u.shelfItems as any).forEach(([subKey, items]: [string, any]) => {
                             // subKey is "M1-A1" -> RowID is "E1-M1-A1"
                             const rowId = `${u.id}-${subKey}`;
 
-                            items.forEach(item => {
+                            items.forEach((item: any) => {
                                 inventoryRows.push({
                                     id: rowId,
                                     tipo: item.tipo,
@@ -121,7 +121,7 @@ export const GoogleSheetsService = {
                 // 2. PALLETS
                 else {
                     if (u.items && u.items.length > 0) {
-                        u.items.forEach(item => {
+                        u.items.forEach((item: any) => {
                             inventoryRows.push({
                                 id: u.id,
                                 tipo: item.tipo,

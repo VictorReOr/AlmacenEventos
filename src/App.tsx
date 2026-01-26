@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/web';
 
@@ -146,7 +146,7 @@ function App() {
       const keys = Object.keys(state.ubicaciones);
       if (keys.length === 0) { alert("⚠️ El mapa está vacío."); return; }
       await GoogleSheetsService.save(scriptUrl, state);
-      alert(`¡Guardado OK! (${keys.length} items)`);
+      alert(`¡Guardado OK!(${keys.length} items)`);
     } catch (error) {
       console.error(error);
       alert('Error: ' + error);

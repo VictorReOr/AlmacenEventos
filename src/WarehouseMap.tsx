@@ -81,7 +81,7 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
     const isValid = isLeaderDragging ? dragState?.valid : true;
     const color = isValid ? (programColors[u.programa] || '#999') : '#ff4444';
 
-    const stroke = isSelected ? '#2196F3' : '#333';
+    // const stroke = isSelected ? '#2196F3' : '#333';
 
     // --- MOVE GESTURE WITH SNAPPING ---
     const rawPos = useRef({ x: u.x, y: u.y }); // Tracks unsnapped position
@@ -503,7 +503,7 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
         // Colores Institucionales (Hardcoded en SVG para consistencia)
         const C_VERDE = "#007A33";
         const C_GRIS_OSCURO = "#333333";
-        const C_GRIS_CLARO = "#f5f5f5";
+        // const C_GRIS_CLARO = "#f5f5f5";
         const C_BORDE = "#9e9e9e";
 
         if (u.tipo === 'estanteria_modulo') {
