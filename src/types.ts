@@ -31,6 +31,7 @@ export interface Caja {
   descripcion: string; // "Caja de Balones"
   programa: string;
   contenido: MaterialEnCaja[];
+  cantidad?: number; // Added for grouped display (e.g. "x8 boxes")
 }
 
 // 1. ESTRUCTURA FISICA & UBICACIONES
@@ -66,9 +67,16 @@ export interface Ubicacion {
   // Legacy/Optional props to be cleaned up or kept for UI helpers
   notas?: string;
 
-  // DEPRECATED COMPATIBILITY LAYERS (To be phased out)
-  items?: any[]; // Removed or mapped to 'cajas'
-  shelfItems?: any; // Mapped to 'cajasEstanteria'
+  // Shelf Specific Properties
+  estanteriaId?: number;
+  mensaje?: string;
+  niveles?: {
+    nivel: number;
+    items: Caja[];
+  }[];
+
+  // Index signature to allow for legacy/nested properties
+  [key: string]: any;
 }
 
 // State Wrapper

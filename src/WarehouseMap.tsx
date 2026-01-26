@@ -726,19 +726,21 @@ const DraggableObject: React.FC<DraggablePalletProps> = ({ u, isSelected, dragSt
                     <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH * 0.25} fill={color} rx={1} clipPath="inset(0 0 75% 0 round 1px 1px 0 0)" />
 
                     {/* ID */}
+                    {/* Indicators (Fixed to Pallet) */}
+                    {u.cajas && u.cajas.length > 0 && (
+                        <rect x={-finalSvgW / 2 + 3} y={finalSvgH / 2 - 9} width={6} height={6} fill={C_VERDE} rx={1}>
+                            <title>Contiene Cajas</title>
+                        </rect>
+                    )}
+                    {u.materiales && u.materiales.length > 0 && (
+                        <circle cx={-finalSvgW / 2 + (u.cajas?.length ? 15 : 6)} cy={finalSvgH / 2 - 6} r={3} fill="#FB8C00">
+                            <title>Contiene Material Suelto</title>
+                        </circle>
+                    )}
+
+                    {/* ID (Floating/Readable) */}
                     <g transform={`rotate(${-currentRot})`}>
                         <text x={0} y={5} fontSize={10} textAnchor="middle" fill="#212121" fontWeight="500" style={{ pointerEvents: 'none' }}>{u.id}</text>
-                        {/* Indicators */}
-                        {u.cajas && u.cajas.length > 0 && (
-                            <rect x={-finalSvgW / 2 + 3} y={finalSvgH / 2 - 9} width={6} height={6} fill={C_VERDE} rx={1}>
-                                <title>Contiene Cajas</title>
-                            </rect>
-                        )}
-                        {u.materiales && u.materiales.length > 0 && (
-                            <circle cx={-finalSvgW / 2 + (u.cajas?.length ? 15 : 6)} cy={finalSvgH / 2 - 6} r={3} fill="#FB8C00">
-                                <title>Contiene Material Suelto</title>
-                            </circle>
-                        )}
                     </g>
                 </g>
             );

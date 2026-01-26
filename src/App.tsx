@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useDrag } from '@use-gesture/react';
+import { useSpring, animated } from '@react-spring/web';
 
 // Components
 import { AppShell } from './components/Layout/AppShell';
@@ -84,6 +86,35 @@ function App() {
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
   const mapRef = useRef<WarehouseMapRef>(null);
 
+  // Assistant Position (Draggable)
+  const assistantRef = useRef<HTMLDivElement>(null);
+  const [{ x, y }, api] = useSpring(() => ({ x: 0, y: 0 }));
+
+  // Fix: Use function for bounds to allow dynamic recalculation on window resize
+  const bindAssistantDrag = useDrag(({ offset: [ox, oy], tap }) => {
+    if (tap) {
+      setIsChatbotOpen(prev => !prev);
+    } else {
+      api.start({ x: ox, y: oy });
+    }
+  }, {
+    from: () => [x.get(), y.get()],
+    // Dynamic bounds: Measure actual element size to be responsive-safe
+    bounds: () => {
+      const { width, height } = assistantRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
+      const padding = 20;   // Initial CSS right/bottom spacing
+
+      // Calculate max movement allowed
+      return {
+        left: -window.innerWidth + (width + padding),
+        right: padding,
+        top: -window.innerHeight + (height + padding),
+        bottom: padding
+      };
+    },
+    rubberband: true,
+    filterTaps: true
+  });
   // Layout Detection
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   useEffect(() => {
@@ -304,22 +335,29 @@ function App() {
               </div>
             )}
 
-            {/* Asistente Flotante (Botón Principal) */}
-            <div
+            {/* Asistente Flotante (Draggable) */}
+            <animated.div
+              ref={assistantRef}
+              {...bindAssistantDrag()}
               style={{
                 position: 'absolute',
                 bottom: 20,
                 right: 20,
-                zIndex: 200
+                zIndex: 9999, // CRITICAL: Always on top of everything
+                x,
+                y,
+                touchAction: 'none',
+                cursor: 'grab',
+                pointerEvents: 'auto' // CRITICAL for overlay children
               }}
             >
               <AssistantCharacter
                 size="lg"
                 state={isChatbotOpen ? 'listening' : 'idle'}
-                onClick={() => setIsChatbotOpen(!isChatbotOpen)}
+                // Remove onClick here, handled by bindAssistantDrag
                 hasNotification={false}
               />
-            </div>
+            </animated.div>
 
             {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
             <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>

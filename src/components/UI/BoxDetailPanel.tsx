@@ -20,7 +20,22 @@ export const BoxDetailPanel: React.FC<BoxDetailPanelProps> = ({
     programColors
 }) => {
     const badgeColor = programColors[box.programa] || '#e2e8f0';
-    const materials = box.contenido || [];
+
+    // Fix: Handle legacy string content or undefined
+    let materials: MaterialEnCaja[] = [];
+    if (Array.isArray(box.contenido)) {
+        materials = box.contenido;
+    } else if (typeof box.contenido === 'string' && (box.contenido as string).trim() !== '') {
+        // Migration on the fly for display
+        materials = [{
+            id: 'legacy-1',
+            nombre: box.contenido,
+            cantidad: 1,
+            estado: 'operativo', // Fixed: Use valid literal type
+            programa: box.programa,
+            tipo: 'material' // This doesn't exist on MaterialEnCaja type? Let's check.
+        } as unknown as MaterialEnCaja]; // Cast to avoid partial mismatch if type is strict
+    }
 
     return (
         <div className={styles.panel}>

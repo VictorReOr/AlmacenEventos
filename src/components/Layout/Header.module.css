@@ -43,7 +43,30 @@
 .subtitle {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.9);
-    /* Blanco con leve transparencia */
     font-weight: 400;
     margin-top: -2px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    .header {
+        padding: 0 8px;
+    }
+
+    .title {
+        font-size: 1rem;
+        /* Smaller title */
+        max-width: 100px;
+        /* Limit width to prevent overlap */
+    }
+
+    .subtitle {
+        display: none;
+        /* Hide subtitle on small screens */
+    }
+
+    .left,
+    .right {
+        min-width: auto;
+    }
 }

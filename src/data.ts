@@ -1,4 +1,5 @@
 import type { Ubicacion, Caja, MaterialEnCaja } from './types';
+import { INITIAL_INVENTORY_UPDATES } from './initialInventory';
 
 export const SHELF_MODULE_WIDTH = 1.0;
 export const SHELF_DEPTH = 0.45;
@@ -757,11 +758,12 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "programa": "Vacio",
             "contenido": "67",
             "x": 4.6,
-            "y": 4,
+            "y": 4.95,
             "rotation": 90,
             "width": 0.8,
             "depth": 1.2
         },
+
         "E2": {
             "id": "E2",
             "tipo": "estanteria_modulo",
@@ -1075,6 +1077,44 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
     Object.values(ubicaciones).forEach(u => {
         if (u.tipo === 'palet' && u.programa !== 'Vacio' && (!u.cajas || u.cajas.length === 0)) {
             u.cajas = [generateDummyBox(u.id, u.programa)];
+        }
+    });
+
+    // --- MERGE USER INVENTORY UPDATES ---
+    Object.entries(INITIAL_INVENTORY_UPDATES).forEach(([key, update]) => {
+        let locationId = key;
+        // Map keys if necessary (e.g. E1 -> E-1)
+        if (key === 'E1') locationId = 'E-1';
+
+        const location = ubicaciones[locationId];
+        if (!location) return;
+
+        // Apply basic fields
+        if (update.programa) location.programa = update.programa;
+        if (update.contenido) location.contenido = update.contenido;
+
+        // Apply Pallet Boxes (Box Array)
+        if (update.cajas) {
+            location.cajas = update.cajas;
+        }
+
+        // Apply Shelf Boxes (Custom mapping from cajasEstanteria)
+        // We strip this type check for compilation if 'cajasEstanteria' isn't explicitly in Partial<Ubicacion>
+        const updateAny = update as any;
+        if (updateAny.cajasEstanteria) {
+            Object.entries(updateAny.cajasEstanteria as Record<string, Caja | undefined>).forEach(([posKey, box]) => {
+                if (!box) return;
+                // Expected format: M1-A1 (Module 1, Level 1)
+                // We map A1 -> Level 1 (Index 0), A2 -> Level 2 (Index 1) etc.
+                const match = posKey.match(/A(\d+)/);
+                if (match) {
+                    const levelNum = parseInt(match[1]);
+                    const levelIndex = levelNum - 1; // 0-indexed in array
+                    if (location.niveles && location.niveles[levelIndex]) {
+                        location.niveles[levelIndex].items.push(box);
+                    }
+                }
+            });
         }
     });
 

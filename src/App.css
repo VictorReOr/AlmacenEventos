@@ -18,6 +18,14 @@
   transition: background 0.2s;
 }
 
+@media (max-width: 600px) {
+  .icon-btn {
+    padding: 4px;
+    margin: 0 2px;
+    min-width: 28px;
+  }
+}
+
 .icon-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.2);
 }

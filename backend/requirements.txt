@@ -1,0 +1,14 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+spacy>=3.7.2
+google-cloud-vision>=3.7.0
+gspread>=6.0.0
+google-auth>=2.27.0
+python-dotenv>=1.0.1
+pydantic>=2.6.0
+python-multipart>=0.0.9
+requests>=2.31.0
+gunicorn>=21.2.0
+
+# Direct model download for Render
+https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.7.0/es_core_news_lg-3.7.0.tar.gz

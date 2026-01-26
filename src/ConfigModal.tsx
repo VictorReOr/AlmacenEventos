@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import styles from './ConfigModal.module.css';
 
 interface ConfigModalProps {
     initialColors: Record<string, string>;
-    scriptUrl: string; // Keep this existing config too
+    scriptUrl: string;
     onSave: (newColors: Record<string, string>, newScriptUrl: string) => void;
     onClose: () => void;
 }
@@ -22,7 +23,6 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
         }
         setColors(prev => ({ ...prev, [newProgName]: newProgColor }));
         setNewProgName('');
-        // Randomize next color slightly?
         setNewProgColor('#' + Math.floor(Math.random() * 16777215).toString(16));
     };
 
@@ -39,40 +39,43 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ width: '450px', maxWidth: '90vw' }}>
-                <h3>⚙️ Configuración</h3>
+        <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className={styles.modal} style={{ width: '500px', maxWidth: '90vw' }}>
+                <h3 className={styles.header}>⚙️ Configuración</h3>
 
-                {/* Script URL Section */}
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #eee' }}>
-                    <label>URL Script Google Apps:</label>
+                {/* Script URL */}
+                <div className={styles.section}>
+                    <label className={styles.label}>URL Script Google Apps:</label>
                     <input
+                        className={styles.input}
                         type="text"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        placeholder="https://script.google.com/..."
+                        placeholder="https://script.google.com/macros/s/..."
                     />
                 </div>
 
-                {/* Colors Management Section */}
-                <div>
-                    <label style={{ marginBottom: 10, display: 'block' }}>Programas y Colores:</label>
+                {/* Colors Management */}
+                <div className={styles.section}>
+                    <label className={styles.label}>Programas y Colores:</label>
 
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: 4, padding: 5, marginBottom: 10 }}>
+                    <div className={styles.programList}>
                         {Object.entries(colors).map(([prog, color]) => (
-                            <div key={prog} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <input
-                                        type="color"
-                                        value={color}
-                                        onChange={(e) => setColors(prev => ({ ...prev, [prog]: e.target.value }))}
-                                        title="Cambiar Color"
-                                        style={{ width: 30, height: 30, padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
-                                    />
-                                    <span style={{ fontWeight: 500 }}>{prog}</span>
+                            <div key={prog} className={styles.programItem}>
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <div className={styles.colorPreview} style={{ backgroundColor: color }}>
+                                        <input
+                                            type="color"
+                                            className={styles.colorInputHidden}
+                                            value={color}
+                                            onChange={(e) => setColors(prev => ({ ...prev, [prog]: e.target.value }))}
+                                            title="Toca para cambiar color"
+                                        />
+                                    </div>
+                                    <span className={styles.programName}>{prog}</span>
                                 </div>
                                 {prog !== 'Vacio' && (
-                                    <button onClick={() => handleDeleteProgram(prog)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e57373' }} title="Borrar">
+                                    <button onClick={() => handleDeleteProgram(prog)} className={styles.deleteBtn} title="Borrar">
                                         🗑️
                                     </button>
                                 )}
@@ -81,32 +84,34 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
                     </div>
 
                     {/* Add New */}
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginTop: 10, background: '#f9f9f9', padding: 8, borderRadius: 4 }}>
+                    <div className={styles.addNew}>
                         <input
+                            className={styles.input}
                             type="text"
                             placeholder="Nuevo Programa..."
                             value={newProgName}
                             onChange={e => setNewProgName(e.target.value)}
-                            style={{ flex: 1, margin: 0, fontSize: '0.9rem' }}
                         />
-                        <input
-                            type="color"
-                            value={newProgColor}
-                            onChange={e => setNewProgColor(e.target.value)}
-                            style={{ width: 35, height: 35, padding: 0, margin: 0, border: 'none', background: 'none' }}
-                        />
-                        <button onClick={handleAddProgram} disabled={!newProgName} style={{ padding: '6px 12px', background: '#4CAF50', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                        <div className={styles.colorPreview} style={{ backgroundColor: newProgColor, flexShrink: 0, width: 42, height: 42 }}>
+                            <input
+                                type="color"
+                                className={styles.colorInputHidden}
+                                value={newProgColor}
+                                onChange={e => setNewProgColor(e.target.value)}
+                            />
+                        </div>
+                        <button onClick={handleAddProgram} disabled={!newProgName} className={styles.addButton} title="Añadir">
                             +
                         </button>
                     </div>
                 </div>
 
-                <div className="modal-actions">
-                    <button onClick={onClose}>Cancelar</button>
-                    <button onClick={() => {
+                <div className={styles.footer}>
+                    <button className={`${styles.button} ${styles.cancelBtn}`} onClick={onClose}>Cancelar</button>
+                    <button className={`${styles.button} ${styles.saveBtn}`} onClick={() => {
                         onSave(colors, url);
                         onClose();
-                    }}>Guardar</button>
+                    }}>Guardar Cambios</button>
                 </div>
             </div>
         </div>
