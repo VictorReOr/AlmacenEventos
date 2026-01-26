@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Ubicacion, Caja, MaterialEnCaja } from '../../types';
+import type { Ubicacion } from '../../types';
 
 interface PrintViewProps {
     data: Ubicacion[];
