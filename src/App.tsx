@@ -107,10 +107,6 @@ function App() {
     from: () => [x.get(), y.get()],
     // Dynamic bounds: Measure actual element size to be responsive-safe
     bounds: () => {
-      const { width, height } = assistantRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
-      const padding = 20;   // Initial CSS right/bottom spacing
-
-      // Calculate max movement allowed
       // Relaxed bounds to prevent sticking
       return {
         left: -window.innerWidth * 1.2,
