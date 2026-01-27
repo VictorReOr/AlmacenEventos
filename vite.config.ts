@@ -17,12 +17,12 @@ export default defineConfig({
         theme_color: '#ffffff',
         icons: [
           {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
+            src: 'almacenito.png',
+            sizes: '192x192', // ideally resize, but using original for now
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'almacenito.png',
             sizes: '512x512',
             type: 'image/png'
           }
