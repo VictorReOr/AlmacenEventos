@@ -72,3 +72,23 @@ class InventoryRow(BaseModel):
     material: str
     cantidad: int
     estado: str
+
+# --- AUTH MODELS ---
+class User(BaseModel):
+    email: str
+    role: Literal["ADMIN", "USER"]
+    name: Optional[str] = None
+    is_active: bool = True
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class GoogleLoginRequest(BaseModel):
+    token: str # The Google ID Token
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: User
+

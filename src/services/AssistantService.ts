@@ -1,11 +1,29 @@
 import { config } from '../config';
 const API_URL = config.API_URL;
 
-export interface AssistantResponse {
-    text: string;
+// Backend response types matching schemas.py
+export interface MovementProposal {
+    item: string;
+    qty: number;
+    origin: string;
+    destination: string;
+    type: 'ENTRADA' | 'SALIDA' | 'MOVIMIENTO' | 'MODIFICACION';
+    reason?: string;
+    state?: 'STOCK' | 'PARA_PRESTAMO' | 'EN_PRESTAMO' | 'REGALO';
+}
+
+export interface Interpretation {
     intent: string;
-    entities: { text: string, label: string }[];
-    tokens?: string[];
+    summary: string;
+    movements: MovementProposal[];
+}
+
+export interface AssistantResponse {
+    status: 'PROPOSAL_READY' | 'ERROR';
+    interpretation?: Interpretation;
+    warnings: string[];
+    token?: string;
+    error?: string;
 }
 
 export interface OCRResponse {
@@ -22,7 +40,10 @@ export const AssistantService = {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({
+                    text,
+                    user_id: 'web-user' // TODO: Replace with actual user ID when auth is implemented
+                }),
             });
 
             if (!response.ok) {

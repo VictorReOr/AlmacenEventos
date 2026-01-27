@@ -2,35 +2,38 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.models.schemas import (
     AssistantParseRequest, AssistantParseResponse, 
     AssistantConfirmRequest, AssistantConfirmResponse,
-    Interpretation
+    Interpretation, User
 )
 from app.services.nlp_service import nlp_service
 from app.services.vision_service import vision_service
 from app.services.validation_service import validation_service
-from app.services.sheets_service import sheet_service # For execution
+from app.services.sheets_service import sheet_service
 from app.core import security
+from app.api.auth import get_current_user
 import logging
 
 router = APIRouter()
 logger = logging.getLogger("assistant")
 
 @router.post("/parse", response_model=AssistantParseResponse)
-async def parse_request(request: AssistantParseRequest):
-    # 1. Input Processing (OCR or Text)
+async def parse_request(
+    request: AssistantParseRequest, 
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Input Processing
     text_to_process = request.text
     if request.image_base64:
         # TODO: Decode base64 and send to Vision
-        # text_from_ocr = vision_service.detect_text(decoded_image)
         pass
 
     # 2. NLP Analysis (Stateless)
-    interpretation = nlp_service.parse(text_to_process, request.user_id)
+    # Use authenticated user ID
+    interpretation = nlp_service.parse(text_to_process, current_user.email)
     
     # 3. Validation
     warnings = validation_service.validate_proposal(interpretation.movements)
     
     # 4. Sign Proposal (JWT)
-    # We include the FULL interpretation in the token to ensure statelessness
     token_payload = interpretation.dict()
     token = security.create_access_token(token_payload)
 
@@ -42,26 +45,28 @@ async def parse_request(request: AssistantParseRequest):
     )
 
 @router.post("/confirm", response_model=AssistantConfirmResponse)
-async def confirm_request(request: AssistantConfirmRequest):
-    # 1. Validate Token
+async def confirm_request(
+    request: AssistantConfirmRequest,
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Validate Token (Proposal Token)
     payload = security.verify_token(request.token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired confirmation token")
     
-    # 2. Reconstruct Proposal from Token (Stateless)
-    # The payload essentially IS the interpretation
-    # We might want to re-validate stock here if time passed?
-    
-    # 3. Execute
+    # 2. Reconstruct Proposal from Token
     try:
-        # data = Interpretation(**payload)
-        # sheet_service.execute_transaction(data.movements, user=request.user_id)
-        pass
+        # Rehydrate objects from payload
+        interpretation = Interpretation(**payload)
+        
+        # 3. Execute
+        sheet_service.execute_transaction(interpretation.movements, user_id=current_user.email, transaction_id="TX-mock")
+        
     except Exception as e:
         return AssistantConfirmResponse(status="ERROR", error=str(e))
     
     return AssistantConfirmResponse(
         status="SUCCESS",
-        transaction_id=f"TX-{hash(request.token)}", # Mock
+        transaction_id=f"TX-{hash(request.token)}",
         updated_balance={}
     )

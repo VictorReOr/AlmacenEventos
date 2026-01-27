@@ -124,11 +124,26 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         if (msgIndex === -1) return;
 
         const data = messages[msgIndex].structuredData;
-        if (!data) return;
+        if (!data || !data.interpretation || !data.token) return;
 
         setIsThinking(true);
         try {
-            const result = await AssistantActionHandler.executeAction(data.intent, data.entities as any, ubicaciones);
+            // TODO: Send confirmation request to backend with token
+            // For now, execute locally using the interpretation data
+            const interpretation = data.interpretation;
+
+            // Convert movements to legacy format for AssistantActionHandler
+            // This is temporary until we refactor the action handler
+            const legacyEntities = interpretation.movements.map(mov => ({
+                text: `${mov.item} ${mov.qty} ${mov.origin} ${mov.destination}`,
+                label: mov.type
+            }));
+
+            const result = await AssistantActionHandler.executeAction(
+                interpretation.intent,
+                legacyEntities as any,
+                ubicaciones
+            );
 
             // 1. Update App State (React + Sheets)
             if (result.updates.length > 0) {

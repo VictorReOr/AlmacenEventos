@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api import assistant
+from app.api import assistant, auth
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -54,4 +54,5 @@ def health_check():
     return {"status": "ok"}
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(assistant.router, prefix="/api/v1/assistant", tags=["Assistant"])

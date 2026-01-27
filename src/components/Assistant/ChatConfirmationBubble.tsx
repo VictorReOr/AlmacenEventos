@@ -30,6 +30,23 @@ export const ChatConfirmationBubble: React.FC<ChatConfirmationBubbleProps> = ({ 
         }
     };
 
+    const interpretation = data.interpretation;
+
+    if (!interpretation) {
+        return (
+            <div style={{
+                background: '#fee',
+                border: '1px solid #fcc',
+                borderRadius: '8px',
+                padding: '12px',
+                marginTop: '8px',
+                color: '#c33'
+            }}>
+                ⚠️ Error: {data.error || 'No se pudo procesar la solicitud'}
+            </div>
+        );
+    }
+
     return (
         <div style={{
             background: 'white',
@@ -40,22 +57,34 @@ export const ChatConfirmationBubble: React.FC<ChatConfirmationBubbleProps> = ({ 
             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
-                <span style={{ fontSize: '1.2em' }}>{getIntentIcon(data.intent)}</span>
-                <strong style={{ color: '#333' }}>{getIntentLabel(data.intent)}</strong>
+                <span style={{ fontSize: '1.2em' }}>{getIntentIcon(interpretation.intent)}</span>
+                <strong style={{ color: '#333' }}>{getIntentLabel(interpretation.intent)}</strong>
             </div>
 
             <div style={{ fontSize: '0.9em', color: '#555', marginBottom: '10px' }}>
-                {data.entities.length > 0 ? (
-                    <ul style={{ paddingLeft: '20px', margin: '4px 0' }}>
-                        {data.entities.map((ent, idx) => (
+                <p style={{ margin: '4px 0', fontStyle: 'italic' }}>{interpretation.summary}</p>
+
+                {interpretation.movements.length > 0 ? (
+                    <ul style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                        {interpretation.movements.map((mov, idx) => (
                             <li key={idx}>
-                                <strong>{ent.label}:</strong> {ent.text}
+                                <strong>{mov.item}</strong>: {mov.qty} unidades
+                                <br />
+                                <small style={{ color: '#666' }}>
+                                    {mov.origin} → {mov.destination} ({mov.type})
+                                </small>
                             </li>
                         ))}
                     </ul>
                 ) : (
                     <div style={{ fontStyle: 'italic', color: '#888' }}>
-                        No he detectado detalles específicos.
+                        No he detectado movimientos específicos.
+                    </div>
+                )}
+
+                {data.warnings.length > 0 && (
+                    <div style={{ marginTop: '8px', padding: '6px', background: '#fff3cd', borderRadius: '4px', fontSize: '0.85em' }}>
+                        ⚠️ {data.warnings.join(', ')}
                     </div>
                 )}
             </div>

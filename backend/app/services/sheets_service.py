@@ -176,4 +176,18 @@ class SheetService:
             print(f"SHEETS TRANSACTION ERROR: {e}")
             raise e
 
+
+
+    def get_users(self) -> list[dict]:
+        """Fetch all users from USUARIOS tab."""
+        if not self.client:
+            self.connect()
+        
+        try:
+            ws = self.doc.worksheet("USUARIOS")
+            return ws.get_all_records()
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not fetch users. {e}")
+            return []
+
 sheet_service = SheetService()

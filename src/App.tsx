@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from './context/AuthContext';
+import { LoginModal } from './components/Login/LoginModal';
 import { useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/web';
 
@@ -53,10 +55,36 @@ const useHistory = (initialState: AlmacenState) => {
   return { state: currentState, pushState, undo, redo, canUndo: pointer > 0, canRedo: pointer < history.length - 1 };
 };
 
-function App() {
-  console.log("App component mounting (Refactored)...");
+function AuthenticatedApp() {
+  // The comments below were part of the original App component, now moved to AuthenticatedApp
+  // Use hooks before conditional return to avoid Rule of Hooks violation? 
+  // Wait, if I return early, hooks below won't run. That is a violation.
+  // I must move all hooks up OR move Auth logic to a wrapper component.
+  // Converting App to RequireAuth wrapper is cleaner, but App has complex state logic.
+  // Use a sub-component?
+  // Let's assume loading state is handled.
+  // But useHistory is a hook.
 
-  // --- STATE INITIALIZATION ---
+  // Refactor:
+  // AppContent = original App content
+  // App = Wrapper with Auth check.
+
+  // Actually, I can just initialize useHistory and others, BUT if I return early, 
+  // subsequent renders must match hook order.
+  // If isLoading changes from true to false, hooks are consistent (if I call them all).
+  // But if !user returns, I skip hooks?
+  // NO. `if (!user)` is a return. Below it are hooks.
+  // If user becomes present, hooks run.
+  // React requires that the SAME number of hooks run in the SAME order on every render.
+
+  // So I CANNOT return early before hooks if the condition changes.
+  // `isLoading` starts true, then becomes false. Condition changes. Hooks below act up?
+  // Yes.
+
+  // Solution: Rename `App` to `AuthenticatedApp` and create a new `App` that handles Auth.
+
+  console.log("AuthenticatedApp mounting...");
+
   const getInitialState = () => {
     try {
       const saved = localStorage.getItem('warehouse_V72_VERTICAL');
@@ -478,6 +506,20 @@ function App() {
       />
     </div>
   );
+}
+
+function App() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>;
+  }
+
+  if (!user) {
+    return <LoginModal />;
+  }
+
+  return <AuthenticatedApp />;
 }
 
 export default App;
