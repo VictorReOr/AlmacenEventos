@@ -1,5 +1,5 @@
-
-const API_URL = 'http://localhost:8000'; // TODO: Move to Env variable
+import { config } from '../config';
+const API_URL = config.API_URL;
 
 export interface AssistantResponse {
     text: string;
