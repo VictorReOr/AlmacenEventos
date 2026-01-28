@@ -37,8 +37,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex='https?://.*', # Allow ALL http and https origins (Nuclear Fix)
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow ALL origins
+    allow_credentials=False, # No cookies, consistent with allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )

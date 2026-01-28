@@ -46,7 +46,7 @@ export const AdminDashboard: React.FC = () => {
             const data = await res.json();
             setPendingActions(data);
         } catch (e: any) {
-            setError(e.message);
+            setError(`${e.message} (URL: ${API_URL}/pending)`);
         } finally {
             setLoading(false);
         }
@@ -63,7 +63,7 @@ export const AdminDashboard: React.FC = () => {
             const data = await res.json();
             setUsers(data);
         } catch (e: any) {
-            setError(e.message);
+            setError(`${e.message} (URL: ${API_URL}/users)`);
         } finally {
             setLoading(false);
         }
@@ -81,7 +81,7 @@ export const AdminDashboard: React.FC = () => {
             setSuccessMsg(`Action ${id} ${action}d successfully`);
             fetchPending(); // Refresh
         } catch (e: any) {
-            setError(e.message);
+            setError(`${e.message} (URL: ${API_URL}/pending/${id}/${action})`);
         } finally {
             setLoading(false);
             setTimeout(() => setSuccessMsg(''), 3000);
@@ -102,7 +102,7 @@ export const AdminDashboard: React.FC = () => {
             setSuccessMsg(`User ${email} updated to ${newRole}`);
             fetchUsers(); // Refresh
         } catch (e: any) {
-            setError(e.message);
+            setError(`${e.message} (URL: ${API_URL}/users/${email}/role)`);
         } finally {
             setLoading(false);
             setTimeout(() => setSuccessMsg(''), 3000);

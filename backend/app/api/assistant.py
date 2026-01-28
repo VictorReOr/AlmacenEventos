@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+import base64
 from app.models.schemas import (
     AssistantParseRequest, AssistantParseResponse, 
     AssistantConfirmRequest, AssistantConfirmResponse,
@@ -118,3 +119,30 @@ async def submit_action(
          }
     
     raise HTTPException(status_code=403, detail="Unknown role")
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Handle file upload for OCR.
+    """
+    try:
+        contents = await file.read()
+        # Convert to base64 for Vision Service
+        image_base64 = base64.b64encode(contents).decode('utf-8')
+        
+        # Call Vision Service
+        ocr_text = vision_service.detect_text(image_base64)
+        
+        return {
+            "filename": file.filename,
+            "ocr_text": ocr_text,
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        return {
+            "filename": file.filename,
+            "ocr_text": "",
+            "status": "error",
+            "error": str(e)
+        }

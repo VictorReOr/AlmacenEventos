@@ -19,7 +19,14 @@ class VisionService:
                 self.client = vision.ImageAnnotatorClient(credentials=creds)
                 print("VISION: Client initialized via JSON Env Var.")
             else:
-                print("VISION: No credentials provided.")
+                # Fallback: Try loading from local file
+                import os
+                if os.path.exists("service_account.json"):
+                    creds = service_account.Credentials.from_service_account_file("service_account.json")
+                    self.client = vision.ImageAnnotatorClient(credentials=creds)
+                    print("VISION: Client initialized via local file.")
+                else:
+                    print("VISION: No credentials provided (Env or File).")
         except Exception as e:
             print(f"VISION: Init failed. {e}")
 
