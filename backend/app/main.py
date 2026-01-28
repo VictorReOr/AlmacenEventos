@@ -38,7 +38,12 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for dev debugging
+    allow_origins=[
+        "http://localhost:5200",
+        "http://127.0.0.1:5200",
+        "https://victorreor.github.io",
+        "https://victorreor.github.io/AlmacenEventos" 
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
