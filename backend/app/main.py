@@ -35,15 +35,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5200",
-        "http://127.0.0.1:5200",
-        "https://victorreor.github.io",
-        "https://victorreor.github.io/AlmacenEventos" 
-    ],
+    allow_origin_regex='https?://.*', # Allow ALL http and https origins (Nuclear Fix)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
