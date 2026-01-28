@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode";
 
 interface User {
     email: string;
-    role: 'ADMIN' | 'USER';
+    role: 'ADMIN' | 'USER' | 'VISITOR';
     name?: string;
 }
 

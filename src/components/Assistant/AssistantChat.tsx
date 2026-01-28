@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import type { Ubicacion } from '../../types';
 import styles from './AssistantChat.module.css';
 import { AssistantService } from '../../services/AssistantService';
@@ -31,6 +32,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     isOpen,
     onClose,
 }) => {
+    const { token } = useAuth();
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -128,39 +130,68 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
         setIsThinking(true);
         try {
-            // TODO: Send confirmation request to backend with token
-            // For now, execute locally using the interpretation data
-            const interpretation = data.interpretation;
-
-            // Convert movements to legacy format for AssistantActionHandler
-            // This is temporary until we refactor the action handler
-            const legacyEntities = interpretation.movements.map(mov => ({
-                text: `${mov.item} ${mov.qty} ${mov.origin} ${mov.destination}`,
-                label: mov.type
-            }));
-
-            const result = await AssistantActionHandler.executeAction(
-                interpretation.intent,
-                legacyEntities as any,
-                ubicaciones
+            // Updated to call Backend
+            const result = await AssistantService.confirmRequest(
+                data.interpretation,
+                data.token, // This is the action token from parse response
+                token || '' // This is the User Auth token
             );
 
-            // 1. Update App State (React + Sheets)
-            if (result.updates.length > 0) {
-                onUpdate(result.updates);
-            }
+            // 1. Handle Response Status
+            if (result.status === "PENDING_APPROVAL") {
+                setMessages(prev => [...prev, {
+                    id: Date.now().toString(),
+                    text: `⏳ Acción Enviada a Aprobación.\nID: ${result.transaction_id}\nUn administrador debe aprobarla.`,
+                    sender: 'bot'
+                }]);
+            } else if (result.status === "SUCCESS") {
+                // If success, we should refresh the map. 
+                // Since backend is source of truth, we might need to reload state or apply local updates if we trust them.
+                // For now, let's assume we need to reload or apply local logic.
+                // Applying local logic for immediate feedback:
 
-            // 2. Show Success Message
-            setMessages(prev => [...prev, {
-                id: Date.now().toString(),
-                text: result.message,
-                sender: 'bot'
-            }]);
+                try {
+                    // We re-use logic from AssistantActionHandler just to get updates 
+                    // BUT verify if backend returned updated balance? Backends usually don't return full map updates.
+                    // Let's rely on AssistantActionHandler for the optimistic UI update
+                    // Or Fetch latest map? Fetching latest map is safer.
+                    // Triggering onUpdate with specific changes is key for React state.
+
+                    // Optimistic update:
+                    const legacyEntities = data.interpretation.movements.map(mov => ({
+                        text: `${mov.item} ${mov.qty} ${mov.origin} ${mov.destination}`,
+                        label: mov.type
+                    }));
+
+                    const localResult = await AssistantActionHandler.executeAction(
+                        data.interpretation.intent,
+                        legacyEntities as any,
+                        ubicaciones
+                    );
+                    if (localResult.updates.length > 0) {
+                        onUpdate(localResult.updates);
+                    }
+                    setMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        text: "✅ Acción Completada con éxito.",
+                        sender: 'bot'
+                    }]);
+                } catch (localErr) {
+                    setMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        text: "✅ Acción registrada en servidor (pero no pude actualizar el mapa localmente). Recarga la página.",
+                        sender: 'bot'
+                    }]);
+                }
+
+            } else {
+                throw new Error("Estado desconocido: " + result.status);
+            }
 
         } catch (e: any) {
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
-                text: `❌ Error ejecutando acción: ${e.message}`,
+                text: `❌ Error: ${e.message}`,
                 sender: 'bot'
             }]);
         } finally {

@@ -10,9 +10,9 @@ class NLPService:
     def __init__(self):
         try:
             self.nlp = spacy.load("es_core_news_lg")
-            print("✅ NLP: spaCy model loaded successfully.")
+            print("NLP: spaCy model loaded successfully.")
         except OSError:
-            print("⚠️ NLP: spaCy model not found. Running in regex-only fallback mode.")
+            print("NLP: spaCy model not found. Running in regex-only fallback mode.")
             self.nlp = None
 
     def _extract_locations(self, text: str) -> List[str]:

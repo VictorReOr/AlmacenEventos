@@ -10,6 +10,7 @@ class ActionType(str, Enum):
     SALIDA = "SALIDA"           # Outbound (Warehouse -> Client/Waste)
     MOVIMIENTO = "MOVIMIENTO"   # Internal (Loc A -> Loc B)
     MODIFICACION = "MODIFICACION" # Correction
+    ACTUALIZAR_UBICACION = "ACTUALIZAR_UBICACION" # Map Coordinate Update
 
 class MaterialState(str, Enum):
     STOCK = "STOCK"
@@ -38,6 +39,15 @@ class Interpretation(BaseModel):
     intent: str
     summary: str
     movements: List[MovementProposal]
+    location_update: Optional['LocationUpdate'] = None
+
+class LocationUpdate(BaseModel):
+    id: str
+    x: float
+    y: float
+    rotation: float
+    width: Optional[float] = None
+    depth: Optional[float] = None
 
 class AssistantParseResponse(BaseModel):
     status: Literal["PROPOSAL_READY", "ERROR"]
@@ -51,10 +61,14 @@ class AssistantConfirmRequest(BaseModel):
     user_id: str
 
 class AssistantConfirmResponse(BaseModel):
-    status: Literal["SUCCESS", "ERROR"]
+    status: Literal["SUCCESS", "ERROR", "PENDING_APPROVAL"]
     transaction_id: Optional[str] = None
     updated_balance: Optional[Dict[str, int]] = None
     error: Optional[str] = None
+
+class SubmitActionRequest(BaseModel):
+    action_type: str
+    payload: Dict[str, Any]
 
 # --- SHEETS ROW MODELS (Internal) ---
 class LogRow(BaseModel):
@@ -76,7 +90,7 @@ class InventoryRow(BaseModel):
 # --- AUTH MODELS ---
 class User(BaseModel):
     email: str
-    role: Literal["ADMIN", "USER"]
+    role: Literal["ADMIN", "USER", "VISITOR"]
     name: Optional[str] = None
     is_active: bool = True
 
@@ -86,6 +100,11 @@ class LoginRequest(BaseModel):
 
 class GoogleLoginRequest(BaseModel):
     token: str # The Google ID Token
+
+class RegisterRequest(BaseModel):
+    email: str
+    name: str
+    token: str # Google Token for verification
 
 class Token(BaseModel):
     access_token: str

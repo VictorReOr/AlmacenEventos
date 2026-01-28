@@ -9,6 +9,7 @@ import { AppShell } from './components/Layout/AppShell';
 import { Header } from './components/Layout/Header';
 import { AssistantCharacter } from './components/Assistant/AssistantCharacter';
 import { AssistantChat } from './components/Assistant/AssistantChat';
+import { AssistantAlert } from './components/Assistant/AssistantAlert';
 import WarehouseMap from './WarehouseMap';
 import PropertiesPanel from './PropertiesPanel';
 import { ConfigModal } from './ConfigModal';
@@ -16,6 +17,7 @@ import { QuickSearch } from './components/UI/QuickSearch';
 import { PrintModal } from './components/UI/PrintModal';
 import type { PrintOptions } from './components/UI/PrintModal';
 import { PrintView } from './components/Print/PrintView';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
@@ -23,6 +25,7 @@ import type { Ubicacion, AlmacenState } from './types';
 import { generateInitialState } from './data';
 import type { WarehouseMapRef } from './WarehouseMap';
 import { GoogleSheetsService } from './services/GoogleSheetsService';
+import { AssistantService } from './services/AssistantService';
 
 // Styles
 import './App.css';
@@ -118,6 +121,9 @@ function AuthenticatedApp() {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [pendingAssistantAction, setPendingAssistantAction] = useState<{ type: string, payload: any } | null>(null);
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [assistantAlert, setAssistantAlert] = useState<string | null>(null);
+  const { user, logout } = useAuth(); // Added logout
   const mapRef = useRef<WarehouseMapRef>(null);
 
   // Assistant Position (Draggable)
@@ -207,7 +213,41 @@ function AuthenticatedApp() {
     } finally { setIsSyncing(false); }
   };
 
-  const handleUpdate = (updated: Ubicacion | Ubicacion[]) => {
+  const handleUpdate = async (updated: Ubicacion | Ubicacion[]) => {
+    // Intercept for USER role (Proposals)
+    if (user?.role === 'USER') {
+      const updates = Array.isArray(updated) ? updated : [updated];
+      if (updates.length === 0) return;
+
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert("Error de sesión. Por favor, recarga.");
+        return;
+      }
+
+      try {
+        for (const u of updates) {
+          await AssistantService.submitAction("ACTUALIZAR_UBICACION", {
+            id: u.id, x: u.x, y: u.y, rotation: u.rotation,
+            width: u.width, depth: u.depth
+          }, token);
+        }
+        // Notify user
+        // Ideally use a toast, but alert is fine for now/User requested notification
+        const msg = document.createElement('div');
+        msg.textContent = "⏳ Propuesta enviada a Admin";
+        msg.style.cssText = "position:fixed;top:80px;right:20px;background:#ff9800;color:white;padding:10px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 5px rgba(0,0,0,0.2);animation:fadeout 3s forwards;";
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 3000);
+
+      } catch (e: any) {
+        console.error(e);
+        alert("Error al enviar propuesta: " + e.message);
+      }
+      return;
+    }
+
+    // Default Behavior (Admin / Local)
     const updates = Array.isArray(updated) ? updated : [updated];
     if (updates.length === 0) return;
     const nextUbicaciones = { ...state.ubicaciones };
@@ -330,6 +370,25 @@ function AuthenticatedApp() {
 
   const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
 
+  if (isAdminOpen) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '10px', backgroundColor: '#009688', color: 'white', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => setIsAdminOpen(false)}
+            style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', marginRight: '10px' }}
+          >
+            ← Volver al Mapa
+          </button>
+          <span style={{ fontWeight: 'bold' }}>SGA Eventos - Admin</span>
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <AdminDashboard />
+        </div>
+      </div>
+    );
+  }
+
   // --- RENDER ---
   return (
     <div className="app-layer">
@@ -344,12 +403,34 @@ function AuthenticatedApp() {
             title="SGA Eventos"
             subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
             leftAction={
-              <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
-                ⚙️
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
+                  ⚙️
+                </button>
+                <button
+                  className="icon-btn"
+                  onClick={logout}
+                  title="Cerrar Sesión"
+                  style={{ backgroundColor: '#ffcccc', color: '#cc0000' }}
+                >
+                  🚪
+                </button>
+              </div>
             }
             rightAction={
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {user?.role === 'ADMIN' && (
+                  <button
+                    onClick={() => setIsAdminOpen(true)}
+                    className="icon-btn"
+                    title="Panel Admin"
+                    style={{ backgroundColor: '#FFD54F', color: '#333' }}
+                  >
+                    🛡️ Admin
+                  </button>
+                )}
+                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
                 <QuickSearch
                   ubicaciones={state.ubicaciones}
                   onSelectLocation={(id) => handleSelectLocation(id)}
@@ -399,6 +480,9 @@ function AuthenticatedApp() {
             onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
             rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
             showGrid={showGrid}
+            onVisitorError={() => {
+              setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
+            }}
             programColors={programColors}
             isMobile={isMobile}
           />
@@ -416,6 +500,13 @@ function AuthenticatedApp() {
                   setShowConfig(false);
                 }}
                 onClose={() => setShowConfig(false)}
+              />
+            )}
+
+            {assistantAlert && (
+              <AssistantAlert
+                message={assistantAlert}
+                onClose={() => setAssistantAlert(null)}
               />
             )}
 

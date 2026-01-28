@@ -23,7 +23,12 @@ class AuthService:
         users = sheet_service.get_users()
         # Header: USER_ID, ROLE, NAME, PASSWORD
         for user in users:
-            if user.get("USER_ID") == email:
+            # Handle potential header variations (USER_ID vs USER ID)
+            user_email = user.get("USER_ID") or user.get("USER ID")
+            
+            if user_email and user_email.strip() == email.strip():
+                # Normalize keys for the rest of the app to ensure consistency
+                user["USER_ID"] = user_email
                 return user
         return None
 
@@ -37,8 +42,17 @@ class AuthService:
         if not stored_hash:
              return None # Manual login requires password
              
+        # 1. Try secure hash verification
         if self.verify_password(password, stored_hash):
+            user["ROLE"] = str(user["ROLE"]).upper()
             return user
+            
+        # 2. Fallback: Plain text comparison (for manually edited Sheets)
+        # WARNING: In production, always use hashes.
+        if str(stored_hash).strip() == password.strip():
+            user["ROLE"] = str(user["ROLE"]).upper()
+            return user
+            
         return None
 
     def verify_google_token(self, token: str) -> Optional[str]:
@@ -50,8 +64,19 @@ class AuthService:
             
             email = id_info.get("email")
             return email
-        except ValueError as e:
-            print(f"AUTH: Invalid Google Token. {e}")
+        except Exception as e:
+            print(f"AUTH ERROR: Google Token Verification Failed. {e}")
+            import traceback
+            traceback.print_exc()
             return None
+
+    def create_user(self, email: str, name: str, role: str = "VISITOR"):
+        user_data = {
+            "email": email,
+            "name": name,
+            "role": role
+        }
+        sheet_service.add_user(user_data)
+        return user_data
 
 auth_service = AuthService()

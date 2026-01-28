@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from app.models.schemas import (
     AssistantParseRequest, AssistantParseResponse, 
     AssistantConfirmRequest, AssistantConfirmResponse,
-    Interpretation, User
+    Interpretation, User, SubmitActionRequest
 )
 from app.services.nlp_service import nlp_service
 from app.services.vision_service import vision_service
@@ -59,9 +59,27 @@ async def confirm_request(
         # Rehydrate objects from payload
         interpretation = Interpretation(**payload)
         
-        # 3. Execute
-        sheet_service.execute_transaction(interpretation.movements, user_id=current_user.email, transaction_id="TX-mock")
+        # 3. Role Based Execution
+        if current_user.role == "VISITOR":
+             raise HTTPException(status_code=403, detail="Visitors cannot execute actions.")
+             
+        elif current_user.role == "USER":
+            # Queue for Approval
+            action_id = sheet_service.add_pending_action(interpretation.movements, user_id=current_user.email)
+            return AssistantConfirmResponse(
+                status="PENDING_APPROVAL",
+                transaction_id=action_id
+            )
+            
+        elif current_user.role == "ADMIN":
+            # Execute Immediately
+            sheet_service.execute_transaction(interpretation.movements, user_id=current_user.email, transaction_id="TX-mock")
+            
+        else:
+             raise HTTPException(status_code=403, detail="Unknown role permissions")
         
+    except HTTPException as he:
+        raise he
     except Exception as e:
         return AssistantConfirmResponse(status="ERROR", error=str(e))
     
@@ -70,3 +88,33 @@ async def confirm_request(
         transaction_id=f"TX-{hash(request.token)}",
         updated_balance={}
     )
+
+@router.post("/submit_action")
+async def submit_action(
+    request: SubmitActionRequest,
+    current_user: User = Depends(get_current_user)
+):
+    # Verify Role
+    if current_user.role == "VISITOR":
+         raise HTTPException(status_code=403, detail="Visitors cannot execute actions.")
+
+    # USER -> Pending
+    if current_user.role == "USER":
+         action_id = sheet_service.add_pending_action(request.action_type, request.payload, user_id=current_user.email)
+         return {
+             "status": "PENDING_APPROVAL",
+             "transaction_id": action_id
+         }
+    
+    # ADMIN -> Execute
+    if current_user.role == "ADMIN":
+         # Execute immediately
+         # We generate a mock transaction ID or real one if we had one
+         tx_id = f"TX-ADM-{hash(str(request.payload))}"
+         sheet_service.execute_transaction(request.action_type, request.payload, user_id=current_user.email, transaction_id=tx_id)
+         return {
+             "status": "SUCCESS",
+             "transaction_id": tx_id
+         }
+    
+    raise HTTPException(status_code=403, detail="Unknown role")

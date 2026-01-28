@@ -1,5 +1,7 @@
 import gspread
 import json
+from typing import Any
+import uuid
 import datetime
 from google.oauth2.service_account import Credentials
 from app.core.config import get_settings
@@ -24,20 +26,37 @@ class SheetService:
             return
 
         try:
-            if not settings.GOOGLE_APPLICATION_CREDENTIALS_JSON:
-                print("SHEETS: No credentials provided in env.")
-                return
-
-            creds_dict = json.loads(settings.GOOGLE_APPLICATION_CREDENTIALS_JSON)
-            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
-            self.client = gspread.authorize(creds)
-            
-            if settings.GOOGLE_SHEET_ID:
-                self.doc = self.client.open_by_key(settings.GOOGLE_SHEET_ID)
-                self._refresh_location_cache()
-                print("SHEETS: Connected and cache warmed.")
+            creds = None
+            if settings.GOOGLE_APPLICATION_CREDENTIALS_JSON:
+                creds_dict = json.loads(settings.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+                creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
             else:
-                print("SHEETS: Connected but no Sheet ID provided.")
+                # Fallback for local dev
+                import os
+                local_creds_path = "service_account.json" 
+                # Also check one level up if in app dir
+                if not os.path.exists(local_creds_path) and os.path.exists(f"backend/{local_creds_path}"):
+                    local_creds_path = f"backend/{local_creds_path}"
+                
+                if os.path.exists(local_creds_path):
+                     print(f"SHEETS: Loading credentials from local file: {local_creds_path}")
+                     creds = Credentials.from_service_account_file(local_creds_path, scopes=SCOPES)
+                else:
+                    print("SHEETS: No credentials provided in env or local file.")
+                    return
+
+            if creds:
+                self.client = gspread.authorize(creds)
+                
+                # Check for Sheet ID in settings, or hardcode fallback for dev (NOT RECOMMENDED for prod but useful now)
+                sheet_id = settings.GOOGLE_SHEET_ID or "1XCeV4S43BvwUen7h-0JU5kjOPk-MSzZ6vZDU4WLbTNE" # Hardcoded from smoke_test.py
+                
+                if sheet_id:
+                    self.doc = self.client.open_by_key(sheet_id)
+                    self._refresh_location_cache()
+                    print("SHEETS: Connected and cache warmed.")
+                else:
+                    print("SHEETS: Connected but no Sheet ID provided.")
                 
         except Exception as e:
             print(f"SHEETS ERROR: Connection failed. {e}")
@@ -62,11 +81,58 @@ class SheetService:
         
         return loc_id in self._valid_locations
 
-    def execute_transaction(self, movements: list[MovementProposal], user_id: str, transaction_id: str):
+    def execute_transaction(self, action_type: str, payload: Any, user_id: str, transaction_id: str):
         if not self.client:
             self.connect()
         
-        # We need to perform batch updates for performance
+        if action_type == "MOVEMENT":
+            self._execute_movement_transaction(payload, user_id, transaction_id)
+        elif action_type == "ACTUALIZAR_UBICACION":
+            self._execute_location_update(payload)
+        else:
+             print(f"SHEETS WARNING: Unknown action type {action_type}")
+
+    def _execute_location_update(self, payload: Any):
+        # Payload is expected to be a LocationUpdate dict
+        # { "id": "P-1", "x": 10, "y": 20, "rotation": 90, ... }
+        try:
+            ws_config = self.doc.worksheet("Config")
+            # Config is defined as A1=Key, B1=Value. B1 contains the FULL STATE JSON.
+            # We must lock? Apps Script has lock. We should be careful.
+            # Ideally we use an Apps Script Execution API to do this atomically, but for now:
+            
+            json_str = ws_config.get("B1").first() # gspread method? .acell('B1').value
+            current_json_str = ws_config.acell('B1').value
+            
+            if not current_json_str:
+                print("SHEETS ERROR: Config JSON is empty.")
+                return
+
+            state = json.loads(current_json_str)
+            ubicaciones = state.get('ubicaciones', {})
+            
+            target_id = payload.get('id')
+            if target_id in ubicaciones:
+                # Update specific fields
+                u = ubicaciones[target_id]
+                u['x'] = payload.get('x')
+                u['y'] = payload.get('y')
+                u['rotation'] = payload.get('rotation')
+                if payload.get('width'): u['width'] = payload.get('width')
+                if payload.get('depth'): u['depth'] = payload.get('depth')
+                
+                # Write back
+                new_json_str = json.dumps(state)
+                ws_config.update('B1', new_json_str) # update_acell or update
+            else:
+                 print(f"SHEETS ERROR: Location {target_id} not found in state.")
+        
+        except Exception as e:
+            print(f"SHEETS ERROR: Failed location update. {e}")
+            raise e
+
+
+    def _execute_movement_transaction(self, movements: list[Any], user_id: str, transaction_id: str):
         try:
             ws_inv = self.doc.worksheet("INVENTARIO")
             ws_hist = self.doc.worksheet("HISTORIAL")
@@ -77,15 +143,23 @@ class SheetService:
             history_rows = []
             
             for mov in movements:
+                # Handle dictionary or object
+                m_type = mov.get('type') if isinstance(mov, dict) else mov.type.value
+                m_item = mov.get('item') if isinstance(mov, dict) else mov.item
+                m_qty = mov.get('qty') if isinstance(mov, dict) else mov.qty
+                m_origin = mov.get('origin') if isinstance(mov, dict) else mov.origin
+                m_dest = mov.get('destination') if isinstance(mov, dict) else mov.destination
+                m_reason = mov.get('reason', "") if isinstance(mov, dict) else (mov.reason or "")
+
                 history_rows.append([
                     timestamp,
                     user_id,
-                    mov.type.value,
-                    mov.item,
-                    mov.qty,
-                    mov.origin,
-                    mov.destination,
-                    mov.reason or ""
+                    m_type,
+                    m_item,
+                    m_qty,
+                    m_origin,
+                    m_dest,
+                    m_reason
                 ])
             
             # Batch append history
@@ -121,47 +195,43 @@ class SheetService:
             rows_to_append = []
             
             for mov in movements:
-                # Logic depends on action type? 
-                # Actually, strictly enforcing: inventory = what is there.
-                # If MOVEMENT/ENTRY: Destination gains qty.
-                # If MOVEMENT/EXIT: Origin loses qty.
-                
+                # Handle dictionary or object
+                m_item = mov.get('item') if isinstance(mov, dict) else mov.item
+                m_qty = mov.get('qty') if isinstance(mov, dict) else mov.qty
+                m_origin = mov.get('origin') if isinstance(mov, dict) else mov.origin
+                m_dest = mov.get('destination') if isinstance(mov, dict) else mov.destination
+                m_state = mov.get('state', "STOCK") if isinstance(mov, dict) else (mov.state.value if hasattr(mov, 'state') else "STOCK")
+
                 # DESTINATION Logic
-                if mov.destination and mov.destination != "EXTERNO":
-                    key = (mov.destination, mov.item)
+                if m_dest and m_dest != "EXTERNO":
+                    key = (m_dest, m_item)
                     if key in inv_map:
                         # Update existing
                         row_num = inv_map[key]
-                        # We need to fetch current val from sheet (or cached all_inv)
-                        # Reading from all_inv is safe if no concurrent writes.
-                        # Assuming single thread/user for Phase 1.
                         current_qty = int(all_inv[row_num-1][idx_qty])
-                        new_qty = current_qty + mov.qty
+                        new_qty = current_qty + m_qty
                         
-                        # We update the array 'all_inv' too to reflect changes in this batch
                         all_inv[row_num-1][idx_qty] = str(new_qty)
                         
                         updates.append(gspread.Cell(row_num, idx_qty+1, new_qty))
                     else:
                         # Insert new
                         rows_to_append.append([
-                            mov.destination,
-                            mov.item,
-                            mov.qty,
+                            m_dest,
+                            m_item,
+                            m_qty,
                             "", # LOTE
-                            mov.state.value if hasattr(mov, 'state') else "STOCK",
+                            m_state,
                             "" # RESPONSABLE
                         ])
-                        # Update map for subsequent items in THIS batch? 
-                        # Complex. Simplified: just append.
                 
                 # ORIGIN Logic (Deduct)
-                if mov.origin and mov.origin != "EXTERNO":
-                    key = (mov.origin, mov.item)
+                if m_origin and m_origin != "EXTERNO":
+                    key = (m_origin, m_item)
                     if key in inv_map:
                         row_num = inv_map[key]
                         current_qty = int(all_inv[row_num-1][idx_qty])
-                        new_qty = max(0, current_qty - mov.qty)
+                        new_qty = max(0, current_qty - m_qty)
                         
                         all_inv[row_num-1][idx_qty] = str(new_qty)
                         updates.append(gspread.Cell(row_num, idx_qty+1, new_qty))
@@ -189,5 +259,117 @@ class SheetService:
         except Exception as e:
             print(f"SHEETS ERROR: Could not fetch users. {e}")
             return []
+
+    def add_user(self, user_data: dict):
+        if not self.client:
+            self.connect()
+        try:
+            ws = self.doc.worksheet("USUARIOS")
+            # Order: USER_ID, ROLE, NAME, PASSWORD
+            row = [
+                user_data.get("email"),
+                user_data.get("role"),
+                user_data.get("name"),
+                "" # Password empty for Google Auth users
+            ]
+            ws.append_row(row)
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not add user. {e}")
+            raise e
+
+    def update_user_role(self, email: str, new_role: str):
+        if not self.client:
+            self.connect()
+        try:
+            ws = self.doc.worksheet("USUARIOS")
+            # Only exact match on email (Col 1)
+            cell = ws.find(email) 
+            if cell:
+                # Update Role (Col 2)
+                ws.update_cell(cell.row, 2, new_role) 
+            else:
+               raise Exception("User not found")
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not update user role. {e}")
+            raise e
+
+    def add_pending_action(self, action_type: str, payload: Any, user_id: str) -> str:
+        if not self.client:
+            self.connect()
+        try:
+            ws = self.doc.worksheet("PENDING_ACTIONS")
+            action_id = str(uuid.uuid4())
+            timestamp = datetime.datetime.utcnow().isoformat()
+            
+            # Serialize payload
+            if hasattr(payload, 'dict'):
+                payload_json = json.dumps(payload.dict())
+            elif isinstance(payload, list):
+                # Handle list of Pydantic models or dicts
+                payload_json = json.dumps([p.dict() if hasattr(p, 'dict') else p for p in payload])
+            else:
+                payload_json = json.dumps(payload)
+            
+            # ID | TIMESTAMP | REQUESTER_EMAIL | ACTION_TYPE | PAYLOAD_JSON | STATUS
+            row = [
+                action_id,
+                timestamp,
+                user_id,
+                action_type, 
+                payload_json,
+                "PENDING"
+            ]
+            ws.append_row(row)
+            return action_id
+        except Exception as e:
+             print(f"SHEETS ERROR: Could not add pending action. {e}")
+             raise e
+
+    def get_pending_actions(self) -> list[dict]:
+        if not self.client:
+            self.connect()
+        try:
+            ws = self.doc.worksheet("PENDING_ACTIONS")
+            return ws.get_all_records()
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not get pending actions. {e}")
+            return []
+
+    def delete_pending_action(self, action_id: str):
+        if not self.client:
+            self.connect()
+        try:
+            ws = self.doc.worksheet("PENDING_ACTIONS")
+            cell = ws.find(action_id)
+            if cell:
+                ws.delete_rows(cell.row)
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not delete pending action. {e}")
+            raise e
+            
+    def get_pending_action(self, action_id: str) -> dict:
+        if not self.client:
+             self.connect()
+        try:
+            ws = self.doc.worksheet("PENDING_ACTIONS")
+            cell = ws.find(action_id)
+            if not cell:
+                return None
+            
+            row_values = ws.row_values(cell.row)
+            if len(row_values) < 5:
+                return None
+                
+            return {
+                "ID": row_values[0],
+                "TIMESTAMP": row_values[1],
+                "REQUESTER_EMAIL": row_values[2],
+                "ACTION_TYPE": row_values[3],
+                "PAYLOAD_JSON": row_values[4],
+                "STATUS": row_values[5] if len(row_values) > 5 else "PENDING"
+            }
+        except Exception as e:
+             print(f"SHEETS ERROR: Could not get pending action. {e}")
+             return None
 
 sheet_service = SheetService()

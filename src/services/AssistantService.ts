@@ -64,6 +64,7 @@ export const AssistantService = {
 
             const response = await fetch(`${API_URL}/upload`, {
                 method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}` }, // Add auth header if available for upload too
                 body: formData,
             });
 
@@ -76,5 +77,46 @@ export const AssistantService = {
             console.error("Assistant API Error (Upload):", error);
             throw error;
         }
+    },
+
+    async confirmRequest(interpretation: Interpretation, token: string, userToken: string): Promise<any> {
+        const response = await fetch(`${API_URL}/confirm`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userToken}`
+            },
+            body: JSON.stringify({
+                token: token,
+                interpretation: interpretation
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            // Handle 403 explicitly
+            if (response.status === 403) throw new Error("No tienes permisos para esta acción.");
+            throw new Error(err.detail || 'Error confirmando acción');
+        }
+        return response.json();
+    },
+    async submitAction(actionType: string, payload: any, token: string): Promise<any> {
+        const response = await fetch(`${API_URL}/submit_action`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action_type: actionType,
+                payload: payload
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Error submitting action");
+        }
+        return await response.json();
     }
 };

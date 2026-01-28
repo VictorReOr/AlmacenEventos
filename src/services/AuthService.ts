@@ -28,7 +28,22 @@ export const AuthService = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Error en inicio de sesión con Google');
+            // Return status code to handle 404
+            throw { status: response.status, message: errorData.detail || 'Error con Google' };
+        }
+        return response.json();
+    },
+
+    async register(name: string, email: string, token: string): Promise<any> {
+        const response = await fetch(`${AUTH_URL}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, token })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Error en registro');
         }
         return response.json();
     }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useAuth } from './context/AuthContext';
 import { useGesture } from '@use-gesture/react';
 import type { Ubicacion } from './types';
 import styles from './WarehouseMap.module.css';
@@ -24,6 +25,8 @@ interface WarehouseMapProps {
     showGrid?: boolean;
     programColors?: Record<string, string>; // Optional to stay backward compatible or default
     isMobile?: boolean;
+    readOnly?: boolean;
+    onVisitorError?: () => void;
 }
 
 export interface WarehouseMapRef {
@@ -53,9 +56,12 @@ interface DraggablePalletProps {
     zoomScale: number;
     rotationMode?: 'normal' | 'vertical-ccw';
     programColors: Record<string, string>;
+    isMobile: boolean;
+    readOnly?: boolean;
+    onVisitorError?: () => void;
 }
 
-const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile }) => {
+const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, onVisitorError }) => {
     const isLeaderDragging = dragState?.id === u.id;
     const isGroupDragging = dragState?.groupIds?.includes(u.id);
 
@@ -91,6 +97,10 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = 
 
     const bindMove = useGesture({
         onDragStart: ({ event }) => {
+            if (readOnly) {
+                if (onVisitorError) onVisitorError();
+                return;
+            }
             event.stopPropagation();
             hasDragged.current = false;
             selectionHandled.current = false;
@@ -130,6 +140,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = 
             }
             */
 
+            if (readOnly) return cancel();
             if (pinching) return cancel();
             event.stopPropagation();
             hasDragged.current = true;
@@ -294,11 +305,16 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = 
     // --- RESIZE LOGIC ---
     const bindResize = useGesture({
         onDragStart: ({ event }) => {
+            if (readOnly) {
+                if (onVisitorError) onVisitorError();
+                return;
+            }
             event.stopPropagation();
             onSelectLocation(u.id);
             setInteractionMode('resize');
         },
-        onDrag: ({ event, delta: [dx, dy], last, args: [handleType] }) => {
+        onDrag: ({ event, delta: [dx, dy], last, args: [handleType], cancel }) => {
+            if (readOnly) return cancel();
             event.stopPropagation();
             const isAlt = event.altKey;
             const isShift = event.shiftKey;
@@ -392,11 +408,16 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = 
     // --- ROTATE LOGIC (VECTOR BASED) ---
     const bindRotate = useGesture({
         onDragStart: ({ event }) => {
+            if (readOnly) {
+                if (onVisitorError) onVisitorError();
+                return;
+            }
             event.stopPropagation();
             onSelectLocation(u.id);
             setInteractionMode('rotate');
         },
-        onDrag: ({ event, xy: [x, y], last, memo }) => {
+        onDrag: ({ event, xy: [x, y], last, memo, cancel }) => {
+            if (readOnly) return cancel();
             event.stopPropagation();
 
             // Calculate center if not already memoized
@@ -795,8 +816,12 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean }> = 
 const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedRef<WarehouseMapRef>) => {
     const {
         ubicaciones, onSelectLocation, selectedIds, onUpdate, geometry, onUpdateGeometry,
-        onSelectMultiple, rotationMode = 'normal', showGrid = false, programColors = {}
+        onSelectMultiple, rotationMode = 'normal', showGrid = false, programColors = {}, readOnly, onVisitorError
     } = props;
+
+    // Auth Check
+    const { user } = useAuth();
+    const isVisitor = user?.role === 'VISITOR';
     // Local state for dragging visualizer (optimistic UI)
     const [dragState, setDragState] = useState<{ id: string, x: number, y: number, rot: number, valid: boolean, w?: number, d?: number, groupIds?: string[], deltaX?: number, deltaY?: number } | null>(null);
 
@@ -1195,6 +1220,8 @@ const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedR
                     rotationMode={rotationMode}
                     programColors={programColors}
                     isMobile={!!props.isMobile}
+                    readOnly={isVisitor || readOnly}
+                    onVisitorError={onVisitorError}
                 />
             );
         });

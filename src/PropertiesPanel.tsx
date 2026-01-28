@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useAuth } from './context/AuthContext';
 import type { Ubicacion, Caja, MaterialEnCaja } from './types';
 import styles from './components/UI/PropertiesPanel.module.css';
 
@@ -27,7 +28,8 @@ const ItemCard: React.FC<{
     onUpdateName: (newName: string) => void;
     onDelete: () => void;
     programColors: Record<string, string>;
-}> = ({ item, onUpdateQty, onUpdateName, onDelete, programColors }) => {
+    readOnly?: boolean;
+}> = ({ item, onUpdateQty, onUpdateName, onDelete, programColors, readOnly }) => {
 
     // Auto-detect icon based on type or name
     const isBox = item.type === 'box' || item.name.toLowerCase().includes('caja');
@@ -38,17 +40,23 @@ const ItemCard: React.FC<{
             {/* Header Row: Icon + Name + Delete */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-                <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => onUpdateName(e.target.value)}
-                    className={styles.editableTitle}
-                    style={{ flex: 1, border: 'none', borderBottom: '1px dashed transparent', padding: '2px 0', fontSize: '1rem', fontWeight: 500 }}
-                    placeholder="Nombre del ítem..."
-                />
-                <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }}>
-                    &times;
-                </button>
+                {readOnly ? (
+                    <span style={{ flex: 1, fontSize: '1rem', fontWeight: 500, padding: '2px 0' }}>{item.name}</span>
+                ) : (
+                    <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => onUpdateName(e.target.value)}
+                        className={styles.editableTitle}
+                        style={{ flex: 1, border: 'none', borderBottom: '1px dashed transparent', padding: '2px 0', fontSize: '1rem', fontWeight: 500 }}
+                        placeholder="Nombre del ítem..."
+                    />
+                )}
+                {!readOnly && (
+                    <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }}>
+                        &times;
+                    </button>
+                )}
             </div>
 
             {/* Controls Row: Quantity */}
@@ -57,9 +65,9 @@ const ItemCard: React.FC<{
                     {isBox ? (item.type === 'box' ? 'Caja Registrada' : 'Detectado como Caja') : 'Material Suelto'}
                 </span>
                 <div className={styles.qtyControl}>
-                    <button onClick={() => onUpdateQty(Math.max(0, item.qty - 1))} className={styles.qtyBtn}>-</button>
+                    {!readOnly && <button onClick={() => onUpdateQty(Math.max(0, item.qty - 1))} className={styles.qtyBtn}>-</button>}
                     <span style={{ width: 30, textAlign: 'center', fontWeight: 'bold' }}>{item.qty}</span>
-                    <button onClick={() => onUpdateQty(item.qty + 1)} className={styles.qtyBtn}>+</button>
+                    {!readOnly && <button onClick={() => onUpdateQty(item.qty + 1)} className={styles.qtyBtn}>+</button>}
                 </div>
             </div>
         </div>
@@ -68,6 +76,9 @@ const ItemCard: React.FC<{
 
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors, onAssistantAction }) => {
+
+    const { user } = useAuth();
+    const isVisitor = user?.role === 'VISITOR';
 
     const handleChange = (field: keyof Ubicacion, value: any) => {
         onUpdate({ ...location, [field]: value });
@@ -234,7 +245,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 <div className={styles.header}>
                     <div className={styles.headerTitle}>
                         <span className={styles.palletId}>
-                            {isShelf ? `Estantería #${location.id}` : `Palet #${location.id}`}
+                            {isShelf ? `Estantería #${location.id}` :
+                                location.tipo === 'zona_carga' ? `Zona de Carga` :
+                                    `Palet #${location.id}`}
                         </span>
                         <span className={styles.palletDesc}>
                             {isShelf ? `Módulo ${selectedModule} • Nivel ${selectedLevel}` : (location.contenido || "Sin Descripción")}
@@ -272,7 +285,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {unifiedList.length === 0 ? (
                             <div className={styles.emptyState}>
-                                {isShelf ? `Hueco Vacío` : `Palet Vacío`}
+                                {isShelf ? `Hueco Vacío` :
+                                    location.tipo === 'zona_carga' ? 'Zona de Carga Vacía' :
+                                        `Palet Vacío`}
                                 <div style={{ fontSize: '0.8rem', marginTop: 4 }}>Añade una caja o material suelto.</div>
                             </div>
                         ) : (
@@ -284,30 +299,33 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                     onUpdateQty={(q) => handleUpdateItem(item.id, { qty: q })}
                                     onUpdateName={(n) => handleUpdateItem(item.id, { name: n })}
                                     onDelete={() => handleDeleteItem(item.id)}
+                                    readOnly={isVisitor}
                                 />
                             ))
                         )}
                     </div>
                 </div>
 
-                {/* FOOTER ACTIONS */}
-                <div className={styles.footer}>
-                    <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                        <button className={styles.primaryAction} onClick={() => handleAddItem(true)} style={{ flex: 1 }}>+ Caja</button>
+                {/* FOOTER ACTIONS - Hide for Visitors */}
+                {!isVisitor && (
+                    <div className={styles.footer}>
+                        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                            <button className={styles.primaryAction} onClick={() => handleAddItem(true)} style={{ flex: 1 }}>+ Caja</button>
+                            {!isShelf && (
+                                <button className={styles.secondaryAction} onClick={() => handleAddItem(false)} style={{ flex: 1, backgroundColor: '#fffbe6', borderColor: '#ffe58f', color: '#d48806' }}>
+                                    + Suelto
+                                </button>
+                            )}
+                        </div>
                         {!isShelf && (
-                            <button className={styles.secondaryAction} onClick={() => handleAddItem(false)} style={{ flex: 1, backgroundColor: '#fffbe6', borderColor: '#ffe58f', color: '#d48806' }}>
-                                + Suelto
+                            <button className={styles.secondaryAction} onClick={() => {
+                                onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
+                            }}>
+                                🚚 Mover Palet
                             </button>
                         )}
                     </div>
-                    {!isShelf && (
-                        <button className={styles.secondaryAction} onClick={() => {
-                            onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
-                        }}>
-                            🚚 Mover Palet
-                        </button>
-                    )}
-                </div>
+                )}
             </div>
         </>
     );
