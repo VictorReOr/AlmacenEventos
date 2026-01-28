@@ -16,11 +16,11 @@ async def lifespan(app: FastAPI):
             with open(creds_path, "w") as f:
                 f.write(settings.GOOGLE_APPLICATION_CREDENTIALS_JSON)
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
-            print(f"✅ Credentials Loaded to {creds_path}")
+            print(f"Credentials Loaded to {creds_path}")
         except Exception as e:
-            print(f"❌ Error loading credentials: {e}")
+            print(f"Error loading credentials: {e}")
     else:
-        print("⚠️ No credentials provided in env vars.")
+        print("No credentials provided in env vars.")
     
     yield
     # Cleanup
