@@ -107,7 +107,8 @@ export const LoginModal: React.FC = () => {
                         <div style={{ marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Email</label>
                             <input
-                                type="email"
+                                id="reg-email"
+                                name="reg-email"
                                 value={regEmail}
                                 disabled
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: '#f0f0f0' }}
@@ -116,6 +117,8 @@ export const LoginModal: React.FC = () => {
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Nombre</label>
                             <input
+                                id="reg-name"
+                                name="reg-name"
                                 type="text"
                                 value={regName}
                                 onChange={e => setRegName(e.target.value)}
@@ -170,8 +173,10 @@ export const LoginModal: React.FC = () => {
 
                         <form onSubmit={handleManualLogin}>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Email</label>
+                                <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Email</label>
                                 <input
+                                    id="email"
+                                    name="email"
                                     type="email"
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
@@ -180,8 +185,10 @@ export const LoginModal: React.FC = () => {
                                 />
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Contraseña</label>
+                                <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', color: '#555' }}>Contraseña</label>
                                 <input
+                                    id="password"
+                                    name="password"
                                     type="password"
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
