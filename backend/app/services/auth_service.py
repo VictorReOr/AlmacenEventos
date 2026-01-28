@@ -74,7 +74,7 @@ class AuthService:
         user_data = {
             "email": email,
             "name": name,
-            "role": role
+            "role": role.upper() # Ensure role is always uppercase
         }
         sheet_service.add_user(user_data)
         return user_data

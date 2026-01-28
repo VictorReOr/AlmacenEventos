@@ -255,7 +255,12 @@ class SheetService:
         
         try:
             ws = self.doc.worksheet("USUARIOS")
-            return ws.get_all_records()
+            records = ws.get_all_records()
+            # Normalize roles to uppercase to avoid validation errors
+            for r in records:
+                if 'ROLE' in r and isinstance(r['ROLE'], str):
+                    r['ROLE'] = r['ROLE'].upper()
+            return records
         except Exception as e:
             print(f"SHEETS ERROR: Could not fetch users. {e}")
             return []
