@@ -5,9 +5,9 @@
     height: 100%;
     padding: 0 var(--space-md);
     background-color: var(--color-primary);
-    /* Verde Andaluz #007A33 */
+    /* Verde Almacenito */
     color: white;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-soft);
     position: relative;
     z-index: var(--z-ui);
 }

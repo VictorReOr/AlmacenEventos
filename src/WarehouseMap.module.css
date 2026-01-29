@@ -16,6 +16,8 @@
     overflow: hidden;
     /* El SVG maneja el pan/zoom */
     position: relative;
+    touch-action: none;
+    /* Critical for mobile gestures */
 }
 
 .clickable {

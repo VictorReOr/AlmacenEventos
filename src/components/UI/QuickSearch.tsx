@@ -66,7 +66,30 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
 
             // Shelves
             if (u.cajasEstanteria) {
-                processBoxes(Object.values(u.cajasEstanteria));
+                // Pass both box and slotKey
+                Object.entries(u.cajasEstanteria).forEach(([slotKey, box]) => {
+                    // Index Box with Slot Info
+                    list.push({
+                        type: 'caja',
+                        id: u.id, // Target parent location
+                        label: `${box.descripcion} [${slotKey}]`,
+                        detail: `en ${u.id} - ${slotKey} (${box.programa})`,
+                        searchStr: `${box.descripcion} ${box.programa} ${box.id} ${slotKey} ${u.id}-${slotKey}`
+                    });
+
+                    // Index Materials in Box
+                    if (box.contenido) {
+                        box.contenido.forEach((m: any) => {
+                            list.push({
+                                type: 'material',
+                                id: u.id,
+                                label: m.nombre,
+                                detail: `en ${box.descripcion} (${u.id} ${slotKey})`,
+                                searchStr: `${m.nombre} ${m.estado} ${slotKey}`
+                            });
+                        });
+                    }
+                });
             }
         });
 

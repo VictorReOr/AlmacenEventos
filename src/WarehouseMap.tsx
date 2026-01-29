@@ -86,7 +86,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     const s = toSVG(currentX, currentY);
 
     const isValid = isLeaderDragging ? dragState?.valid : true;
-    const color = isValid ? (programColors[u.programa] || '#999') : '#ff4444';
+    // const color = isValid ? (programColors[u.programa] || '#999') : '#ff4444';
 
     // const stroke = isSelected ? '#2196F3' : '#333';
 
@@ -744,32 +744,114 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             );
         } else { // Palet
             // PALET: Estilo limpio, borde de color funcional, fondo blanco
+
+            // 1. Determine Programs in Pallet
+            const programs = new Set<string>();
+            if (u.cajas && u.cajas.length > 0) {
+                u.cajas.forEach(c => c.programa && programs.add(c.programa));
+            }
+            if (u.materiales && u.materiales.length > 0) {
+                // Loose materials usually follow location program, but check if needed.
+                // taking u.programa as default for loose items if they lack metadata
+                programs.add(u.programa || 'Vacio');
+            }
+            if (programs.size === 0) {
+                programs.add(u.programa || 'Vacio');
+            }
+
+            const uniquePrograms = Array.from(programs).filter(p => p !== 'Vacio');
+            // If only 'Vacio' remains, keep it empty or grey
+            const displayPrograms = uniquePrograms.length > 0 ? uniquePrograms : (programs.has('Vacio') ? ['Vacio'] : ['Vacio']);
+
+            // Limit to 4 bands
+            const maxBands = 4;
+            const bandsToShow = displayPrograms.slice(0, maxBands);
+            const showOverflow = displayPrograms.length > maxBands;
+
+            // Status Logic
+            const hasCajas = u.cajas && u.cajas.length > 0;
+            const hasMaterial = u.materiales && u.materiales.length > 0;
+            const isOccupied = hasCajas || hasMaterial;
+
+            // Band Geometry
+            // Vertical Bands: Divide Width
+            const bandCount = showOverflow ? maxBands : bandsToShow.length;
+            const bandW = finalSvgW / bandCount;
+
             content = (
                 <g>
-                    {isSelected && <rect x={-finalSvgW / 2 - 3} y={-finalSvgH / 2 - 3} width={finalSvgW + 6} height={finalSvgH + 6} fill="none" stroke={C_VERDE} strokeWidth={2} rx={2} />}
+                    {isSelected && <rect x={-finalSvgW / 2 - 3} y={-finalSvgH / 2 - 3} width={finalSvgW + 6} height={finalSvgH + 6} fill="none" stroke={C_VERDE} strokeWidth={2} rx={6} />}
 
-                    {/* Fondo Blanco Limpio */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="white" stroke={isValid ? "#bdbdbd" : "#e57373"} strokeWidth={1} rx={1} />
+                    {/* ClipPath for Rounded Pallet */}
+                    <clipPath id={`clip-${u.id}`}>
+                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} rx={4} />
+                    </clipPath>
 
-                    {/* Header de Color (Semántico) - Pequeña franja arriba */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH * 0.25} fill={color} rx={1} clipPath="inset(0 0 75% 0 round 1px 1px 0 0)" />
+                    {/* Background & Status Border */}
+                    <rect
+                        x={-finalSvgW / 2}
+                        y={-finalSvgH / 2}
+                        width={finalSvgW}
+                        height={finalSvgH}
+                        fill={isOccupied ? "white" : "#E8F5E9"} // Light Green background if free
+                        stroke={isValid ? (isOccupied ? "#9e9e9e" : "#4CAF50") : "#e57373"} // Green border if free, Grey if occupied
+                        strokeWidth={isOccupied ? 1 : 2}
+                        rx={4}
+                    />
+
+                    {/* Render Bands (Only if occupied) */}
+                    {isOccupied && (
+                        <g clipPath={`url(#clip-${u.id})`}>
+                            {bandsToShow.map((prog, idx) => {
+                                const bColor = programColors[prog] || '#e0e0e0';
+                                const bx = -finalSvgW / 2 + (idx * bandW);
+
+                                // Last band if overflow
+                                if (showOverflow && idx === maxBands - 1) {
+                                    return (
+                                        <g key={idx}>
+                                            <rect x={bx} y={-finalSvgH / 2} width={bandW} height={finalSvgH} fill="#f5f5f5" />
+                                            <circle cx={bx + bandW / 2} cy={0} r={2} fill="#666" />
+                                            <circle cx={bx + bandW / 2} cy={-5} r={2} fill="#666" />
+                                            <circle cx={bx + bandW / 2} cy={5} r={2} fill="#666" />
+                                        </g>
+                                    );
+                                }
+
+                                return (
+                                    <rect
+                                        key={idx}
+                                        x={bx}
+                                        y={-finalSvgH / 2}
+                                        width={bandW}
+                                        height={finalSvgH}
+                                        fill={bColor}
+                                        stroke="none"
+                                    />
+                                );
+                            })}
+                        </g>
+                    )}
+
+                    {/* Border Overlay (to clean up edges) */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke={isValid ? (isOccupied ? "#e0e0e0" : "#4CAF50") : "#e57373"} strokeWidth={1} rx={4} />
+
 
                     {/* ID */}
                     {/* Indicators (Fixed to Pallet) */}
-                    {u.cajas && u.cajas.length > 0 && (
-                        <rect x={-finalSvgW / 2 + 3} y={finalSvgH / 2 - 9} width={6} height={6} fill={C_VERDE} rx={1}>
+                    {hasCajas && (
+                        <rect x={-finalSvgW / 2 + 3} y={-finalSvgH / 2 + 3} width={6} height={6} fill="white" rx={1} stroke="#ccc" strokeWidth={0.5}>
                             <title>Contiene Cajas</title>
                         </rect>
                     )}
-                    {u.materiales && u.materiales.length > 0 && (
-                        <circle cx={-finalSvgW / 2 + (u.cajas?.length ? 15 : 6)} cy={finalSvgH / 2 - 6} r={3} fill="#FB8C00">
-                            <title>Contiene Material Suelto</title>
-                        </circle>
+                    {hasCajas && (
+                        <text x={-finalSvgW / 2 + 6} y={-finalSvgH / 2 + 7.5} fontSize={5} textAnchor="middle" fill="#333">📦</text>
                     )}
 
                     {/* ID (Floating/Readable) */}
                     <g transform={`rotate(${-currentRot})`}>
-                        <text x={0} y={5} fontSize={10} textAnchor="middle" fill="#212121" fontWeight="500" style={{ pointerEvents: 'none' }}>{u.id}</text>
+                        <rect x={-12} y={-5} width={24} height={10} rx={2} fill="rgba(255,255,255,0.85)" />
+                        <text x={0} y={2.5} fontSize={8} textAnchor="middle" fill="#1F2D2B" fontWeight="600" style={{ pointerEvents: 'none' }}>{u.id}</text>
                     </g>
                 </g>
             );

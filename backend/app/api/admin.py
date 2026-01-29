@@ -69,11 +69,14 @@ async def get_users(current_user: User = Depends(get_current_user)):
     # Clean up output if necessary (remove passwords)
     cleaned_users = []
     for u in users:
-        cleaned_users.append({
-            "email": u["USER_ID"],
-            "role": u["ROLE"],
-            "name": u.get("NAME")
-        })
+        # Handle potential key variations (USER_ID vs USER ID)
+        email = u.get("USER_ID") or u.get("USER ID")
+        if email:
+            cleaned_users.append({
+                "email": email,
+                "role": u.get("ROLE", "VISITOR"),
+                "name": u.get("NAME", "")
+            })
     return cleaned_users
 
 @router.put("/users/{email}/role")

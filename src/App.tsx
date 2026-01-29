@@ -18,6 +18,8 @@ import { PrintModal } from './components/UI/PrintModal';
 import type { PrintOptions } from './components/UI/PrintModal';
 import { PrintView } from './components/Print/PrintView';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { UserMenu } from './components/Layout/UserMenu';
+import { DraggableLegend } from './components/UI/DraggableLegend';
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
@@ -404,16 +406,9 @@ function AuthenticatedApp() {
             subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
             leftAction={
               <div style={{ display: 'flex', gap: '8px' }}>
+                {/* Menu / Config (Left Side) */}
                 <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
                   ⚙️
-                </button>
-                <button
-                  className="icon-btn"
-                  onClick={logout}
-                  title="Cerrar Sesión"
-                  style={{ backgroundColor: '#ffcccc', color: '#cc0000' }}
-                >
-                  🚪
                 </button>
               </div>
             }
@@ -426,9 +421,10 @@ function AuthenticatedApp() {
                     title="Panel Admin"
                     style={{ backgroundColor: '#FFD54F', color: '#333' }}
                   >
-                    🛡️ Admin
+                    🛡️
                   </button>
                 )}
+
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
                 <QuickSearch
@@ -438,36 +434,44 @@ function AuthenticatedApp() {
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                {/* Selection Mode Toggle */}
-                <button
-                  onClick={() => setIsSelectionMode(!isSelectionMode)}
-                  className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
-                  title={isSelectionMode ? "Modo Selección Activo (Clic para desactivar)" : "Activar Modo Selección Múltiple"}
-                >
-                  {isSelectionMode ? '☑️' : '☐'}
-                </button>
+                {/* Map Controls Group */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button
+                    onClick={() => setIsSelectionMode(!isSelectionMode)}
+                    className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                    title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
+                  >
+                    {isSelectionMode ? '☑️' : '☐'}
+                  </button>
 
+                  <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
+                    🖨️
+                  </button>
 
-
+                  <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                    {showGrid ? '▦' : '□'}
+                  </button>
+                </div>
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir Inventario">
-                  🖨️
-                </button>
+                {/* Cloud Controls */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={handleLoadFromCloud} disabled={isSyncing} className="icon-btn" title="Cargar">☁️</button>
+                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">💾</button>
+                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">↩</button>
+                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">↪</button>
+                </div>
+
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
-                  {showGrid ? '▦' : '□'}
-                </button>
-                <button onClick={handleLoadFromCloud} disabled={isSyncing} className="icon-btn" title="Cargar">☁️</button>
-                <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">💾</button>
-                <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">↩</button>
-                <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">↪</button>
+                {/* User Menu (Avatar) */}
+                <UserMenu user={user} onLogout={logout} />
               </div>
             }
           />
         }
+
         main={
           <WarehouseMap
             ref={mapRef}
@@ -570,6 +574,9 @@ function AuthenticatedApp() {
                 hasNotification={false}
               />
             </animated.div>
+
+            {/* Draggable Legend (UI Polish) */}
+            <DraggableLegend programColors={programColors} />
 
             {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
             <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>

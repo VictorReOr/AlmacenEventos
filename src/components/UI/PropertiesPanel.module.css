@@ -17,9 +17,9 @@
     width: 400px;
     max-width: 90vw;
     height: 100vh;
-    background-color: #f8f9fa;
-    /* Gris muy claro técnico */
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+    background-color: var(--color-bg-panel);
+    /* Blanco Limpio */
+    box-shadow: var(--shadow-float);
     z-index: 910;
     display: flex;
     flex-direction: column;
@@ -47,7 +47,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--color-primary);
-    /* Verde Andaluz */
+    /* Verde Almacenito */
     letter-spacing: -0.5px;
 }
 
@@ -108,8 +108,9 @@
 }
 
 .boxIdBadge {
-    background-color: var(--color-primary-subtle);
-    color: var(--color-primary-dark);
+    background-color: var(--color-primary-light);
+    color: white;
+    /* Contrast fix */
     font-size: 0.75rem;
     font-weight: 700;
     padding: 4px 8px;
