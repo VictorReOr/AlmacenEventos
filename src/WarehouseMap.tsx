@@ -504,6 +504,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
         if (dist < clickThreshold && !isLongPressed.current && !selectionHandled.current) {
             e.stopPropagation();
+            console.log('DEBUG: Click detected on', u.id, u.tipo); // DEBUG LOG
             const isCtrl = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
             onSelectLocation(u.id, { toggle: isCtrl, range: isShift });

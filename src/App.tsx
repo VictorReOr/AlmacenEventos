@@ -557,8 +557,8 @@ function AuthenticatedApp() {
               {...bindAssistantDrag()}
               style={{
                 position: 'absolute',
-                bottom: 20,
-                right: 20,
+                top: -15, // Pisando el header
+                left: 10,
                 zIndex: 9999, // CRITICAL: Always on top of everything
                 x,
                 y,
