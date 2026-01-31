@@ -28,7 +28,7 @@ export const AdminDashboard: React.FC = () => {
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
-    const API_URL = config.API_URL.replace('/assistant', '/admin');
+    const API_URL = `${config.API_BASE_URL}/api/v1/admin`;
 
     useEffect(() => {
         if (activeTab === 'PENDING') fetchPending();

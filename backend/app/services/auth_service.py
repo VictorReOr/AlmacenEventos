@@ -59,13 +59,21 @@ class AuthService:
         """Verifies Google ID Token and returns the email if valid."""
         try:
             # Verify token signature. 
-            # Note: For production, Pass your Google Client ID as the third argument.
-            id_info = id_token.verify_oauth2_token(token, requests.Request())
+            # We strictly check the audience now.
+            client_id = settings.GOOGLE_CLIENT_ID
+            if not client_id:
+                print("WARNING: GOOGLE_CLIENT_ID not set in backend config. Skipping audience check.")
+                id_info = id_token.verify_oauth2_token(token, requests.Request())
+            else:
+                id_info = id_token.verify_oauth2_token(token, requests.Request(), audience=client_id)
             
             email = id_info.get("email")
             return email
+        except ValueError as ve:
+            print(f"AUTH ERROR: Token validation error: {ve}")
+            return None
         except Exception as e:
-            print(f"AUTH ERROR: Google Token Verification Failed. {e}")
+            print(f"AUTH ERROR: Google Token Verification Failed. Type: {type(e).__name__}, Error: {e}")
             import traceback
             traceback.print_exc()
             return None

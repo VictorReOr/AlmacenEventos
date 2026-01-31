@@ -106,6 +106,31 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
                     </div>
                 </div>
 
+                {/* Emergency Reset Section */}
+                <div style={{ marginTop: 30, paddingTop: 20, borderTop: '1px solid #eee' }}>
+                    <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: 10 }}>Zona de Peligro</p>
+                    <button
+                        onClick={() => {
+                            if (confirm("⚠️ ¿Estás seguro? \n\nEsto BORRARÁ todo el mapa local y restaurará la configuración inicial. \n\nÚsalo solo si el mapa ha desaparecido o está corrupto.")) {
+                                localStorage.clear();
+                                window.location.reload();
+                            }
+                        }}
+                        style={{
+                            background: '#FFEBEE',
+                            color: '#D32F2F',
+                            border: '1px solid #FFCDD2',
+                            padding: '8px 16px',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            width: '100%',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        ⚠️ Restaurar Mapa de Fábrica (Reset)
+                    </button>
+                </div>
+
                 <div className={styles.footer}>
                     <button className={`${styles.button} ${styles.cancelBtn}`} onClick={onClose}>Cancelar</button>
                     <button className={`${styles.button} ${styles.saveBtn}`} onClick={() => {

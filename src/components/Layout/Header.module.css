@@ -4,10 +4,14 @@
     justify-content: space-between;
     height: 100%;
     padding: 0 var(--space-md);
-    background-color: var(--color-primary);
-    /* Verde Almacenito */
+
+    /* Nuevo estilo: Sólido Verde Branding */
+    background-color: #2E7D32;
+    /* Hardcoded green main for safety */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-bottom: none;
+
     color: white;
-    box-shadow: var(--shadow-soft);
     position: relative;
     z-index: var(--z-ui);
 }
@@ -17,8 +21,9 @@
     display: flex;
     align-items: center;
     min-width: 48px;
-    /* Táctil mínimo accesible */
     height: 100%;
+    gap: 8px;
+    /* Espaciado entre iconos */
 }
 
 .center {
@@ -31,20 +36,22 @@
 }
 
 .title {
-    font-size: 1.25rem;
-    font-weight: 500;
+    font-size: 1.1rem;
+    font-weight: 600;
     color: white;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.3px;
 }
 
 .subtitle {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 400;
-    margin-top: -2px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    margin-top: 0px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Mobile Responsiveness */

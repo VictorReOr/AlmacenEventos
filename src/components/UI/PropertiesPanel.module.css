@@ -17,7 +17,7 @@
     width: 400px;
     max-width: 90vw;
     height: 100vh;
-    background-color: var(--color-bg-panel);
+    background-color: #ffffff;
     /* Blanco Limpio */
     box-shadow: var(--shadow-float);
     z-index: 910;

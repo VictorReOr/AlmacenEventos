@@ -4,18 +4,17 @@
 }
 
 .icon-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 4px;
-  padding: 4px 8px;
-  margin: 0 4px;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  height: 32px;
+  font-size: 1.2rem;
+  padding: 8px;
+  border-radius: 4px;
+  color: white;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
 }
 
 @media (max-width: 600px) {

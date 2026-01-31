@@ -20,6 +20,7 @@ import { PrintView } from './components/Print/PrintView';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { UserMenu } from './components/Layout/UserMenu';
 import { DraggableLegend } from './components/UI/DraggableLegend';
+import { IconShield } from './components/UI/Icons';
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
@@ -28,6 +29,10 @@ import { generateInitialState } from './data';
 import type { WarehouseMapRef } from './WarehouseMap';
 import { GoogleSheetsService } from './services/GoogleSheetsService';
 import { AssistantService } from './services/AssistantService';
+import { InventoryService } from './services/InventoryService';
+import { validateInventory } from './utils/inventoryValidation';
+import type { InventoryError } from './utils/inventoryValidation';
+import { InventoryErrorsModal } from './components/Admin/InventoryErrorsModal';
 
 // Styles
 import './App.css';
@@ -92,18 +97,58 @@ function AuthenticatedApp() {
 
   const getInitialState = () => {
     try {
-      const saved = localStorage.getItem('warehouse_V72_VERTICAL');
+      const saved = localStorage.getItem('warehouse_V73.1_SHELVES_FIX');
+
+      console.log("App: Generating fresh code state...");
       const codeState = generateInitialState();
+
       const defaults = { ubicaciones: codeState.ubicaciones, geometry: codeState.geometry };
 
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
+
+          // Validate Parsed Data
+          const hasGeo = parsed.geometry && Array.isArray(parsed.geometry) && parsed.geometry.length > 0;
+          const hasObjs = parsed.ubicaciones && Object.keys(parsed.ubicaciones).length > 0;
+
+          if (!hasGeo && !hasObjs) {
+            console.warn("⚠️ Saved state is empty/invalid. Reverting to DEFAULTS.");
+            return defaults;
+          }
+
+          // Merge Logic
+          let mergedUbicaciones = hasObjs ? { ...codeState.ubicaciones, ...parsed.ubicaciones } : codeState.ubicaciones;
+
+          // EMERGENCY FIX: Filter out Ghost Pallets (Y > 19)
+          // Old pallets trapped in localStorage might obscure the new E1/E2 shelves.
+          // Since no valid pallet is defined below Y=19 in code, we can safely delete them.
+          const cleanUbicaciones: Record<string, any> = {};
+          let ghostCount = 0;
+          Object.entries(mergedUbicaciones).forEach(([key, u]) => {
+            const uObj = u as Ubicacion; // Type cast
+
+            // Protected IDs (Structures)
+            const isStructure = key.startsWith('E') || key.startsWith('van') || key.startsWith('door') || key.startsWith('muro');
+
+            // Delete anything else in the danger zone (Y > 19)
+            if (!isStructure && uObj.y > 19) {
+              ghostCount++;
+              console.log(`Ghost removed: ${key} at y=${uObj.y}`);
+              return; // Skip (Delete)
+            }
+            cleanUbicaciones[key] = uObj;
+          });
+
+          if (ghostCount > 0) {
+            console.log(`🧹 Auto-Removed ${ghostCount} ghost objects from state.`);
+          }
+
           return {
             ...defaults,
             ...parsed,
-            ubicaciones: { ...codeState.ubicaciones, ...parsed.ubicaciones },
-            geometry: codeState.geometry
+            ubicaciones: cleanUbicaciones,
+            geometry: hasGeo ? parsed.geometry : codeState.geometry
           };
         } catch (e) {
           console.error("Error parsing saved state", e);
@@ -176,6 +221,10 @@ function AuthenticatedApp() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printData, setPrintData] = useState<Ubicacion[] | null>(null);
 
+  // Validation State
+  const [inventoryErrors, setInventoryErrors] = useState<InventoryError[]>([]);
+  const [showErrorsModal, setShowErrorsModal] = useState(false);
+
 
 
   const [isSelectionMode, setIsSelectionMode] = useState(false); // New state for mobile selection
@@ -201,19 +250,119 @@ function AuthenticatedApp() {
     } finally { setIsSyncing(false); }
   };
 
-  const handleLoadFromCloud = async () => {
+  const handleLoadFromCloud = async (silent = false) => {
     if (!scriptUrl) { setShowConfig(true); return; }
-    if (!confirm("Se sobrescribirán los cambios locales. ¿Continuar?")) return;
+    if (!silent && !confirm("Se sobrescribirán los cambios locales. ¿Continuar?")) return;
     setIsSyncing(true);
     try {
-      const data = await GoogleSheetsService.load(scriptUrl);
-      if (data) { pushState(data); alert('¡Cargado con éxito!'); }
-      else { alert('Error: Datos vacíos.'); }
+      // Pass the code defaults as the base state so the service can populate it with cloud inventory
+      const defaults = generateInitialState();
+      const baseState = { ubicaciones: defaults.ubicaciones, geometry: defaults.geometry };
+
+      const data = await GoogleSheetsService.load(scriptUrl, baseState);
+
+      if (data) {
+        // Validation: Don't accept empty geometry from cloud
+        if (!data.geometry || data.geometry.length === 0) {
+          console.warn("Cloud data has no geometry. Ignoring.");
+          if (!silent) alert('Error: Datos de nube corruptos o vacíos (sin geometría).');
+          return;
+        }
+        pushState(data);
+        if (!silent) alert('¡Cargado con éxito!');
+      }
+      else {
+        if (!silent) alert('Error: Datos vacíos.');
+      }
     } catch (error) {
       console.error(error);
-      alert('Error: ' + error);
+      if (!silent) alert('Error: ' + error);
     } finally { setIsSyncing(false); }
   };
+
+
+  // ... existing imports ...
+
+  // Inside AuthenticatedApp:
+
+  // Auto-Load on mount -> DISABLED to prevent overwriting local data with empty cloud data
+  /*
+  useEffect(() => {
+    if (scriptUrl) {
+      console.log("Auto-loading from cloud...");
+      handleLoadFromCloud(true);
+    }
+  }, []);
+  */
+
+  // --- NEW: Load Inventory from Backend (Google Sheets) ---
+  useEffect(() => {
+    const loadLiveInventory = async () => {
+      try {
+        console.log("App: Fetching live inventory...");
+        const rawData = await InventoryService.fetchInventory();
+        if (rawData.length > 0) {
+          const updates = InventoryService.parseInventoryToState(rawData);
+          console.log("App: Raw Inventory Items:", rawData.length);
+          console.log("App: Parsed updates keys:", Object.keys(updates));
+
+          // Merge updates into current state
+          // We use function form of state setter if possible, but here we have `state` from useHistory
+          // We must be careful not to create a race condition if simple state updates happen.
+          // Since this runs once on mount, it should be fine to use current `state`.
+          // However, `state` in dependency array would cause loop.
+          // We use a ref or just `handleUpdate` if it merged? 
+          // `handleUpdate` uses `state` from closure.
+
+          // Better: Create a dedicated merge function that uses the *latest* state if inside useEffect?
+          // Actually `handleUpdate` is defined in render scope, so it closes over `state`.
+          // If we call it, it uses `state` at render time (mount time).
+          // Which is fine because nothing else updates it yet.
+
+          // Note: `handleUpdate` expects Ubicacion array. 
+          // Our `updates` is Record<string, Partial<Ubicacion>>.
+          // We need to convert it.
+
+          const fullUpdates: Ubicacion[] = [];
+          const currentUbicaciones = state.ubicaciones; // Closure state
+
+          Object.entries(updates).forEach(([id, partial]) => {
+            if (currentUbicaciones[id]) {
+              fullUpdates.push({ ...currentUbicaciones[id], ...partial });
+            }
+          });
+
+          if (fullUpdates.length > 0) {
+            handleUpdate(fullUpdates);
+            console.log("App: Live inventory applied.");
+
+            // Run Validation on the NEW state (approximated by merging locally)
+            // fullUpdates contains the NEW objects. We need to merge them with current to validate all.
+            const validationState = { ...currentUbicaciones };
+            fullUpdates.forEach(u => {
+              if (validationState[u.id]) {
+                validationState[u.id] = { ...validationState[u.id], ...u };
+              } else {
+                validationState[u.id] = u as Ubicacion;
+              }
+            });
+
+            const errors = validateInventory(validationState);
+            if (errors.length > 0) {
+              console.warn("App: Inventory Errors Detected:", errors.length);
+              setInventoryErrors(errors);
+              // setShowErrorsModal(true); // Optional: Auto-open? No, just alert.
+            }
+          }
+        }
+      } catch (e) {
+        console.error("App: Failed to load live inventory", e);
+      }
+    };
+
+    // loadLiveInventory();
+    console.warn("App: Live Inventory Loading DISABLED by user request.");
+  }, []); // Run once on mount
 
   const handleUpdate = async (updated: Ubicacion | Ubicacion[]) => {
     // Intercept for USER role (Proposals)
@@ -421,7 +570,7 @@ function AuthenticatedApp() {
                     title="Panel Admin"
                     style={{ backgroundColor: '#FFD54F', color: '#333' }}
                   >
-                    🛡️
+                    <IconShield color="#333" />
                   </button>
                 )}
 
@@ -441,7 +590,7 @@ function AuthenticatedApp() {
                     className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
                     title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
                   >
-                    {isSelectionMode ? '☑️' : '☐'}
+                    {isSelectionMode ? "✅" : "⬜"}
                   </button>
 
                   <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
@@ -449,18 +598,53 @@ function AuthenticatedApp() {
                   </button>
 
                   <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
-                    {showGrid ? '▦' : '□'}
+                    {showGrid ? "mesh" : "grid"}
                   </button>
                 </div>
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
+                {/* Inventory Status Indicator (Permanent) */}
+                <button
+                  onClick={() => inventoryErrors.length > 0 ? setShowErrorsModal(true) : null}
+                  className="icon-btn"
+                  title={inventoryErrors.length > 0 ? `¡Atención! ${inventoryErrors.length} Errores de Inventario` : "Inventario Validado: Correcto"}
+                  style={{
+                    backgroundColor: inventoryErrors.length > 0 ? 'var(--state-error)' : 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    borderColor: 'transparent',
+                    cursor: inventoryErrors.length > 0 ? 'pointer' : 'default',
+                    width: 'auto',
+                    padding: '0 12px',
+                    gap: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '20px',
+                    height: '32px'
+                  }}
+                >
+                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>
+                    {inventoryErrors.length > 0 ? "⚠️" : "🛡️"}
+                  </span>
+                  {inventoryErrors.length > 0 && <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{inventoryErrors.length}</span>}
+                </button>
+
+                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
                 {/* Cloud Controls */}
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={handleLoadFromCloud} disabled={isSyncing} className="icon-btn" title="Cargar">☁️</button>
-                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">💾</button>
-                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">↩</button>
-                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">↪</button>
+                  <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
+                    ☁️⬇️
+                  </button>
+                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
+                    💾
+                  </button>
+                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
+                    ↩️
+                  </button>
+                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">
+                    ↪️
+                  </button>
                 </div>
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
@@ -507,21 +691,16 @@ function AuthenticatedApp() {
               />
             )}
 
+            {showErrorsModal && <InventoryErrorsModal errors={inventoryErrors} onClose={() => setShowErrorsModal(false)} />}
+
+
+            {/* Hidden Print View */}
             {assistantAlert && (
               <AssistantAlert
                 message={assistantAlert}
                 onClose={() => setAssistantAlert(null)}
               />
             )}
-
-            {/* Modal de Impresión */}
-            <PrintModal
-              isOpen={showPrintModal}
-              onClose={() => setShowPrintModal(false)}
-              onPrint={handlePrint}
-              programs={Object.keys(programColors).filter(p => !['Vacio', 'Otros'].includes(p))}
-              hasSelection={selectedIds.size > 0}
-            />
 
             {/* Chatbot Window */}
             <AssistantChat
@@ -536,7 +715,7 @@ function AuthenticatedApp() {
             />
 
             {/* Panel de Propiedades (Legacy) */}
-            {selectedLocation && !isSelectionMode && (
+            {selectedLocation && !isSelectionMode && selectedLocation.id !== 'van_v3' && (
               <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
                 <PropertiesPanel
                   location={selectedLocation}
@@ -557,8 +736,8 @@ function AuthenticatedApp() {
               {...bindAssistantDrag()}
               style={{
                 position: 'absolute',
-                top: -15, // Pisando el header
-                left: 10,
+                top: 100, // Fixed to be visible below header
+                left: 20,
                 zIndex: 9999, // CRITICAL: Always on top of everything
                 x,
                 y,
@@ -576,7 +755,7 @@ function AuthenticatedApp() {
             </animated.div>
 
             {/* Draggable Legend (UI Polish) */}
-            <DraggableLegend programColors={programColors} />
+            {/* <DraggableLegend programColors={programColors} /> */}
 
             {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
             <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>

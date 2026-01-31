@@ -99,8 +99,40 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
         let boxes: Caja[] = [];
         if (isShelf) {
             const key = `M${selectedModule}-A${selectedLevel}`;
-            const box = location.cajasEstanteria?.[key];
-            if (box) boxes = [box];
+
+            // 1. Try Cloud Data (shelfItems)
+            if (location.shelfItems?.[key]) {
+                boxes = location.shelfItems[key];
+            }
+            // 2. Try Local Structure (niveles) - Matches data.ts migration
+            else if (location.niveles) {
+                // Modules are just visual partitions in the current data model for 'niveles'?
+                // Actually data.ts puts everything in 'niveles' array of the Ubicacion object. 
+                // But wait, Ubicacion has 'niveles' which is per-shelf?
+                // data.ts: "niveles": [{ nivel: 1, items: [] }, ...]
+                // It doesn't seem to split by Module in 'niveles' array structure in data.ts for *items*, 
+                // BUT GoogleSheetsService maps M#-A# to shelfItems[M#-A#].
+
+                // Let's look at data.ts again in my mind... 
+                // u.cajasEstanteria -> u.niveles[level-1].items.push(box).
+                // It LOSES the Module information in that migration if not careful? 
+                // Wait, logic in data.ts was: 
+                // const match = posKey.match(/A(\d+)/); -> levelIndex = levelNum - 1.
+                // It ignores the 'M' part! 
+                // So for local data, we just check the level, ignoring module for now (limitation of current data.ts).
+                // Or we can filter by module if we stored it? We didn't.
+
+                // So for 'niveles', we just take all items in that level.
+                const levelIdx = selectedLevel - 1;
+                if (location.niveles[levelIdx]?.items) {
+                    boxes = location.niveles[levelIdx].items;
+                }
+            }
+            // 3. Legacy Fallback
+            else {
+                const box = location.cajasEstanteria?.[key];
+                if (box) boxes = [box];
+            }
         } else {
             boxes = location.cajas || [];
         }

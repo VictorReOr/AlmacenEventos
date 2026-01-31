@@ -12,6 +12,14 @@ import { AuthProvider } from './context/AuthContext';
 const GOOGLE_CLIENT_ID = "856058698301-4rk59qb6j7d75r72ecntmgiv3tu126o6.apps.googleusercontent.com";
 
 console.log('Main script executing');
+// EMERGENCY FIX: Clearing local storage to recover from white screen crash
+/*
+try {
+  console.warn("⚠️ FORCING LOCAL STORAGE CLEAR FOR RECOVERY ⚠️");
+  localStorage.clear();
+} catch (e) { console.error(e); }
+*/
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>

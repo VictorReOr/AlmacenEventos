@@ -775,7 +775,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 6,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 2 (6M)",
+            "mensaje": "Estantería 2 (6 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -806,7 +806,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 6,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 3 (6M)",
+            "mensaje": "Estantería 3 (6 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -826,8 +826,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-1": {
-            "id": "E-1",
+        "E1": {
+            "id": "E1",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E1",
@@ -857,8 +857,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-7": {
-            "id": "E-7",
+        "E7": {
+            "id": "E7",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E7",
@@ -868,7 +868,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 2,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 7 (2M)",
+            "mensaje": "Estantería 7 (2 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -888,8 +888,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-6": {
-            "id": "E-6",
+        "E6": {
+            "id": "E6",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E6",
@@ -899,7 +899,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 2,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 6 (2M)",
+            "mensaje": "Estantería 6 (2 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -919,8 +919,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-5": {
-            "id": "E-5",
+        "E5": {
+            "id": "E5",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E5",
@@ -930,7 +930,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 2,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 5 (2M)",
+            "mensaje": "Estantería 5 (2 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -950,8 +950,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-8": {
-            "id": "E-8",
+        "E8": {
+            "id": "E8",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E8",
@@ -961,7 +961,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 1,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 8 (1M)",
+            "mensaje": "Estantería 8 (1 Módulo)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -973,8 +973,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-4a": {
-            "id": "E-4a",
+        "E4a": {
+            "id": "E4a",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E4a",
@@ -984,7 +984,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 2,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 4a (2M)",
+            "mensaje": "Estantería 4a (2 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -1004,8 +1004,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                 }
             ]
         },
-        "E-4b": {
-            "id": "E-4b",
+        "E4b": {
+            "id": "E4b",
             "tipo": "estanteria_modulo",
             "programa": "Vacio",
             "contenido": "E4b",
@@ -1015,7 +1015,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 6,
             "depth": 0.45,
             "estanteriaId": 0,
-            "mensaje": "Estantería 4b (6M)",
+            "mensaje": "Estantería 4b (6 Módulos)",
             "niveles": [
                 {
                     "nivel": 1,
@@ -1084,7 +1084,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
     Object.entries(INITIAL_INVENTORY_UPDATES).forEach(([key, update]) => {
         let locationId = key;
         // Map keys if necessary (e.g. E1 -> E-1)
-        if (key === 'E1') locationId = 'E-1';
+        // if (key === 'E1') locationId = 'E-1'; // REMOVED: We now have a real E1 shelf.
 
         const location = ubicaciones[locationId];
         if (!location) return;

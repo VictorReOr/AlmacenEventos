@@ -377,4 +377,52 @@ class SheetService:
              print(f"SHEETS ERROR: Could not get pending action. {e}")
              return None
 
+    
+    def get_inventory(self) -> list[dict]:
+        """Fetch all records from INVENTARIO tab, robustly finding headers."""
+        if not self.client:
+             self.connect()
+        try:
+            ws = self.doc.worksheet("INVENTARIO")
+            all_values = ws.get_all_values()
+            
+            if not all_values:
+                return []
+
+            # 1. Find Header Row
+            header_row_index = -1
+            headers = []
+            
+            for i, row in enumerate(all_values):
+                # Normalize row values to check for known headers
+                normalized_row = [str(c).strip().upper() for c in row]
+                if "ID_UBICACION" in normalized_row:
+                    header_row_index = i
+                    # Capture headers with original casing but stripped
+                    headers = [str(c).strip() for c in row] 
+                    break
+            
+            if header_row_index == -1:
+                print("SHEETS ERROR: Could not find 'ID_UBICACION' header in INVENTARIO tab.")
+                return []
+
+            # 2. Parse Rows
+            results = []
+            for row in all_values[header_row_index + 1:]:
+                # skip empty rows
+                if not any(row): continue
+                
+                item = {}
+                for idx, header in enumerate(headers):
+                    if idx < len(row) and header: # Only map if header exists
+                        item[header] = row[idx]
+                results.append(item)
+                
+            print(f"SHEETS: Fetched {len(results)} items from INVENTARIO.")
+            return results
+
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not get inventory. {e}")
+            return []
+
 sheet_service = SheetService()
