@@ -496,6 +496,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
         // Store Start Position for manual click check
         startClickPos.current = { x: e.clientX, y: e.clientY };
+        selectionHandled.current = false; // RESET STATE ON NEW TOUCH
 
         isLongPressed.current = false;
         longPressTimer.current = setTimeout(() => {
