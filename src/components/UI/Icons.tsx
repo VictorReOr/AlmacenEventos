@@ -23,16 +23,20 @@ export const IconShield: React.FC<IconProps> = ({ size = D.s, color = D.c, strok
     </svg>
 );
 
-export const IconCheckbox: React.FC<IconProps & { checked?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, checked }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-        {checked ? (
-            <g stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 11 12 14 22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </g>
-        ) : (
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke={color} strokeWidth={strokeWidth} />
-        )}
+// Selection = Mouse Cursor (Redesigned)
+export const IconSelection: React.FC<IconProps & { active?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, active }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? `${color}33` : "none"} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+    </svg>
+);
+
+// Grid = 4 Panes (Redesigned)
+export const IconGrid: React.FC<IconProps & { active?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, active }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? `${color}33` : "none"} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
     </svg>
 );
 
@@ -41,16 +45,6 @@ export const IconPrinter: React.FC<IconProps> = ({ size = D.s, color = D.c, stro
         <polyline points="6 9 6 2 18 2 18 9" />
         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
         <rect x="6" y="14" width="12" height="8" />
-    </svg>
-);
-
-export const IconGrid: React.FC<IconProps & { active?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, active }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
-        {active ? (
-            <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-        ) : (
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        )}
     </svg>
 );
 

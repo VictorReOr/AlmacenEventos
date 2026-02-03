@@ -9,6 +9,8 @@ export interface RawShelfItem {
     LOTE: string;         // "Andalucía" (acts as Program)
     ESTADO: string;       // "estanteria_modulo" (acts as Type)
     RESPONSABLE?: string;
+    TIPO_DE_CONTENEDOR?: string; // Kept for reference
+    [key: string]: any; // Allow accessing properties with spaces like "TIPO DE CONTENEDOR"
 }
 
 export const InventoryService = {
@@ -22,14 +24,29 @@ export const InventoryService = {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const response = await fetch(`${API_BASE_URL}/api/v1/inventory/`, { headers });
+            let response;
+
+            // CHECK IF GOOGLE SCRIPT IS CONFIGURED
+            const useGoogleScript = config.GOOGLE_SCRIPT_URL && !config.GOOGLE_SCRIPT_URL.includes('XXXXXXXX');
+
+            if (useGoogleScript) {
+                console.log("Fetching from Google Apps Script...");
+                response = await fetch(config.GOOGLE_SCRIPT_URL);
+            } else {
+                response = await fetch(`${API_BASE_URL}/api/v1/inventory/`, { headers });
+            }
 
             if (!response.ok) {
                 console.warn('Failed to fetch inventory, falling back to empty/local', response.status);
                 return [];
             }
 
-            const data = await response.json();
+            const json = await response.json();
+
+            // Handle Google Script Wrapper ({ inventoryRows: [] }) vs Backend Direct Array ([])
+            let data = Array.isArray(json) ? json : (json.inventoryRows || []);
+
+            console.log("Inventario cargado:", data); // DEBUG
             return data;
         } catch (error) {
             console.error('InventoryService: Error fetching inventory:', error);
@@ -83,15 +100,21 @@ export const InventoryService = {
                     materialId: 'mat-gen',
                     nombre: item.MATERIAL,
                     cantidad: Number(item.CANTIDAD) || 1,
-                    estado: 'operativo'
+                    estado: 'operativo',
+                    programa: item.LOTE // Map LOTE to granular program
                 }));
+
+                const tipoContenedorRaw = items[0].TIPO_DE_CONTENEDOR;
+                // Default to 'Caja' if empty or not 'Suelto'
+                const tipoContenedor: 'Caja' | 'Suelto' = (tipoContenedorRaw && tipoContenedorRaw.trim().toLowerCase() === 'suelto') ? 'Suelto' : 'Caja';
 
                 cajasEstanteria[slotId] = {
                     id: `SLOT-${shelfId}-${slotId}`,
                     descripcion: 'Contenido',
                     programa: mainProgram,
                     cantidad: 1,
-                    contenido: contentList
+                    contenido: contentList,
+                    tipoContenedor: tipoContenedor
                 };
             });
 
@@ -107,15 +130,40 @@ export const InventoryService = {
             const programs = items.map(i => i.LOTE).filter(Boolean);
             const mainProgram = programs.length > 0 ? programs[0] : 'Vacio';
 
-            // Description / Content
-            // If multiple materials, join them?
-            const materials = items.map(i => `${i.CANTIDAD}x ${i.MATERIAL}`);
-            const contentText = materials.join(', ');
+            // If multiple materials, join them? (UNUSED NOW)
+            // const materials = items.map(i => `${i.CANTIDAD}x ${i.MATERIAL}`);
+            // const contentText = materials.join(', ');
+
+            // NEW LOGIC: Check for Loose Items (Suelto)
+            const isSuelto = items.some(i => i.TIPO_DE_CONTENEDOR?.toLowerCase() === 'suelto');
+            let materiales: MaterialEnCaja[] | undefined = undefined;
+            let cajas: Caja[] | undefined = undefined;
+
+            if (isSuelto) {
+                materiales = items.map(item => ({
+                    id: crypto.randomUUID(),
+                    materialId: 'mat-gen',
+                    nombre: item.MATERIAL,
+                    cantidad: Number(item.CANTIDAD) || 1,
+                    estado: 'operativo',
+                    programa: item.LOTE
+                }));
+            } else {
+                // BOX LOGIC: Generate structural Boxes to enable "Vertical Stripes"
+                cajas = items.map(item => ({
+                    id: crypto.randomUUID(),
+                    descripcion: item.MATERIAL,
+                    programa: item.LOTE, // CRITICAL: This drives the multi-color stripes
+                    cantidad: Number(item.CANTIDAD) || 1,
+                    contenido: [] // Empty contents for now
+                }));
+            }
 
             updates[id] = {
                 programa: mainProgram,
-                contenido: contentText.substring(0, 100) + (contentText.length > 100 ? '...' : '') // Truncate if too long?
-                // Note: 'contenido' field in Pallet is technically 'string | any[]' but usually string label in visual map.
+                // contenido: contentText... // REMOVED: Do not overwrite label with inventory text
+                materiales: materiales,
+                cajas: cajas
             };
         });
 

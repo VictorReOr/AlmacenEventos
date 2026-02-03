@@ -46,10 +46,12 @@
     /* En móvil, esto puede ser la barra inferior fija */
     /* height: var(--footer-height); */
     z-index: var(--z-ui);
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    position: relative;
+    /* Changed from absolute to relative so it takes layout space */
+    /* bottom: 0; left: 0; right: 0; -> Removed */
+    flex-shrink: 0;
+    /* Prevent collapsing */
+    width: 100%;
     pointer-events: none;
 }
 

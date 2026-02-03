@@ -37,6 +37,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["http://localhost:5200", "http://localhost:5173"], # Explicitly allow dev ports
     allow_origin_regex=r"https?://(localhost|.*\.github\.io)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],

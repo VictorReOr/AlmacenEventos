@@ -18,8 +18,9 @@ class SheetService:
     def __init__(self):
         self.client = None
         self.doc = None
-        # Cache for simple validation (could be redis in future)
-        self._valid_locations = set()
+        # CODE SUPREMACY: Use static mirror instead of Sheet 'UBICACIONES'
+        from app.core.static_data import VALID_LOCATIONS
+        self._valid_locations = VALID_LOCATIONS
 
     def connect(self):
         if self.client:
@@ -48,37 +49,26 @@ class SheetService:
             if creds:
                 self.client = gspread.authorize(creds)
                 
-                # Check for Sheet ID in settings, or hardcode fallback for dev (NOT RECOMMENDED for prod but useful now)
-                sheet_id = settings.GOOGLE_SHEET_ID or "1XCeV4S43BvwUen7h-0JU5kjOPk-MSzZ6vZDU4WLbTNE" # Hardcoded from smoke_test.py
+                # Check for Sheet ID in settings, or hardcode fallback for dev 
+                sheet_id = settings.GOOGLE_SHEET_ID or "1XCeV4S43BvwUen7h-0JU5kjOPk-MSzZ6vZDU4WLbTNE" 
                 
                 if sheet_id:
                     self.doc = self.client.open_by_key(sheet_id)
-                    self._refresh_location_cache()
-                    print("SHEETS: Connected and cache warmed.")
+                    print("SHEETS: Connected (Code Supremacy Mode).")
                 else:
                     print("SHEETS: Connected but no Sheet ID provided.")
                 
         except Exception as e:
             print(f"SHEETS ERROR: Connection failed. {e}")
 
+    # No longer needed, static data is source of truth
     def _refresh_location_cache(self):
-        try:
-            ws = self.doc.worksheet("UBICACIONES")
-            # Assuming ID is Column A (index 0), skip header
-            ids = ws.col_values(1)[1:] 
-            self._valid_locations = set(ids)
-        except Exception as e:
-            print(f"SHEETS: Error caching locations. {e}")
+        pass
 
     def validate_location(self, loc_id: str) -> bool:
-        if not self.client:
-            self.connect()
-        # Fallback if connection failed or cache empty
-        if not self._valid_locations:
-            return True # Fail open or closed? Phase 0 says block phantom locations.
-                        # For now, if DB is down, maybe we shouldn't block? 
-                        # Or better, return True if we can't verify to avoid blocking ops during setup.
-        
+        # Check against Static Code Data
+        # Returns True if ID is in the canonical list
+        if not loc_id: return False
         return loc_id in self._valid_locations
 
     def execute_transaction(self, action_type: str, payload: Any, user_id: str, transaction_id: str):
@@ -396,14 +386,14 @@ class SheetService:
             for i, row in enumerate(all_values):
                 # Normalize row values to check for known headers
                 normalized_row = [str(c).strip().upper() for c in row]
-                if "ID_UBICACION" in normalized_row:
+                if "ID_UBICACION" in normalized_row or "ID_LUGAR" in normalized_row:
                     header_row_index = i
                     # Capture headers with original casing but stripped
                     headers = [str(c).strip() for c in row] 
                     break
             
             if header_row_index == -1:
-                print("SHEETS ERROR: Could not find 'ID_UBICACION' header in INVENTARIO tab.")
+                print("SHEETS ERROR: Could not find 'ID_UBICACION' or 'ID_LUGAR' header in INVENTARIO tab.")
                 return []
 
             # 2. Parse Rows
@@ -415,7 +405,17 @@ class SheetService:
                 item = {}
                 for idx, header in enumerate(headers):
                     if idx < len(row) and header: # Only map if header exists
-                        item[header] = row[idx]
+                        # Map ID_LUGAR to ID_UBICACION for compatibility if needed
+                         key = header
+                         if header.upper() == "ID_LUGAR":
+                             key = "ID_UBICACION"
+                         
+                         item[key] = row[idx]
+                         
+                         # Keep original too just in case
+                         if header.upper() == "ID_LUGAR":
+                             item["ID_LUGAR"] = row[idx]
+
                 results.append(item)
                 
             print(f"SHEETS: Fetched {len(results)} items from INVENTARIO.")

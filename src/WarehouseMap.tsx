@@ -4,7 +4,10 @@ import { useGesture } from '@use-gesture/react';
 import type { Ubicacion } from './types';
 import styles from './WarehouseMap.module.css';
 import { getCorners, polygonsIntersect, calculateSnap, generateWallsFromFloor, projectPointOnSegment } from './geometry';
+import { getLotAttributes } from './utils/lotVisualizer';
 import type { SnapLine } from './geometry';
+
+// Force Rebuild Check
 
 // Import Data & Hooks
 // import { generateInitialState } from './data';
@@ -68,6 +71,9 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     const isGroupDragging = dragState?.groupIds?.includes(u.id);
 
     const isDragging = isLeaderDragging || isGroupDragging;
+
+    // DIAGNOSTIC: Trace Renders
+    // console.log(`🎨 Render Object: ${u.id} (${u.tipo})`);
 
     // Local Interaction Mode
     const [interactionMode, setInteractionMode] = useState<'move' | 'resize' | 'rotate' | null>(null);
@@ -538,6 +544,12 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     const renderVisuals = () => {
         let content;
 
+        // DIAGNOSTIC LOG (Throttled?)
+        // To avoid console spam, maybe check if it's E1 or E2
+        if (u.id === 'E1' || u.id === 'E2') {
+            // console.log(`🖌️ Rendering ${u.id} (${u.tipo})`);
+        }
+
         // Colores Institucionales (Hardcoded en SVG para consistencia)
         const C_VERDE = "#007A33";
         const C_GRIS_OSCURO = "#333333";
@@ -561,43 +573,13 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             }
 
             // Inventory Visualization Logic
-            const shelfBoxes = [...(u.cajas || [])];
-            if (u.shelfItems) {
-                Object.values(u.shelfItems as Record<string, any[]>).forEach((items: any[]) => shelfBoxes.push(...items));
-            } else if (u.cajasEstanteria) {
-                // Fallback to cajasEstanteria
-                Object.values(u.cajasEstanteria).forEach((box: any) => {
-                    if (Array.isArray(box)) shelfBoxes.push(...box);
-                    else shelfBoxes.push(box);
-                });
-            }
-
-            // Also check 'niveles' which is where data.ts migrates initial inventory
-            if (u.niveles && Array.isArray(u.niveles)) {
-                u.niveles.forEach((lvl: any) => {
-                    if (lvl.items && Array.isArray(lvl.items)) {
-                        shelfBoxes.push(...lvl.items);
-                    }
-                });
-            }
-            const hasContent = shelfBoxes.length > 0;
+            // Inventory Visualization Logic
+            // shelfBoxes accumulation removed (DEAD CODE) - We iterate u.cajasEstanteria directly below.
             // uniquePrograms removed as it was unused
 
             // Generate visual "boxes" to draw inside the shelf
             // We blindly distribute them for now as we lack specific slot data
-            const visualBoxes = [];
-            if (hasContent) {
-                // Sort boxes by program to group colors
-                const sortedBoxes = [...shelfBoxes].sort((a, b) => (a.programa || '').localeCompare(b.programa || ''));
-                // Cap visual boxes to not overcrowd (e.g., 4 boxes per module max visually)
-                const maxVisuals = numModules * 6;
-                const step = Math.max(1, Math.floor(sortedBoxes.length / maxVisuals));
-
-                for (let i = 0; i < sortedBoxes.length; i += step) {
-                    if (visualBoxes.length >= maxVisuals) break;
-                    visualBoxes.push(sortedBoxes[i]);
-                }
-            }
+            // visualBoxes logic removed (DEAD CODE)
 
             content = (
                 <g>
@@ -619,134 +601,8 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                         rx={2}
                     />
 
-                    {/* Render Inventory Boxes (Slot-Based) */}
-                    {Object.entries(u.cajasEstanteria || {}).map(([slotKey, boxOrList]) => {
-                        // Parse Slot Key: "M1-A1" or just "1-1" depending on parser
-                        // Our parser produces "M1-A1" (from "E1-M1-A1")
-                        // If logic changed to just numbers, we handle that too.
-                        // Expected format from InventoryService: "M1-A1"
-
-                        // Normalize input (Box or List of Boxes)
-                        const boxes = Array.isArray(boxOrList) ? boxOrList : [boxOrList];
-                        if (boxes.length === 0) return null;
-
-                        // We take the first box to determine color/program for the slot
-                        const mainBox = boxes[0];
-                        const prog = mainBox.programa || 'Vacio';
-                        const color = programColors[prog] || '#bdbdbd';
-
-                        // Parse M and A
-                        // Try "M(\d+)-A(\d+)"
-                        let moduleNum = 1;
-                        let levelNum = 1;
-
-                        const match = slotKey.match(/M(\d+)-A(\d+)/i);
-                        if (match) {
-                            moduleNum = parseInt(match[1]);
-                            levelNum = parseInt(match[2]);
-                        } else {
-                            // Fallback if key is different (e.g. legacy)
-                            return null;
-                        }
-
-                        // BOUNDARY CHECK: Prevent ghost rendering if module exceeds width
-                        const numModules = Math.round(u.width / SHELF_MODULE_WIDTH);
-                        if (moduleNum > numModules) return null; // Ignore out-of-bounds modules (Data Error)
-                        if (levelNum > 5) return null; // Ignore unreasonable heights that cause drift
-
-                        // Calculate Position
-                        // Module 1 is usually Left (or Right depending on start). 
-                        // Let's assume Left-to-Right layout for now.
-                        // X = StartX + (ModuleIndex * ModuleWidth)
-                        // ModuleIndex = moduleNum - 1
-
-                        // Level 1 is usually Bottom (or Top?). 
-                        // Standard warehouse: Level 1 is Bottom.
-                        // Y = BottomY - (LevelIndex * LevelHeight)
-
-                        // Layout Constants
-                        const boxW = (SHELF_MODULE_WIDTH * SCALE) * 0.8; // 80% of module width
-                        const boxH = (finalSvgH / 5); // Assume max 4-5 levels, fixed height for visual
-
-                        // In Local SVG Coords:
-                        // Center (0,0). Width is finalSvgW. Height is finalSvgH.
-                        // Left Edge: -finalSvgW / 2
-                        // Bottom Edge: finalSvgH / 2
-
-                        // Adjust for "Local" Horizontal vs Vertical Mode logic
-                        // The 'u' here is already rotated by 'currentRot'. 
-                        // Inside <g>, we are in the object's local space.
-                        // The shelf is a long rectangle: width = length in meters, height = depth in meters (0.45).
-                        // Wait, the SVG construction above uses:
-                        // width=finalSvgW, height=finalSvgH.
-                        // If vertical-ccw, finalSvgW is 'width' (6m) and finalSvgH is 'depth' (0.45)?
-                        // Let's check lines 80-85 of WarehouseMap.tsx:
-                        // if vertical-ccw: sw = currentW * SCALE, sh = currentD * SCALE
-                        // So W is the long side (Length), H is the short side (Depth).
-
-                        // Wait. If typical shelf is 6m wide x 0.45m deep.
-                        // Then visuals should be drawn along W.
-
-                        // MODULE X:
-                        // Module 1 starts at -W/2.
-                        const moduleWidthPx = SHELF_MODULE_WIDTH * SCALE;
-                        const x = (-finalSvgW / 2) + ((moduleNum - 1) * moduleWidthPx) + (moduleWidthPx / 2) - (boxW / 2);
-
-                        // LEVEL Y:
-                        // Where do we draw levels? 
-                        // Usually shelves are viewed "Top Down" in 2D map.
-                        // So different levels shouldn't be visible distinctly in 2D unless we stack them or code them.
-                        // OR: The user wants to see "what is in the shelf" roughly.
-                        // If we map "Levels" to "Y-axis (Depth)" it looks like they are front-to-back?
-                        // OR: We ignore Level for 2D map and just stack them slightly offset?
-                        // OR: We only show the "Top" item?
-
-                        // User Request: "Cuando lea E1-M1-A1, sepa que tiene que buscar la estantería E1... y poner la caja en la altura A1"
-                        // But in a 2D Top-Down map, "Height" is Z-axis (coming out of screen).
-                        // We cannot see A1 vs A2 easily.
-
-                        // COMPROMISE: 
-                        // We can divide the "Depth" of the shelf into stripes for levels? 
-                        // E.g. Level 1 (Bottom) is 'Back', Level 4 (Top) is 'Front'?
-                        // Or Just stack them?
-
-                        // Let's implement dynamic "Stripes" across the depth for Levels.
-                        const maxLevels = 5;
-                        const levelHeightPx = finalSvgH / maxLevels;
-
-                        // Let's map Level 1 to Top of SVG (Back of shelf) -> Level N to Bottom (Front)?
-                        // Or just center it?
-                        // If I simple put them all in center, they overlap.
-                        // Let's offset them by level.
-                        const levelOffset = (levelNum - 1) * 2; // 2px offset per level
-
-                        // REVISED APPROACH:
-                        // Just show one box per Module representing the "Dominant" content, 
-                        // OR divide the module slot into sub-rects.
-
-                        // Let's try to fit them:
-                        // X is set by Module.
-                        // Y? Let's fix Y to center, but if multiple levels exist, maybe we stack them?
-                        // Simple approach: Use Level to shift Y slightly to show "depth/stacking".
-
-                        const y = -boxH / 2 - (levelNum * 2) + 5; // Slight shift
-
-                        return (
-                            <g key={`slot-${slotKey}`}>
-                                <rect
-                                    x={x}
-                                    y={y}
-                                    width={boxW}
-                                    height={boxH}
-                                    fill={color}
-                                    rx={1}
-                                    stroke="rgba(0,0,0,0.2)"
-                                    strokeWidth={0.5}
-                                />
-                                {/* Level Indicator text? Too small. */}
-                            </g>
-                        );
-                    })}
+                    {/* Inventory Rendering Removed per User Request (Ghosts) */}
+                    {/* Content is now viewed only in Properties Panel */}
 
                     {/* Uprights (Technical Detail) */}
                     <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={uprightW} fill="#4E5F50" rx={1} />
@@ -757,9 +613,11 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                     {/* ID Label */}
                     <g transform={`rotate(${-currentRot})`}>
                         <rect x={-22} y={-10} width={44} height={20} rx={4} fill="#2E7D32" />
-                        <text x={0} y={0} fontSize={10} fontWeight="700" fill="#ffffff" textAnchor="middle" dy="0.35em" style={{ userSelect: 'none', pointerEvents: 'none' }}>{u.contenido}</text>
+                        <text x={0} y={0} fontSize={10} fontWeight="700" fill="#ffffff" textAnchor="middle" dy="0.35em" style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                            {u.contenido && u.contenido.length < 10 ? u.contenido : u.id}
+                        </text>
                     </g>
-                </g>
+                </g >
             );
         } else if (u.tipo === 'zona_carga') {
             // FURGONETA: Diseño detallado estilo técnico
@@ -922,25 +780,10 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         } else { // Palet
             // PALET: Estilo limpio, borde de color funcional, fondo blanco
 
-            // 1. Determine Programs in Pallet
-            const programs = new Set<string>();
-            if (u.cajas && u.cajas.length > 0) {
-                u.cajas.forEach(c => c.programa && programs.add(c.programa));
-            }
-            if (u.materiales && u.materiales.length > 0) {
-                // Loose materials usually follow location program, but check if needed.
-                // taking u.programa as default for loose items if they lack metadata
-                programs.add(u.programa || 'Vacio');
-            }
-            if (programs.size === 0) {
-                programs.add(u.programa || 'Vacio');
-            }
+            // 1. Determine Programs in Pallet (Contract 3: Use Shared Logic)
+            const displayPrograms = getLotAttributes(u);
 
-            const uniquePrograms = Array.from(programs).filter(p => p !== 'Vacio');
-            // If only 'Vacio' remains, keep it empty or grey
-            const displayPrograms = uniquePrograms.length > 0 ? uniquePrograms : (programs.has('Vacio') ? ['Vacio'] : ['Vacio']);
-
-            // Limit to 4 bands
+            // Limit to 4 bands (Contract 1: Visual Rule)
             const maxBands = 4;
             const bandsToShow = displayPrograms.slice(0, maxBands);
             const showOverflow = displayPrograms.length > maxBands;
@@ -970,7 +813,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                         y={-finalSvgH / 2}
                         width={finalSvgW}
                         height={finalSvgH}
-                        fill={isOccupied ? "white" : "#E8F5E9"} // Light Green background if free
+                        fill={isOccupied ? "#E0E0E0" : "white"} // Grey if occupied, White if free
                         stroke={isValid ? (isOccupied ? "#9e9e9e" : "#4CAF50") : "#e57373"} // Green border if free, Grey if occupied
                         strokeWidth={isOccupied ? 1 : 2}
                         rx={4}
@@ -980,38 +823,99 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                     {isOccupied && (
                         <g clipPath={`url(#clip-${u.id})`}>
                             {bandsToShow.map((prog, idx) => {
+                                // SKIP 'Vacio' STRIPES -> Let the background show through.
+                                if (!prog || prog === 'Vacio' || prog === 'vacio') return null;
+
                                 const bColor = programColors[prog] || '#e0e0e0';
-                                const count = showOverflow ? maxBands : bandsToShow.length;
 
-                                // Vertical Stripes Logic
-                                const bandW = finalSvgW / count;
-                                const bx = -finalSvgW / 2 + (idx * bandW);
+                                // CRITICAL FIX: If color is default GREY (#e0e0e0), 
+                                // treat it as "background" and DO NOT draw a stripe or separator.
+                                // This prevents "floating white lines" on seemingly empty pallets.
+                                if (bColor === '#e0e0e0') return null;
 
-                                // Last band if overflow
-                                if (showOverflow && idx === maxBands - 1) {
-                                    return (
-                                        <g key={idx}>
-                                            <rect x={bx} y={-finalSvgH / 2} width={bandW} height={finalSvgH} fill="#f5f5f5" stroke="white" strokeWidth={0.5} />
-                                            <circle cx={bx + bandW / 2} cy={0} r={2} fill="#666" />
-                                            <circle cx={bx + bandW / 2} cy={-6} r={2} fill="#666" />
-                                            <circle cx={bx + bandW / 2} cy={6} r={2} fill="#666" />
-                                        </g>
-                                    );
+                                const count = maxBands;
+
+                                // Rotation Check
+                                const normRot = Math.abs(currentRot % 180);
+                                const isVerticalOnScreen = normRot > 45 && normRot < 135;
+
+                                let renderRect;
+                                let separator = null;
+
+                                if (isVerticalOnScreen) {
+                                    // ROTATED MODE: Slice HEIGHT (Y).
+                                    const bandH = finalSvgH / count;
+                                    const by = -finalSvgH / 2 + (idx * bandH);
+
+                                    // Separator Line at BOTTOM of stripe (End of band)
+                                    // Only if NOT the very last band of the pallet
+                                    if (idx < maxBands - 1) {
+                                        separator = <line x1={-finalSvgW / 2} y1={by + bandH} x2={finalSvgW / 2} y2={by + bandH} stroke="white" strokeWidth={1} />;
+                                    }
+
+                                    if (showOverflow && idx === maxBands - 1) {
+                                        renderRect = (
+                                            <g key={idx}>
+                                                <rect x={-finalSvgW / 2} y={by} width={finalSvgW} height={bandH} fill="#f5f5f5" stroke="none" />
+                                                {/* Overflow dots */}
+                                                <circle cx={-finalSvgW / 4} cy={by + bandH / 2} r={2} fill="#666" />
+                                                <circle cx={0} cy={by + bandH / 2} r={2} fill="#666" />
+                                                <circle cx={finalSvgW / 4} cy={by + bandH / 2} r={2} fill="#666" />
+                                            </g>
+                                        );
+                                    } else {
+                                        renderRect = (
+                                            <g key={idx}>
+                                                <rect
+                                                    x={-finalSvgW / 2}
+                                                    y={by}
+                                                    width={finalSvgW}
+                                                    height={bandH}
+                                                    fill={bColor}
+                                                    stroke="none"
+                                                />
+                                                {separator}
+                                            </g>
+                                        );
+                                    }
+
+                                } else {
+                                    // NORMAL MODE: Slice WIDTH (X).
+                                    const bandW = finalSvgW / count;
+                                    const bx = -finalSvgW / 2 + (idx * bandW);
+
+                                    // Separator Line at RIGHT of stripe
+                                    if (idx < maxBands - 1) {
+                                        separator = <line x1={bx + bandW} y1={-finalSvgH / 2} x2={bx + bandW} y2={finalSvgH / 2} stroke="white" strokeWidth={1} />;
+                                    }
+
+                                    if (showOverflow && idx === maxBands - 1) {
+                                        renderRect = (
+                                            <g key={idx}>
+                                                <rect x={bx} y={-finalSvgH / 2} width={bandW} height={finalSvgH} fill="#f5f5f5" stroke="none" />
+                                                <circle cx={bx + bandW / 2} cy={0} r={2} fill="#666" />
+                                                <circle cx={bx + bandW / 2} cy={-6} r={2} fill="#666" />
+                                                <circle cx={bx + bandW / 2} cy={6} r={2} fill="#666" />
+                                            </g>
+                                        );
+                                    } else {
+                                        renderRect = (
+                                            <g key={idx}>
+                                                <rect
+                                                    x={bx}
+                                                    y={-finalSvgH / 2}
+                                                    width={bandW}
+                                                    height={finalSvgH}
+                                                    fill={bColor}
+                                                    stroke="none"
+                                                />
+                                                {separator}
+                                            </g>
+                                        );
+                                    }
                                 }
 
-                                return (
-                                    <rect
-                                        key={idx}
-                                        x={bx}
-                                        y={-finalSvgH / 2}
-                                        width={bandW}
-                                        height={finalSvgH}
-                                        fill={bColor}
-                                        stroke="white"
-                                        strokeWidth={1} // Separator line
-                                        vectorEffect="non-scaling-stroke" // Ensure line stays thin? No, we want it specific
-                                    />
-                                );
+                                return renderRect;
                             })}
                         </g>
                     )}

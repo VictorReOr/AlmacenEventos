@@ -1,9 +1,9 @@
 export type Programa = string; // Was strict union, now dynamic
 
 export const PROGRAM_COLORS: Record<string, string> = {
-  'Mentor 10': '#FFB74D', // Orange
-  'Liga LED': '#81C784',  // Green
-  'Liga M100': '#64B5F6', // Blue
+  'Mentor 10': '#003366', // Azul Marino Oscuro
+  'Liga LED': '#FFFF00',  // Amarillo Puro
+  'Liga M100': '#4CAF50', // Verde Andalucía claro
   'Otros': '#E57373',     // Red
   'Vacio': '#E0E0E0'      // Grey
 };
@@ -23,6 +23,7 @@ export interface MaterialEnCaja {
   nombre: string; // Copied for display speed
   cantidad: number;
   estado: 'operativo' | 'prestamo' | 'baja';
+  programa?: string; // Derived from LOTE for granular coloring
 }
 
 // 2. CONTENEDORES
@@ -32,6 +33,7 @@ export interface Caja {
   programa: string;
   contenido: MaterialEnCaja[];
   cantidad?: number; // Added for grouped display (e.g. "x8 boxes")
+  tipoContenedor?: 'Caja' | 'Suelto';
 }
 
 // 1. ESTRUCTURA FISICA & UBICACIONES

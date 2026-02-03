@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from './context/AuthContext';
 import type { Ubicacion, Caja, MaterialEnCaja } from './types';
+import { getLotAttributes } from './utils/lotVisualizer';
 import styles from './components/UI/PropertiesPanel.module.css';
+import { AddInventoryModal } from './components/UI/AddInventoryModal';
 
 interface PropertiesPanelProps {
     location: Ubicacion;
@@ -35,39 +37,53 @@ const ItemCard: React.FC<{
     const isBox = item.type === 'box' || item.name.toLowerCase().includes('caja');
     const icon = isBox ? '📦' : '🔹';
 
+    // Contract 2: Resolve colors using shared logic
+    const stripePrograms = getLotAttributes(item.originalRef);
+    const stripeColors = stripePrograms.map(p => programColors[p] || '#ccc');
+
     return (
-        <div className={styles.boxCard} style={{ display: 'flex', flexDirection: 'column', gap: 8, borderLeft: `4px solid ${programColors[item.program] || '#ccc'}` }}>
-            {/* Header Row: Icon + Name + Delete */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-                {readOnly ? (
-                    <span style={{ flex: 1, fontSize: '1rem', fontWeight: 500, padding: '2px 0' }}>{item.name}</span>
-                ) : (
-                    <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => onUpdateName(e.target.value)}
-                        className={styles.editableTitle}
-                        style={{ flex: 1, border: 'none', borderBottom: '1px dashed transparent', padding: '2px 0', fontSize: '1rem', fontWeight: 500 }}
-                        placeholder="Nombre del ítem..."
-                    />
-                )}
-                {!readOnly && (
-                    <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }}>
-                        &times;
-                    </button>
-                )}
+        <div className={styles.boxCard} style={{ display: 'flex', flexDirection: 'row', padding: 0, overflow: 'hidden', borderLeft: 'none' }}>
+            {/* STRIPES CONTAINER (Left Edge) */}
+            <div style={{ width: 8, minWidth: 8, display: 'flex', flexDirection: 'row', alignSelf: 'stretch' }}>
+                {stripeColors.map((color, idx) => (
+                    <div key={idx} style={{ flex: 1, backgroundColor: color }} />
+                ))}
             </div>
 
-            {/* Controls Row: Quantity */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: 4 }}>
-                    {isBox ? (item.type === 'box' ? 'Caja Registrada' : 'Detectado como Caja') : 'Material Suelto'}
-                </span>
-                <div className={styles.qtyControl}>
-                    {!readOnly && <button onClick={() => onUpdateQty(Math.max(0, item.qty - 1))} className={styles.qtyBtn}>-</button>}
-                    <span style={{ width: 30, textAlign: 'center', fontWeight: 'bold' }}>{item.qty}</span>
-                    {!readOnly && <button onClick={() => onUpdateQty(item.qty + 1)} className={styles.qtyBtn}>+</button>}
+            {/* CONTENT CONTAINER */}
+            <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Header Row: Icon + Name + Delete */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                    {readOnly ? (
+                        <span style={{ flex: 1, fontSize: '1rem', fontWeight: 500, padding: '2px 0' }}>{item.name}</span>
+                    ) : (
+                        <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => onUpdateName(e.target.value)}
+                            className={styles.editableTitle}
+                            style={{ flex: 1, border: 'none', borderBottom: '1px dashed transparent', padding: '2px 0', fontSize: '1rem', fontWeight: 500 }}
+                            placeholder="Nombre del ítem..."
+                        />
+                    )}
+                    {!readOnly && (
+                        <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }}>
+                            &times;
+                        </button>
+                    )}
+                </div>
+
+                {/* Controls Row: Quantity */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        {isBox ? (item.type === 'box' ? 'Caja Registrada' : 'Detectado como Caja') : 'Material Suelto'}
+                    </span>
+                    <div className={styles.qtyControl}>
+                        {!readOnly && <button onClick={() => onUpdateQty(Math.max(0, item.qty - 1))} className={styles.qtyBtn}>-</button>}
+                        <span style={{ width: 30, textAlign: 'center', fontWeight: 'bold' }}>{item.qty}</span>
+                        {!readOnly && <button onClick={() => onUpdateQty(item.qty + 1)} className={styles.qtyBtn}>+</button>}
+                    </div>
                 </div>
             </div>
         </div>
@@ -89,6 +105,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
     const moduleCount = useMemo(() => isShelf ? Math.max(1, Math.round(location.width / 1.0)) : 0, [location.width, isShelf]);
     const [selectedModule, setSelectedModule] = useState(1);
     const [selectedLevel, setSelectedLevel] = useState(1);
+    const [showAddModal, setShowAddModal] = useState(false);
 
     // --- DATA UNIFICATION HELPER ---
     // Converts Location Data -> UnifiedItems
@@ -99,37 +116,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
         let boxes: Caja[] = [];
         if (isShelf) {
             const key = `M${selectedModule}-A${selectedLevel}`;
-
-            // 1. Try Cloud Data (shelfItems)
             if (location.shelfItems?.[key]) {
                 boxes = location.shelfItems[key];
-            }
-            // 2. Try Local Structure (niveles) - Matches data.ts migration
-            else if (location.niveles) {
-                // Modules are just visual partitions in the current data model for 'niveles'?
-                // Actually data.ts puts everything in 'niveles' array of the Ubicacion object. 
-                // But wait, Ubicacion has 'niveles' which is per-shelf?
-                // data.ts: "niveles": [{ nivel: 1, items: [] }, ...]
-                // It doesn't seem to split by Module in 'niveles' array structure in data.ts for *items*, 
-                // BUT GoogleSheetsService maps M#-A# to shelfItems[M#-A#].
-
-                // Let's look at data.ts again in my mind... 
-                // u.cajasEstanteria -> u.niveles[level-1].items.push(box).
-                // It LOSES the Module information in that migration if not careful? 
-                // Wait, logic in data.ts was: 
-                // const match = posKey.match(/A(\d+)/); -> levelIndex = levelNum - 1.
-                // It ignores the 'M' part! 
-                // So for local data, we just check the level, ignoring module for now (limitation of current data.ts).
-                // Or we can filter by module if we stored it? We didn't.
-
-                // So for 'niveles', we just take all items in that level.
+            } else if (location.niveles) {
                 const levelIdx = selectedLevel - 1;
                 if (location.niveles[levelIdx]?.items) {
                     boxes = location.niveles[levelIdx].items;
                 }
-            }
-            // 3. Legacy Fallback
-            else {
+            } else {
                 const box = location.cajasEstanteria?.[key];
                 if (box) boxes = [box];
             }
@@ -170,8 +164,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
     const unifiedList = getUnifiedItems();
 
     // --- UPDATERS ---
-
-    // Generic updater for an item (finds it in boxes or loose items and updates it)
     const handleUpdateItem = (itemId: string, updates: Partial<UnifiedItem>) => {
         let newBoxes = [...(location.cajas || [])];
         let newLoose = [...(location.materiales || [])];
@@ -180,7 +172,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
         const isBox = newBoxes.find(b => b.id === itemId) || (isShelf && Object.values(shelfMap).find(b => b.id === itemId));
 
         if (isBox) {
-            // Update Box
             if (isShelf) {
                 const key = `M${selectedModule}-A${selectedLevel}`;
                 if (shelfMap[key] && shelfMap[key].id === itemId) {
@@ -200,7 +191,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 handleChange('cajas', newBoxes);
             }
         } else {
-            // Must be Loose Item
             newLoose = newLoose.map(m => m.id === itemId ? {
                 ...m,
                 nombre: updates.name !== undefined ? updates.name : m.nombre,
@@ -221,52 +211,33 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 handleChange('cajasEstanteria', shelfMap);
             }
         } else {
-            // Try removing from Boxes
             const boxesFiltered = (location.cajas || []).filter(b => b.id !== itemId);
             if (boxesFiltered.length !== (location.cajas || []).length) {
                 handleChange('cajas', boxesFiltered);
             } else {
-                // Try removing from Loose
                 const looseFiltered = (location.materiales || []).filter(m => m.id !== itemId);
                 handleChange('materiales', looseFiltered);
             }
         }
     };
 
-    const handleAddItem = (isBox: boolean) => {
-        if (isShelf && unifiedList.length > 0) {
-            alert("En estantería solo cabe 1 ítem por hueco (de momento).");
-            return;
-        }
+    const handleAddInventory = (data: { program: string; name: string; quantity: number; type: 'CAJA' | 'MATERIAL' }) => {
+        // Construct payload for "ENTRADA" action
+        const targetId = isShelf ? `E${location.id.replace('E', '')}-M${selectedModule}-A${selectedLevel}` : location.id;
 
-        const baseProgram = location.programa || 'Vacio';
-        const newId = crypto.randomUUID().slice(0, 6);
-
-        if (isBox) {
-            const newBox: Caja = {
-                id: `BX-${newId}`,
-                descripcion: "Nueva Caja",
-                programa: baseProgram,
-                cantidad: 1,
-                contenido: []
-            };
-            if (isShelf) {
-                const key = `M${selectedModule}-A${selectedLevel}`;
-                handleChange('cajasEstanteria', { ...(location.cajasEstanteria || {}), [key]: newBox });
-            } else {
-                handleChange('cajas', [...(location.cajas || []), newBox]);
+        onAssistantAction({
+            type: 'MANUAL_ENTRY',
+            payload: {
+                item: data.name,
+                qty: data.quantity,
+                origin: "EXTERIOR",
+                destination: targetId,
+                type: "ENTRADA",
+                reason: `UI: ${data.program}`,
+                program: data.program,
+                item_type: data.type // 'CAJA' or 'MATERIAL'
             }
-        } else {
-            // Loose Item
-            const newItem: MaterialEnCaja = {
-                id: `M-${newId}`,
-                materialId: 'gen',
-                nombre: "Nuevo Material Suelto",
-                cantidad: 1,
-                estado: 'operativo'
-            };
-            handleChange('materiales', [...(location.materiales || []), newItem]);
-        }
+        });
     };
 
     return (
@@ -291,7 +262,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 {/* CONTENT */}
                 <div className={styles.content}>
 
-                    {/* SHELF NAV (UNCHANGED) */}
+                    {/* SHELF NAV */}
                     {isShelf && (
                         <div style={{ marginBottom: 20, paddingBottom: 15, borderBottom: '1px dashed #e2e8f0' }}>
                             <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 8 }}>
@@ -338,17 +309,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                     </div>
                 </div>
 
-                {/* FOOTER ACTIONS - Hide for Visitors */}
+                {/* FOOTER ACTIONS */}
                 {!isVisitor && (
                     <div className={styles.footer}>
-                        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                            <button className={styles.primaryAction} onClick={() => handleAddItem(true)} style={{ flex: 1 }}>+ Caja</button>
-                            {!isShelf && (
-                                <button className={styles.secondaryAction} onClick={() => handleAddItem(false)} style={{ flex: 1, backgroundColor: '#fffbe6', borderColor: '#ffe58f', color: '#d48806' }}>
-                                    + Suelto
-                                </button>
-                            )}
-                        </div>
+                        <button
+                            className={styles.primaryAction}
+                            onClick={() => setShowAddModal(true)}
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                        >
+                            <span>+</span> Añadir Stock
+                        </button>
+
                         {!isShelf && (
                             <button className={styles.secondaryAction} onClick={() => {
                                 onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
@@ -358,6 +329,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                         )}
                     </div>
                 )}
+
+                {/* ADD INVENTORY MODAL */}
+                <AddInventoryModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSave={handleAddInventory}
+                    programColors={programColors}
+                />
             </div>
         </>
     );

@@ -752,17 +752,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "width": 0.8,
             "depth": 1.2
         },
-        "67": {
-            "id": "67",
-            "tipo": "palet",
-            "programa": "Vacio",
-            "contenido": "67",
-            "x": 4.6,
-            "y": 4.95,
-            "rotation": 90,
-            "width": 0.8,
-            "depth": 1.2
-        },
+
 
         "E2": {
             "id": "E2",
@@ -1057,19 +1047,7 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
             "depth": 0.2,
             "rotation": 0
         },
-        "muro_pared_entrada": {
-            "id": "muro_pared_entrada",
-            "tipo": "muro",
-            "programa": "Vacio",
-            "contenido": "",
-            "x": 6.6,
-            "y": 25.22,
-            "width": 0.2,
-            "depth": 3.56,
-            "rotation": 0,
-            "estanteriaId": 999,
-            "niveles": []
-        }
+
     };
 
     // --- DATA MIGRATION / INITIALIZATION ---

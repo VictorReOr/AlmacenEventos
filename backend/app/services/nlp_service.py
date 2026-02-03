@@ -75,8 +75,17 @@ class NLPService:
     def _detect_intent(self, text: str, verbs: List[str]) -> str:
         """Detect intent using verb analysis and keywords."""
         text_lower = text.lower()
+        print(f"NLP Analysis: Text='{text_lower}', Verbs={verbs}")
         
-        # Check for greetings first
+        # Check for inventory queries - PRIORITY
+        query_words = ["donde", "dónde", "hay", "buscar", "encuentra", "tienes", "stock", "quedan", "ver", "listar"]
+        is_query = any(w in text_lower for w in query_words)
+        
+        if is_query and ("?" in text or any(w in text_lower for w in ["dónde", "donde está", "donde hay", "hay un", "hay una"])):
+            print("NLP: Detected QUERY (Strong match)")
+            return "QUERY"
+        
+        # Check for greetings
         greetings = ["hola", "buenos días", "buenas tardes", "buenas noches", "hey", "saludos"]
         if any(g in text_lower for g in greetings):
             return "GREETING"
@@ -84,7 +93,7 @@ class NLPService:
         # Check for thanks/goodbye
         if any(w in text_lower for w in ["gracias", "adiós", "hasta luego", "chao"]):
             return "COURTESY"
-        
+
         # Analyze verbs for warehouse actions
         entrada_verbs = ["llegar", "entrar", "recibir", "ingresar", "registrar"]
         salida_verbs = ["sacar", "salir", "enviar", "despachar", "retirar"]
@@ -97,6 +106,12 @@ class NLPService:
         if any(v in verbs for v in movimiento_verbs) or any(w in text_lower for w in ["movimiento"]):
             return "MOVIMIENTO"
         
+        # Fallback for Query (weak match)
+        if is_query:
+             print("NLP: Detected QUERY (Weak match)")
+             return "QUERY"
+
+        print("NLP: Detected UNKNOWN")
         return "UNKNOWN"
 
     def _build_movements(
@@ -109,6 +124,18 @@ class NLPService:
         """Build movement proposals based on extracted entities."""
         movements = []
         
+        if intent == "QUERY":
+             # Create a dummy movement to carry the material info if needed
+             item = materials[0] if materials else "material"
+             movements.append(MovementProposal(
+                item=item,
+                qty=0,
+                origin="SEARCH",
+                destination="RESULT",
+                type=ActionType.MOVIMIENTO # Dummy type
+            ))
+             return movements
+
         if intent == "ENTRADA":
             qty = quantities[0] if quantities else 1
             item = materials[0] if materials else "material"
@@ -123,18 +150,19 @@ class NLPService:
             ))
         
         elif intent == "SALIDA":
-            qty = quantities[0] if quantities else 1
-            item = materials[0] if materials else "material"
-            origin = locations[0] if locations else "RECEPCION"
-            
-            movements.append(MovementProposal(
-                item=item,
-                qty=qty,
-                origin=origin,
-                destination="EXTERNO",
-                type=ActionType.SALIDA
-            ))
-        
+             # ... existing logic ...
+             qty = quantities[0] if quantities else 1
+             item = materials[0] if materials else "material"
+             origin = locations[0] if locations else "RECEPCION"
+             
+             movements.append(MovementProposal(
+                 item=item,
+                 qty=qty,
+                 origin=origin,
+                 destination="EXTERNO",
+                 type=ActionType.SALIDA
+             ))
+
         elif intent == "MOVIMIENTO":
             qty = quantities[0] if quantities else 1
             item = materials[0] if materials else "material"
@@ -167,6 +195,9 @@ class NLPService:
         if intent == "COURTESY":
             return "¡De nada! Estoy aquí cuando me necesites."
         
+        if intent == "QUERY":
+            return "Consultando inventario..."
+
         if intent == "UNKNOWN":
             return "No he entendido el comando. Intenta con 'llegado material', 'mover caja', o 'salida de unidades'."
         

@@ -34,6 +34,84 @@ async def parse_request(
     # 3. Validation
     warnings = validation_service.validate_proposal(interpretation.movements)
     
+    # --- QUERY HANDLING ---
+    if interpretation.intent == "QUERY":
+        try:
+            print(f"ASSISTANT: Handling QUERY for '{text_to_process}'")
+            # Search in inventory
+            all_items = sheet_service.get_inventory()
+            
+            # Filter
+            found_items = []
+            
+            # Helper to normalize and clean
+            def normalize(s): 
+                # Remove punctuation roughly
+                clean = str(s).lower().replace("?", " ").replace("¿", " ").replace(".", " ").replace(",", " ")
+                return clean.strip()
+            
+            user_query = normalize(text_to_process)
+            terms = user_query.split()
+            print(f"ASSISTANT: Search terms: {terms}")
+            
+            # Simple keyword search in MATERIAL field
+            for row in all_items:
+                mat = normalize(row.get('MATERIAL', ''))
+                # Exclude stop words
+                stop_words = ["donde", "dónde", "hay", "el", "la", "los", "las", "un", "una", "stock", "en", "de", "que", "y", "o"]
+                search_keywords = [t for t in terms if t not in stop_words and len(t) > 1]
+                
+                if not search_keywords: continue
+                
+                # lenient match: matches if ALL keywords are found (substring)
+                if all(k in mat for k in search_keywords):
+                    found_items.append(row)
+            
+            # Build Summary
+            if found_items:
+                # Aggregate by (Material, Location, Type)
+                # Key: (Material, Location, Type) -> Quantity
+                agg = {}
+                for item in found_items:
+                    mat = item.get('MATERIAL', 'Unknown')
+                    loc = item.get('ID_UBICACION', '?')
+                    typ = item.get('TIPO_ITEM', 'Unidad') # Default to Unidad if missing
+                    try:
+                        qty = int(item.get('CANTIDAD', 0))
+                    except:
+                        qty = 0
+                    
+                    key = (mat, loc, typ)
+                    agg[key] = agg.get(key, 0) + qty
+                
+                # Format output
+                lines = []
+                # Sort by location for readability
+                sorted_keys = sorted(agg.keys(), key=lambda x: (x[1], x[0])) 
+                
+                total_total = 0
+                for k in sorted_keys:
+                    mat, loc, typ = k
+                    qty = agg[k]
+                    total_total += qty
+                    lines.append(f"• {qty} {typ} de '{mat}' en {loc}")
+                
+                # Limit lines to prevent huge bubbles
+                if len(lines) > 6:
+                    remaining = len(lines) - 5
+                    lines = lines[:5]
+                    lines.append(f"... y {remaining} coincidencias más.")
+                
+                summary_text = f"Sí, he encontrado {total_total} unidades en total:\n" + "\n".join(lines)
+                interpretation.summary = summary_text
+            else:
+                 interpretation.summary = "No he encontrado nada que coincida con esa descripción en el inventario."
+                 print("ASSISTANT: No matches found.")
+
+        except Exception as e:
+            print(f"ASSISTANT SEARCH ERROR: {e}")
+            interpretation.summary = "Hubo un error buscando en el inventario, pero estoy conectado."
+
     # 4. Sign Proposal (JWT)
     token_payload = interpretation.dict()
     token = security.create_access_token(token_payload)

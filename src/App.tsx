@@ -20,7 +20,17 @@ import { PrintView } from './components/Print/PrintView';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { UserMenu } from './components/Layout/UserMenu';
 import { DraggableLegend } from './components/UI/DraggableLegend';
-import { IconShield } from './components/UI/Icons';
+import {
+  IconShield,
+  IconSettings,
+  IconSelection,
+  IconPrinter,
+  IconGrid,
+  IconCloudDown,
+  IconSave,
+  IconUndo,
+  IconRedo
+} from './components/UI/Icons';
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
@@ -33,11 +43,13 @@ import { InventoryService } from './services/InventoryService';
 import { validateInventory } from './utils/inventoryValidation';
 import type { InventoryError } from './utils/inventoryValidation';
 import { InventoryErrorsModal } from './components/Admin/InventoryErrorsModal';
+import { sanitizeState } from './utils/cleanup';
 
 // Styles
 import './App.css';
 
 import './styles/print.css';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import { useIsMobile } from './hooks/useIsMobile';
 
 // --- HISTORY HOOK ---
@@ -120,36 +132,12 @@ function AuthenticatedApp() {
           // Merge Logic
           let mergedUbicaciones = hasObjs ? { ...codeState.ubicaciones, ...parsed.ubicaciones } : codeState.ubicaciones;
 
-          // EMERGENCY FIX: Filter out Ghost Pallets (Y > 19)
-          // Old pallets trapped in localStorage might obscure the new E1/E2 shelves.
-          // Since no valid pallet is defined below Y=19 in code, we can safely delete them.
-          const cleanUbicaciones: Record<string, any> = {};
-          let ghostCount = 0;
-          Object.entries(mergedUbicaciones).forEach(([key, u]) => {
-            const uObj = u as Ubicacion; // Type cast
-
-            // Protected IDs (Structures)
-            const isStructure = key.startsWith('E') || key.startsWith('van') || key.startsWith('door') || key.startsWith('muro');
-
-            // Delete anything else in the danger zone (Y > 19)
-            if (!isStructure && uObj.y > 19) {
-              ghostCount++;
-              console.log(`Ghost removed: ${key} at y=${uObj.y}`);
-              return; // Skip (Delete)
-            }
-            cleanUbicaciones[key] = uObj;
+          // --- CODE SUPREMACY: DELEGATE TO CLEANUP.TS ---
+          // This enforces that only objects defined in data.ts (Pristine) exist.
+          return sanitizeState({
+            ubicaciones: mergedUbicaciones,
+            geometry: hasGeo ? parsed.geometry : defaults.geometry
           });
-
-          if (ghostCount > 0) {
-            console.log(`🧹 Auto-Removed ${ghostCount} ghost objects from state.`);
-          }
-
-          return {
-            ...defaults,
-            ...parsed,
-            ubicaciones: cleanUbicaciones,
-            geometry: hasGeo ? parsed.geometry : codeState.geometry
-          };
         } catch (e) {
           console.error("Error parsing saved state", e);
           return defaults;
@@ -175,29 +163,27 @@ function AuthenticatedApp() {
 
   // Assistant Position (Draggable)
   const assistantRef = useRef<HTMLDivElement>(null);
-  const [{ x, y }, api] = useSpring(() => ({ x: 0, y: 0 }));
+  // Persistent Position
+  const [assistantPos, setAssistantPos] = useLocalStorage<{ x: number, y: number }>('assistant_pos_v5', { x: 0, y: 0 });
 
-  // Fix: Use function for bounds to allow dynamic recalculation on window resize
-  const bindAssistantDrag = useDrag(({ offset: [ox, oy], tap }) => {
+  // Init spring from storage
+  const [{ x, y }, api] = useSpring(() => ({ x: assistantPos.x, y: assistantPos.y }));
+
+  const bindAssistantDrag = useDrag(({ offset: [ox, oy], tap, down, last }) => {
     if (tap) {
-      setIsChatbotOpen(prev => !prev);
+      if (!down) setIsChatbotOpen(prev => !prev);
     } else {
-      api.start({ x: ox, y: oy });
+      // Direct mapping of offset to x/y.
+      api.start({ x: ox, y: oy, immediate: down });
+      if (last) {
+        setAssistantPos({ x: ox, y: oy });
+      }
     }
   }, {
+    // Start from current values
     from: () => [x.get(), y.get()],
-    // Dynamic bounds: Measure actual element size to be responsive-safe
-    bounds: () => {
-      // Relaxed bounds to prevent sticking
-      return {
-        left: -window.innerWidth * 1.2,
-        right: 50,
-        top: -window.innerHeight * 1.2,
-        bottom: 50
-      };
-    },
-    rubberband: true,
-    filterTaps: true
+    filterTaps: true,
+    rubberband: true
   });
   // Layout Detection
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
@@ -208,7 +194,7 @@ function AuthenticatedApp() {
   }, []);
 
   // Sync & Config
-  const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbz3PM-qshUZDMRJBm5YdfrLJIhUjrYW9Jet1R8KDtvoMydhx9y92ZeP_iJ_oyhnw0MP/exec');
+  const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbwPJThfJGQXx1J-TnRHtgZlh_TmrpZXBvMDTyomvy6BOnL9ebuZuYmt_ZH4hQ74DiAh/exec');
   const [isSyncing, setIsSyncing] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -268,7 +254,12 @@ function AuthenticatedApp() {
           if (!silent) alert('Error: Datos de nube corruptos o vacíos (sin geometría).');
           return;
         }
-        pushState(data);
+
+        // --- SANITIZE CLOUD DATA ---
+        // Prevents ghosts from ConfigJson coming back
+        const cleanData = sanitizeState(data);
+
+        pushState(cleanData);
         if (!silent) alert('¡Cargado con éxito!');
       }
       else {
@@ -286,6 +277,8 @@ function AuthenticatedApp() {
   // Inside AuthenticatedApp:
 
   // Auto-Load on mount -> DISABLED to prevent overwriting local data with empty cloud data
+  // Auto-Load on mount
+  // Auto-Load on mount -> DISABLED (We use loadLiveInventory below)
   /*
   useEffect(() => {
     if (scriptUrl) {
@@ -295,13 +288,36 @@ function AuthenticatedApp() {
   }, []);
   */
 
+  // --- STATE AUDITOR: GHOST HUNTER ---
+  useEffect(() => {
+    const checkStateIntegrity = () => {
+      console.log("🕵️‍♂️ Running State Integrity Check...");
+      const pristine = generateInitialState();
+      const validKeys = new Set(Object.keys(pristine.ubicaciones));
+      const currentKeys = Object.keys(state.ubicaciones);
+
+      const ghosts = currentKeys.filter(k => !validKeys.has(k));
+      if (ghosts.length > 0) {
+        console.error("👻 GHOSTS DETECTED IN STATE:", ghosts);
+        alert(`👻 ERROR CRÍTICO: Se han detectado objetos fantasma en el estado: ${ghosts.join(', ')}. Esto confirma que la sanitización falló.`);
+      } else {
+        console.log("✅ State Integrity Verified: No ghosts.");
+      }
+    };
+    checkStateIntegrity();
+  }, [state.ubicaciones]);
+
   // --- NEW: Load Inventory from Backend (Google Sheets) ---
   useEffect(() => {
     const loadLiveInventory = async () => {
+      console.log("App: loadLiveInventory() STARTED 🏁");
       try {
         console.log("App: Fetching live inventory...");
         const rawData = await InventoryService.fetchInventory();
-        if (rawData.length > 0) {
+        console.log("App: Fetch returned! 📦", rawData ? rawData.length : "NULL");
+
+        if (rawData && rawData.length > 0) {
+          console.log("App: Parsing inventory...");
           const updates = InventoryService.parseInventoryToState(rawData);
           console.log("App: Raw Inventory Items:", rawData.length);
           console.log("App: Parsed updates keys:", Object.keys(updates));
@@ -326,11 +342,61 @@ function AuthenticatedApp() {
           const fullUpdates: Ubicacion[] = [];
           const currentUbicaciones = state.ubicaciones; // Closure state
 
+          // 1. CLEAR EXISTING INVENTORY (Prevent Ghosts)
+          // We create a fresh update for EVERY object in the state to wipe its inventory
+          const clearedUbicaciones: Record<string, Ubicacion> = {};
+
+          Object.values(currentUbicaciones).forEach(u => {
+            // Create a base object with CLEARED inventory fields
+            clearedUbicaciones[u.id] = {
+              ...u,
+              cajas: [],
+              materiales: [],
+              items: [], // Legacy
+              shelfItems: {},
+              cajasEstanteria: {},
+              niveles: u.niveles ? u.niveles.map(l => ({ ...l, items: [] })) : undefined,
+              contenido: u.tipo === 'palet' ? '' : u.contenido, // Keep structural labels
+              programa: u.tipo === 'palet' ? 'Vacio' as any : u.programa
+            };
+          });
+
+          // 2. APPLY FRESH UPDATES
           Object.entries(updates).forEach(([id, partial]) => {
-            if (currentUbicaciones[id]) {
-              fullUpdates.push({ ...currentUbicaciones[id], ...partial });
+            if (clearedUbicaciones[id]) {
+              // Merge partial update into the CLEARED object
+              clearedUbicaciones[id] = { ...clearedUbicaciones[id], ...partial };
             }
           });
+
+          // 3. CONVERT TO ARRAY FOR HANDLEUPDATE
+          Object.values(clearedUbicaciones).forEach(u => fullUpdates.push(u));
+
+          // --- DIAGNOSTIC: CONTRACT VERIFICATION ---
+          let renderedMaterialsCount = 0;
+          fullUpdates.forEach(u => {
+            // Count Boxed Materials (Pallets)
+            u.cajas?.forEach(c => renderedMaterialsCount += c.contenido.length);
+
+            // Count Loose Materials (Pallets)
+            if (u.materiales) renderedMaterialsCount += u.materiales.length;
+
+            // Count Shelf Materials
+            if (u.cajasEstanteria) {
+              Object.values(u.cajasEstanteria).forEach(c => renderedMaterialsCount += c.contenido.length);
+            }
+          });
+
+          console.log(`📊 CONTRACT DIAGNOSTIC:`);
+          console.log(`   - Input Rows (Sheet): ${rawData.length}`);
+          console.log(`   - Rendered Materials: ${renderedMaterialsCount}`);
+
+          if (rawData.length !== renderedMaterialsCount) {
+            console.error(`⚠️ DISCREPANCY DETECTED! Input ${rawData.length} != Rendered ${renderedMaterialsCount}. Check for rejected ghosts or unmapped items.`);
+            // In strict mode, we might want to alert, but for now log error is sufficient.
+          } else {
+            console.log(`✅ DATA INTEGRITY VERIFIED. 1:1 Match.`);
+          }
 
           if (fullUpdates.length > 0) {
             handleUpdate(fullUpdates);
@@ -360,8 +426,8 @@ function AuthenticatedApp() {
       }
     };
 
-    // loadLiveInventory();
-    console.warn("App: Live Inventory Loading DISABLED by user request.");
+    loadLiveInventory();
+    // console.warn("App: Live Inventory Loading DISABLED by user request.");
   }, []); // Run once on mount
 
   const handleUpdate = async (updated: Ubicacion | Ubicacion[]) => {
@@ -557,22 +623,28 @@ function AuthenticatedApp() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 {/* Menu / Config (Left Side) */}
                 <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
-                  ⚙️
+                  <IconSettings size={20} />
                 </button>
               </div>
             }
             rightAction={
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {user?.role === 'ADMIN' && (
-                  <button
-                    onClick={() => setIsAdminOpen(true)}
-                    className="icon-btn"
-                    title="Panel Admin"
-                    style={{ backgroundColor: '#FFD54F', color: '#333' }}
-                  >
-                    <IconShield color="#333" />
+
+                {/* Cloud Controls */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
+                    <IconCloudDown size={20} />
                   </button>
-                )}
+                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
+                    <IconSave size={20} />
+                  </button>
+                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
+                    <IconUndo size={20} />
+                  </button>
+                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">
+                    <IconRedo size={20} />
+                  </button>
+                </div>
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
@@ -585,67 +657,43 @@ function AuthenticatedApp() {
 
                 {/* Map Controls Group */}
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button
-                    onClick={() => setIsSelectionMode(!isSelectionMode)}
-                    className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
-                    title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
-                  >
-                    {isSelectionMode ? "✅" : "⬜"}
-                  </button>
+                  {!isMobile && (
+                    <button
+                      onClick={() => setIsSelectionMode(!isSelectionMode)}
+                      className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                      title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
+                    >
+                      <IconSelection active={isSelectionMode} size={20} />
+                    </button>
+                  )}
 
-                  <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
-                    🖨️
-                  </button>
+                  {!isMobile && (
+                    <>
+                      <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
+                        <IconPrinter size={20} />
+                      </button>
 
-                  <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
-                    {showGrid ? "mesh" : "grid"}
-                  </button>
+                      <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                        <IconGrid active={showGrid} size={20} />
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-
-                {/* Inventory Status Indicator (Permanent) */}
-                <button
-                  onClick={() => inventoryErrors.length > 0 ? setShowErrorsModal(true) : null}
-                  className="icon-btn"
-                  title={inventoryErrors.length > 0 ? `¡Atención! ${inventoryErrors.length} Errores de Inventario` : "Inventario Validado: Correcto"}
-                  style={{
-                    backgroundColor: inventoryErrors.length > 0 ? 'var(--state-error)' : 'rgba(255,255,255,0.2)',
-                    color: 'white',
-                    borderColor: 'transparent',
-                    cursor: inventoryErrors.length > 0 ? 'pointer' : 'default',
-                    width: 'auto',
-                    padding: '0 12px',
-                    gap: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    borderRadius: '20px',
-                    height: '32px'
-                  }}
-                >
-                  <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>
-                    {inventoryErrors.length > 0 ? "⚠️" : "🛡️"}
-                  </span>
-                  {inventoryErrors.length > 0 && <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{inventoryErrors.length}</span>}
-                </button>
-
-                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-
-                {/* Cloud Controls */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
-                    ☁️⬇️
-                  </button>
-                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
-                    💾
-                  </button>
-                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
-                    ↩️
-                  </button>
-                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">
-                    ↪️
-                  </button>
-                </div>
+                {/* ADMIN BUTTON (Moved Here) */}
+                {user?.role === 'ADMIN' && (
+                  <>
+                    <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+                    <button
+                      onClick={() => setIsAdminOpen(true)}
+                      className="icon-btn"
+                      title="Panel Admin"
+                      style={{ backgroundColor: '#FFD54F', color: '#333' }}
+                    >
+                      <IconShield color="#333" size={20} />
+                    </button>
+                  </>
+                )}
 
                 <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
@@ -675,6 +723,79 @@ function AuthenticatedApp() {
             isMobile={isMobile}
           />
         }
+        footer={
+          isMobile && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              width: '100%',
+              pointerEvents: 'auto',
+              zIndex: 900 // Ensure on top
+            }}>
+              {/* 1. Static Legend (Full Width) */}
+              <DraggableLegend programColors={programColors} isMobile={true} />
+
+              {/* 2. Toolbar */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                padding: '6px 10px',
+                backgroundColor: '#f5f5f5',
+                borderTop: '1px solid #ddd',
+                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+                height: '60px'
+              }}>
+                <button
+                  onClick={() => setIsSelectionMode(!isSelectionMode)}
+                  className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                  style={{
+                    flexDirection: 'column',
+                    gap: 2,
+                    height: 'auto',
+                    width: '60px',
+                    color: isSelectionMode ? '#2E7D32' : '#555',
+                    backgroundColor: isSelectionMode ? '#e8f5e9' : 'transparent',
+                    border: isSelectionMode ? '1px solid #c8e6c9' : 'none'
+                  }}
+                >
+                  <IconSelection active={isSelectionMode} size={24} />
+                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Selección</span>
+                </button>
+
+                <button
+                  onClick={() => setShowGrid(!showGrid)}
+                  className="icon-btn"
+                  style={{
+                    flexDirection: 'column',
+                    gap: 2,
+                    height: 'auto',
+                    width: '60px',
+                    color: showGrid ? '#2E7D32' : '#555'
+                  }}
+                >
+                  <IconGrid active={showGrid} size={24} />
+                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Rejilla</span>
+                </button>
+
+                <button
+                  onClick={() => setShowPrintModal(true)}
+                  className="icon-btn"
+                  style={{
+                    flexDirection: 'column',
+                    gap: 2,
+                    height: 'auto',
+                    width: '60px',
+                    color: '#555'
+                  }}
+                >
+                  <IconPrinter size={24} />
+                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Imprimir</span>
+                </button>
+              </div>
+            </div>
+          )
+        }
         overlay={
           <>
             {/* Modal de Configuración */}
@@ -684,7 +805,9 @@ function AuthenticatedApp() {
                 scriptUrl={scriptUrl}
                 onSave={(colors, url) => {
                   setProgramColors(colors);
+                  localStorage.setItem('program_colors_config', JSON.stringify(colors)); // Fix: Persist!
                   setScriptUrl(url);
+                  localStorage.setItem('google_script_url', url); // Ensure URL is also persisted here just in case
                   setShowConfig(false);
                 }}
                 onClose={() => setShowConfig(false)}
@@ -693,6 +816,24 @@ function AuthenticatedApp() {
 
             {showErrorsModal && <InventoryErrorsModal errors={inventoryErrors} onClose={() => setShowErrorsModal(false)} />}
 
+
+            {/* Modal de Impresión */}
+            {showPrintModal && (
+              <PrintModal
+                isOpen={showPrintModal}
+                onClose={() => setShowPrintModal(false)}
+                onPrint={handlePrint}
+                programs={Object.keys(programColors)}
+                hasSelection={selectedIds.size > 0}
+              />
+            )}
+
+            {/* Hidden Print View (for List Printing) */}
+            {printData && (
+              <div className="print-view-container">
+                <PrintView data={printData} />
+              </div>
+            )}
 
             {/* Hidden Print View */}
             {assistantAlert && (
@@ -735,10 +876,11 @@ function AuthenticatedApp() {
               ref={assistantRef}
               {...bindAssistantDrag()}
               style={{
-                position: 'absolute',
-                top: 100, // Fixed to be visible below header
-                left: 20,
-                zIndex: 9999, // CRITICAL: Always on top of everything
+                position: 'fixed', // Use FIXED to stay on top of scroll
+                top: -35, // Moved UP even more (-35)
+                left: 90, // Moved LEFT to sit between gear and title
+                zIndex: 9999,
+                // Use transform for performance, but mapped from simple Spring values
                 x,
                 y,
                 touchAction: 'none',
@@ -754,8 +896,8 @@ function AuthenticatedApp() {
               />
             </animated.div>
 
-            {/* Draggable Legend (UI Polish) */}
-            {/* <DraggableLegend programColors={programColors} /> */}
+            {/* Draggable Legend (UI Polish) - DESKTOP ONLY */}
+            {!isMobile && <DraggableLegend programColors={programColors} />}
 
             {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
             <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>

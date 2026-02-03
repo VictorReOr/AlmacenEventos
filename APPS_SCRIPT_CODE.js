@@ -25,8 +25,12 @@ function handleRequest(e) {
     }
 
     try {
-        var sheetId = getSheetId();
-        var ss = SpreadsheetApp.openById(sheetId);
+        // PREFERENCIA: Usar la hoja activa (si el script se creó desde la hoja)
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        if (!ss) {
+            var sheetId = getSheetId();
+            ss = SpreadsheetApp.openById(sheetId);
+        }
 
         // --- POST (GUARDAR) ---
         if (e.postData) {
@@ -40,7 +44,8 @@ function handleRequest(e) {
             return respuestaJSON({
                 status: 'success',
                 configJson: datos.configJson,
-                filasInventario: datos.filasInventario
+                // Si inventoryRows está vacío, devolvemos array vacío para evitar undefined
+                inventoryRows: datos.filasInventario || []
             });
         }
 
@@ -64,7 +69,7 @@ function guardarDatos(ss, payload) {
     invSheet.clear();
 
     // Cabeceras Simples
-    var headers = ["ID", "Cantidad", "Contenido", "Programa", "Tipo"];
+    var headers = ["ID", "Cantidad", "Contenido", "Programa", "Tipo", "TipoContenedor"];
     invSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 
     var rows = [];
@@ -76,7 +81,8 @@ function guardarDatos(ss, payload) {
             item.cantidad || 1,
             item.contenido || "",
             item.programa || "",
-            item.tipo || ""
+            item.tipo || "",
+            item.tipoContenedor || ""
         ]);
     });
 
@@ -97,29 +103,43 @@ function cargarDatos(ss) {
         configJson = configSheet.getRange("B1").getValue();
     }
 
-    // 2. Cargar Inventario
-    var invSheet = ss.getSheetByName('Inventario');
+    // 2. Cargar Inventario (Intentar "INVENTARIO" mayúsculas o "Inventario" normal)
+    var invSheet = ss.getSheetByName('INVENTARIO');
+    if (!invSheet) invSheet = ss.getSheetByName('Inventario');
+
     var inventoryRows = [];
 
     if (invSheet && invSheet.getLastRow() > 1) {
-        // ID, Cantidad, Contenido, Programa, Tipo (5 Cols)
-        var data = invSheet.getRange(2, 1, invSheet.getLastRow() - 1, 5).getValues();
+        var lastRow = invSheet.getLastRow();
+        var lastCol = invSheet.getLastColumn();
+
+        // Leer Cabeceras
+        var headers = invSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+        // Leer Datos
+        var data = invSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
 
         data.forEach(function (row) {
-            var id = String(row[0]);
-            if (!id) return;
+            var rowObj = {};
+            var hasData = false;
 
-            inventoryRows.push({
-                id: id,
-                cantidad: row[1],
-                contenido: String(row[2]),
-                programa: String(row[3]),
-                tipo: String(row[4])
+            headers.forEach(function (header, index) {
+                var key = String(header).trim();
+                if (key) {
+                    var val = row[index];
+                    rowObj[key] = val; // Asignar dinámicamente según cabecera
+                    if (val && String(val).trim() !== "") hasData = true;
+                }
             });
+
+            // Solo añadir si la fila no está totalmente vacía
+            if (hasData) {
+                inventoryRows.push(rowObj);
+            }
         });
     }
 
-    return { configJson: configJson, inventoryRows: inventoryRows };
+    return { configJson: configJson, filasInventario: inventoryRows };
 }
 
 // --- HELPER: Asegurar Hoja ---

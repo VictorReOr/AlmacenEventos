@@ -19,17 +19,7 @@ export const AuthService = {
             return response.json();
         } catch (error) {
             console.warn("Auth Service Error (Login):", error);
-            // OFFLINE FALLBACK
-            alert("⚠️ Modo Offline Activado: Accediendo como Administrador Local.");
-            return {
-                access_token: "mock_offline_token",
-                user: {
-                    id: "local-admin",
-                    email: email,
-                    name: "Admin Local (Offline)",
-                    role: "ADMIN"
-                }
-            };
+            throw error; // Propagate error to UI (Invalid Password, etc.)
         }
     },
 
@@ -48,17 +38,7 @@ export const AuthService = {
             return response.json();
         } catch (error) {
             console.warn("Auth Service Error (Google):", error);
-            // OFFLINE FALLBACK
-            alert("⚠️ Modo Offline Activado: Accediendo como Administrador Local.");
-            return {
-                access_token: "mock_offline_token",
-                user: {
-                    id: "local-google-user",
-                    email: "offline@google.com",
-                    name: "Usuario Google (Offline)",
-                    role: "ADMIN"
-                }
-            };
+            throw error;
         }
     },
 

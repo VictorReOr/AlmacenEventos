@@ -28,10 +28,16 @@
 
 .center {
     flex: 1;
-    text-align: center;
+    text-align: right;
+    /* Changed from center to right */
     display: flex;
     flex-direction: column;
     justify-content: center;
+    align-items: flex-end;
+    /* Align items to the right */
+    padding-right: 4px;
+    /* Reduced from 16px to 4px to bring it closer */
+    /* Add some spacing from the right action */
     overflow: hidden;
 }
 
@@ -57,23 +63,41 @@
 /* Mobile Responsiveness */
 @media (max-width: 600px) {
     .header {
-        padding: 0 8px;
+        padding: 0 4px;
+        /* Minimal padding */
     }
 
-    .title {
-        font-size: 1rem;
-        /* Smaller title */
-        max-width: 100px;
-        /* Limit width to prevent overlap */
-    }
-
-    .subtitle {
+    /* Hide Title on Mobile to prioritize Tools */
+    .center {
         display: none;
-        /* Hide subtitle on small screens */
     }
 
-    .left,
+    /* Allow horizontal scrolling for tools if needed, but hide scrollbar */
     .right {
+        min-width: 0;
+        /* Allow shrinking */
+        flex: 1;
+        /* Take all space */
+        justify-content: flex-end;
+        /* Keep aligned to right */
+        overflow-x: auto;
+        padding-left: 8px;
+        /* Separation from left config */
+        /* Hide Scrollbar */
+        scrollbar-width: none;
+        /* Firefox */
+        -ms-overflow-style: none;
+        /* IE 10+ */
+    }
+
+    .right::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    .left {
         min-width: auto;
+        /* Ensure left doesn't shrink to zero but takes up minimal space */
+        flex-shrink: 0;
     }
 }

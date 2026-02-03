@@ -35,31 +35,36 @@ export interface OCRResponse {
 export const AssistantService = {
     async parseText(text: string): Promise<AssistantResponse> {
         try {
-            // OFFLINE MODE CHECK
-            // return { status: 'ERROR', error: 'Modo Offline: Backend desconectado.' };
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                return { status: 'ERROR', error: 'Sesión expirada. Por favor, recarga la página.', warnings: [] };
+            }
 
             const response = await fetch(`${API_URL}/parse`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     text,
-                    user_id: 'web-user' // TODO: Replace with actual user ID when auth is implemented
+                    user_id: 'web-user'
                 }),
             });
 
             if (!response.ok) {
+                if (response.status === 401 || response.status === 403) {
+                    return { status: 'ERROR', error: 'Sesión inválida o expirada. Recarga.', warnings: [] };
+                }
                 throw new Error(`API Error: ${response.statusText}`);
             }
 
             return await response.json();
         } catch (error) {
             console.warn("Assistant API Error (Parse):", error);
-            // MOCK RESPONSE FOR OFFLINE
             return {
                 status: 'ERROR',
-                error: 'Estamos trabajando en modo desconectado. El asistente no está disponible.',
+                error: 'Error de conexión con el Asistente. Verifica que el backend esté activo.',
                 warnings: []
             };
         }
