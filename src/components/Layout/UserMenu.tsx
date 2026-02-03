@@ -79,6 +79,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
                 }}>
                     <div style={{ padding: '8px', borderBottom: '1px solid #eee', marginBottom: '8px' }}>
                         <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{user.email}</div>
+                        <div style={{ fontSize: '10px', color: '#888', marginTop: '4px' }}>Versión v1.1 (Mobile OK)</div>
                     </div>
 
                     <button
