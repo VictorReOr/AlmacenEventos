@@ -11,9 +11,9 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Gestión Visual Almacén v1.4',
-        short_name: 'Almacén v1.4',
-        description: 'Aplicación visual gestión ubicaciones (v1.4 Silent)',
+        name: 'Gestión Visual Almacén v1.5',
+        short_name: 'Almacén v1.5',
+        description: 'Aplicación visual gestión ubicaciones (v1.5 Instant)',
         theme_color: '#ffffff',
         icons: [
           {

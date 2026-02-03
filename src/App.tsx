@@ -617,7 +617,7 @@ function AuthenticatedApp() {
       <AppShell
         header={
           <Header
-            title="SGA Eventos (v1.4 Silent Select)"
+            title="SGA Eventos (v1.5 Instant Touch)"
             subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
             leftAction={
               <div style={{ display: 'flex', gap: '8px' }}>

@@ -499,6 +499,14 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         startClickPos.current = { x: e.clientX, y: e.clientY };
         selectionHandled.current = false; // RESET STATE ON NEW TOUCH
 
+        // v1.5 INSTANT SELECTION (Safe Mode Only)
+        // If we are in "readOnly" (Safe Mode), select IMMEDIATELY on touch.
+        // This removes all threshold/timing issues. User touches -> User selects.
+        if (readOnly) {
+            onSelectLocation(u.id);
+            selectionHandled.current = true; // Mark as handled so Up/Drag don't repeat
+        }
+
         isLongPressed.current = false;
         longPressTimer.current = setTimeout(() => {
             isLongPressed.current = true;
