@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-    title = "Gestión Almacén",
+    title = "Gestión Almacén (v1.1)",
     subtitle,
     leftAction,
     rightAction
