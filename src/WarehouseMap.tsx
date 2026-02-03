@@ -105,10 +105,6 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
     const bindMove = useGesture({
         onDragStart: ({ event }) => {
-            if (readOnly) {
-                if (onVisitorError) onVisitorError();
-                return;
-            }
             // RESTRICTION: VAN ONLY MOVABLE BY ADMIN
             if (u.id === 'van_v3' && user?.role !== 'ADMIN') {
                 if (onVisitorError) onVisitorError(); // Or a specific error
@@ -124,6 +120,11 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 const isShift = (event as any).shiftKey;
                 onSelectLocation(u.id, { toggle: isCtrl, range: isShift });
                 selectionHandled.current = true;
+            }
+
+            if (readOnly) {
+                if (onVisitorError) onVisitorError();
+                return;
             }
 
             setInteractionMode('move');
