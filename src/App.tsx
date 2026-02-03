@@ -721,6 +721,7 @@ function AuthenticatedApp() {
             }}
             programColors={programColors}
             isMobile={isMobile}
+            readOnly={isMobile && !isSelectionMode}
           />
         }
         footer={
