@@ -17,14 +17,16 @@ export default defineConfig(({ command }) => ({
         theme_color: '#ffffff',
         icons: [
           {
-            src: 'almacenito.png',
+            src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: 'almacenito.png',
+            src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       }
