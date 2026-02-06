@@ -37,7 +37,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
-            text: 'Hola. Soy Almacenito (Brain v8.0). Puedo registrar movimientos o entradas. Escribe o sube una foto.',
+            text: 'Hola. Soy Almacenito. Puedo registrar movimientos o entradas. Escribe o sube una foto.',
             sender: 'bot'
         }
     ]);
@@ -225,7 +225,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         <div className={styles.window}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🧠 Almacenito <span style={{ fontSize: '0.7em', opacity: 0.7 }}>(v8.1)</span></span>
+                    <span>🧠 Almacenito</span>
                 </div>
                 <button className={styles.closeBtn} onClick={onClose}>×</button>
             </div>

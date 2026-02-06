@@ -26,10 +26,10 @@ export const AssistantCharacter: React.FC<AssistantCharacterProps> = ({
         ${styles[size]} 
         ${onClick ? styles.clickable : ''} 
         ${className || ''}
-      `}
+`}
             onClick={onClick}
         >
-            <div className={`${styles.avatarWrapper} ${styles[state]}`}>
+            <div className={`${styles.avatarWrapper} ${styles[state]} `}>
                 <img
                     src={almacenitoIcon}
                     alt="Almacenito Asistente"
