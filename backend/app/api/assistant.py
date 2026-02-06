@@ -110,8 +110,8 @@ async def parse_request(
                 print(f"ASSISTANT: Precise location candidates: {base_prefixes}")
                 target_location_ids = base_prefixes
 
-            # Pattern: "palet" followed by number
-            pallet_match = re.search(r'palet\s*(\w+)', user_query)
+            # Pattern: "palet" followed by NUMBER only (avoid "palet de...")
+            pallet_match = re.search(r'palet\s*(\d+)', user_query)
             if pallet_match:
                 # User asking for Pallet ID
                 pid = pallet_match.group(1).upper()
