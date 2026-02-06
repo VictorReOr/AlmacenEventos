@@ -1,6 +1,6 @@
 import React from 'react';
 import styles from './AssistantCharacter.module.css';
-import almacenitoIcon from '../../assets/almacenito.png';
+import almacenitoIcon from '../../assets/almacenito_v2.png';
 
 export type AssistantState = 'idle' | 'listening' | 'thinking' | 'success' | 'error' | 'speaking';
 
