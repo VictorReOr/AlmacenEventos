@@ -209,11 +209,23 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
     if (!isOpen) return null;
 
+    // Helper to render bold text from "**" markers
+    const renderMessage = (text: string) => {
+        if (!text) return null;
+        // Split by "**" -> ["Hola ", "bold", " world"]
+        const parts = text.split(/\*\*(.*?)\*\*/g);
+        return parts.map((part, i) => {
+            // Even indices are normal text, Odd are bold
+            if (i % 2 === 1) return <strong key={i}>{part}</strong>;
+            return <span key={i}>{part}</span>;
+        });
+    };
+
     return (
         <div className={styles.window}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🧠 Almacenito <span style={{ fontSize: '0.7em', opacity: 0.7 }}>(v8.0)</span></span>
+                    <span>🧠 Almacenito <span style={{ fontSize: '0.7em', opacity: 0.7 }}>(v8.1)</span></span>
                 </div>
                 <button className={styles.closeBtn} onClick={onClose}>×</button>
             </div>
@@ -221,7 +233,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             <div className={styles.messages}>
                 {messages.map(msg => (
                     <div key={msg.id} className={`${styles.message} ${styles[msg.sender]}`}>
-                        {msg.text && <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>}
+                        {msg.text && <div style={{ whiteSpace: 'pre-wrap' }}>{renderMessage(msg.text)}</div>}
 
                         {msg.structuredData && (
                             <ChatConfirmationBubble

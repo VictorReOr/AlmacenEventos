@@ -386,14 +386,14 @@ class SheetService:
             for i, row in enumerate(all_values):
                 # Normalize row values to check for known headers
                 normalized_row = [str(c).strip().upper() for c in row]
-                if "ID_UBICACION" in normalized_row or "ID_LUGAR" in normalized_row:
+                if "ID_UBICACION" in normalized_row or "ID_LUGAR" in normalized_row or "ID_REGISTRO" in normalized_row:
                     header_row_index = i
                     # Capture headers with original casing but stripped
                     headers = [str(c).strip() for c in row] 
                     break
             
             if header_row_index == -1:
-                print("SHEETS ERROR: Could not find 'ID_UBICACION' or 'ID_LUGAR' header in INVENTARIO tab.")
+                print("SHEETS ERROR: Could not find 'ID_UBICACION', 'ID_LUGAR', or 'ID_REGISTRO' header in INVENTARIO tab.")
                 return []
 
             # 2. Parse Rows
@@ -415,6 +415,8 @@ class SheetService:
                          # Keep original too just in case
                          if header.upper() == "ID_LUGAR":
                              item["ID_LUGAR"] = row[idx]
+                         if header.upper() == "ID_REGISTRO":
+                             item["ID_REGISTRO"] = row[idx]
 
                 results.append(item)
                 

@@ -38,79 +38,267 @@ async def parse_request(
     if interpretation.intent == "QUERY":
         try:
             print(f"ASSISTANT: Handling QUERY for '{text_to_process}'")
-            # Search in inventory
             all_items = sheet_service.get_inventory()
-            
-            # Filter
             found_items = []
             
-            # Helper to normalize and clean
             def normalize(s): 
-                # Remove punctuation roughly
-                clean = str(s).lower().replace("?", " ").replace("¿", " ").replace(".", " ").replace(",", " ")
-                return clean.strip()
+                return str(s).lower().strip()
             
             user_query = normalize(text_to_process)
-            terms = user_query.split()
-            print(f"ASSISTANT: Search terms: {terms}")
             
-            # Simple keyword search in MATERIAL field
-            for row in all_items:
-                mat = normalize(row.get('MATERIAL', ''))
-                # Exclude stop words
-                stop_words = ["donde", "dónde", "hay", "el", "la", "los", "las", "un", "una", "stock", "en", "de", "que", "y", "o"]
-                search_keywords = [t for t in terms if t not in stop_words and len(t) > 1]
-                
-                if not search_keywords: continue
-                
-                # lenient match: matches if ALL keywords are found (substring)
-                if all(k in mat for k in search_keywords):
-                    found_items.append(row)
+            # --- SMART PRE-PROCESSING ---
+            # Handle "Estantería X" -> "EX" conversion
+            import re
             
-            # Build Summary
+            # Pattern: "estanteria" followed with optional space and a number/letter
+            # e.g. "estanteria 1" -> "E1", "estanteria B" -> "EB"
+            shelf_match = re.search(r'estanter[ií]a\s*(\w+)', user_query)
+            # Variables for Structured Search
+            parsed_shelf = None
+            parsed_module = None
+            parsed_level = None
+            target_location_ids = []
+            
+            if shelf_match:
+                # User is likely asking for a specific shelf
+                # We construct the ID prefix, e.g. "E1"
+                suffix = shelf_match.group(1).upper()
+                # If suffix is just a number, prepend E. If it's like "E1", keep it.
+                if suffix.isdigit():
+                    target_location_id = f"E{suffix}"
+                else:
+                     target_location_id = suffix if suffix.startswith("E") else f"E{suffix}"
+                
+                parsed_shelf = target_location_id
+
+                # Check for MODULE (M)
+                mod_match = re.search(r'm[oó]d(?:ulo)?\s*(\d+)', user_query)
+                
+                # We will build a list of valid prefixes to check
+                base_prefixes = [target_location_id]
+                
+                if mod_match:
+                    mod_num_str = mod_match.group(1)
+                    mod_num = int(mod_num_str)
+                    parsed_module = str(mod_num) # Store as string for comparison
+
+                    new_prefixes = []
+                    for prefix in base_prefixes:
+                        # Variant 1: As provided (M1)
+                        new_prefixes.append(f"{prefix}-M{mod_num_str}")
+                        # Variant 2: Zero padded (M01) if single digit
+                        if mod_num < 10 and len(mod_num_str) == 1:
+                            new_prefixes.append(f"{prefix}-M0{mod_num}")
+                    base_prefixes = new_prefixes
+                    
+                    # Check for LEVEL/HEIGHT (A)
+                    lvl_match = re.search(r'(?:altura|nivel|alt)\s*(\d+)', user_query)
+                    if lvl_match:
+                        lvl_num_str = lvl_match.group(1)
+                        lvl_num = int(lvl_num_str)
+                        parsed_level = str(lvl_num)
+
+                        final_prefixes = []
+                        for prefix in base_prefixes:
+                             # Variant 1: As provided (A1)
+                            final_prefixes.append(f"{prefix}-A{lvl_num_str}")
+                            # Variant 2: Zero padded (A01)
+                            if lvl_num < 10 and len(lvl_num_str) == 1:
+                                final_prefixes.append(f"{prefix}-A0{lvl_num}")
+                        base_prefixes = final_prefixes
+
+                print(f"ASSISTANT: Precise location candidates: {base_prefixes}")
+                target_location_ids = base_prefixes
+
+            # Pattern: "palet" followed by number
+            pallet_match = re.search(r'palet\s*(\w+)', user_query)
+            if pallet_match:
+                # User asking for Pallet ID
+                pid = pallet_match.group(1).upper()
+                target_location_ids = [pid] # Pallets are usually exact or single format, but could add padding helper if needed later
+                print(f"ASSISTANT: Detected pallet query. Target ID: {pid}")
+
+            # --- SEARCH EXECUTION ---
+            
+            if target_location_ids:
+                # STRATEGY A: ID-REGISTRO/UBICACION SEARCH (Combined)
+                target_found = False
+                
+                for row in all_items:
+                    # 1. Try Granular Match using ID strings
+                    # STRIP to avoid " E1-M1 " mismatch
+                    loc_id = str(row.get('ID_REGISTRO') or row.get('ID_UBICACION', '')).upper().strip()
+                    
+                    matched_strategy_a = False
+                    for tid in target_location_ids:
+                        if loc_id == tid or loc_id.startswith(f"{tid}-"):
+                             matched_strategy_a = True
+                             break
+                    
+                    if matched_strategy_a:
+                        found_items.append(row)
+                        target_found = True
+                        continue
+
+                    # 2. STRATEGY B: STRUCTURED COLUMN SEARCH
+                    # Use parsed shelf, module, level against distinct columns if available
+                    # Only if we have at least a Shelf parsed
+                    if parsed_shelf:
+                        row_shelf = str(row.get('ID_LUGAR') or row.get('ID_UBICACION', '')).upper().strip()
+                        # Allow fuzzy match for shelf? No, keep strict for now. E1 vs E1.
+                        
+                        if row_shelf == parsed_shelf:
+                            # Shelf Matches. Now Check Module?
+                            match_mod = True
+                            if parsed_module:
+                                # Compare 'MODULO' column. normalize to string/int check
+                                row_mod = str(row.get('MODULO', '')).strip()
+                                # Handle "2" vs "02" -> simple int conversion check if digits
+                                if row_mod.isdigit() and parsed_module.isdigit():
+                                    if int(row_mod) != int(parsed_module): match_mod = False
+                                else:
+                                    if row_mod != parsed_module: match_mod = False
+                            
+                            if match_mod:
+                                match_lvl = True
+                                if parsed_level:
+                                    row_lvl = str(row.get('ALTURA', '')).strip()
+                                    if row_lvl.isdigit() and parsed_level.isdigit():
+                                          if int(row_lvl) != int(parsed_level): match_lvl = False
+                                    else:
+                                          if row_lvl != parsed_level: match_lvl = False
+                                
+                                if match_lvl:
+                                    found_items.append(row)
+                                    target_found = True
+
+            else:
+                # STRATEGY B: CONTENT/KEYWORD SEARCH (Broad)
+                terms = user_query.split()
+                # Filter stop words but KEEP numbers and short IDs
+                # Filter stop words but KEEP numbers and short IDs
+                stop_words = [
+                    "donde", "dónde", "hay", "haya", "el", "la", "los", "las", "un", "una", 
+                    "stock", "en", "de", "que", "y", "o", "contenido", "dentro",
+                    "dime", "decir", "todos", "todas", "todo", "toda", "sitios", "lugares", "ubicaciones",
+                    "buscar", "busca", "encuentra", "ver", "listar", "cual", "cuales", "quien", 
+                    "mostrar", "enseñar", "ver"
+                ]
+                search_keywords = [t for t in terms if t not in stop_words]
+                
+                if not search_keywords:
+                    # If all words were stop words, return nothing or maybe hint user?
+                    msg = "No he detectado palabras clave válidas. Intenta ser más específico." 
+                    # We leave msg empty/default fallback in summary generation relies on found_items being empty
+                    pass
+                else:
+                    # 1. First Pass: Strict matches
+                    for row in all_items:
+                        mat = normalize(row.get('MATERIAL', ''))
+                        loc = normalize(row.get('ID_UBICACION', ''))
+                        typ = normalize(row.get('TIPO_ITEM', ''))
+                        searchable_text = f"{mat} {loc} {typ}"
+                        
+                        if all(k in searchable_text for k in search_keywords):
+                            found_items.append(row)
+                    
+                    # 2. Second Pass: Relaxed (Singular/Plural) if no results found
+                    if not found_items:
+                        # Generate variations for each keyword (e.g. "balones" -> "balon")
+                        relaxed_keywords = []
+                        for k in search_keywords:
+                            variations = [k]
+                            if k.endswith('es') and len(k) > 3: variations.append(k[:-2]) # balones -> balon
+                            if k.endswith('s') and len(k) > 3: variations.append(k[:-1])  # sillas -> silla
+                            relaxed_keywords.append(variations)
+                        
+                        # We need to find rows that have AT LEAST ONE match for EACH keyword group
+                        # e.g. search: "cajas balones" -> needs (caja OR cajas) AND (balon OR balones)
+                        
+                        for row in all_items:
+                            mat = normalize(row.get('MATERIAL', ''))
+                            loc = normalize(row.get('ID_UBICACION', ''))
+                            typ = normalize(row.get('TIPO_ITEM', ''))
+                            searchable_text = f"{mat} {loc} {typ}"
+                            
+                            # check if this row satisfies all keyword groups
+                            all_groups_match = True
+                            for group in relaxed_keywords:
+                                if not any(var in searchable_text for var in group):
+                                    all_groups_match = False
+                                    break
+                            
+                            if all_groups_match:
+                                found_items.append(row)
+
+            # --- SUMMARY GENERATION ---
             if found_items:
-                # Aggregate by (Material, Location, Type)
-                # Key: (Material, Location, Type) -> Quantity
-                agg = {}
+                # Group by Material to give a cleaner answer
+                summary_map = {} # Material -> {qty: 0, locs: set()}
+                
                 for item in found_items:
-                    mat = item.get('MATERIAL', 'Unknown')
+                    mat = item.get('MATERIAL', 'Desconocido')
                     loc = item.get('ID_UBICACION', '?')
-                    typ = item.get('TIPO_ITEM', 'Unidad') # Default to Unidad if missing
                     try:
                         qty = int(item.get('CANTIDAD', 0))
                     except:
                         qty = 0
                     
-                    key = (mat, loc, typ)
-                    agg[key] = agg.get(key, 0) + qty
+                    if mat not in summary_map:
+                        summary_map[mat] = {'qty': 0, 'locs': set()}
+                    
+                    summary_map[mat]['qty'] += qty
+                    summary_map[mat]['locs'].add(loc)
                 
-                # Format output
                 lines = []
-                # Sort by location for readability
-                sorted_keys = sorted(agg.keys(), key=lambda x: (x[1], x[0])) 
+                total_items_count = 0
                 
-                total_total = 0
-                for k in sorted_keys:
-                    mat, loc, typ = k
-                    qty = agg[k]
-                    total_total += qty
-                    lines.append(f"• {qty} {typ} de '{mat}' en {loc}")
-                
-                # Limit lines to prevent huge bubbles
-                if len(lines) > 6:
-                    remaining = len(lines) - 5
-                    lines = lines[:5]
-                    lines.append(f"... y {remaining} coincidencias más.")
-                
-                summary_text = f"Sí, he encontrado {total_total} unidades en total:\n" + "\n".join(lines)
-                interpretation.summary = summary_text
-            else:
-                 interpretation.summary = "No he encontrado nada que coincida con esa descripción en el inventario."
-                 print("ASSISTANT: No matches found.")
+                for mat, data in summary_map.items():
+                    qty = data['qty']
+                    locs_list = sorted(list(data['locs']))
+                    
+                    # Prettify locations
+                    pretty_locs = []
+                    for l in locs_list:
+                        if l.isdigit():
+                            pretty_locs.append(f"Palet {l}")
+                        elif l.startswith("E") and len(l) > 1 and l[1:].isdigit():
+                            pretty_locs.append(f"Estantería {l[1:]}")
+                        else:
+                            pretty_locs.append(l)
 
+                    # Truncate location list if too long
+                    locs_str = ", ".join(pretty_locs[:3])
+                    if len(locs_list) > 3:
+                        locs_str += f" (+{len(locs_list)-3} más)"
+                        
+                    lines.append(f"• **{qty}** {mat} (en {locs_str})")
+                    total_items_count += qty
+                
+                # Limit output lines
+                if len(lines) > 8:
+                    lines = lines[:8]
+                    lines.append(f"... y otros.")
+
+                intro = f"He encontrado **{total_items_count}** artículos"
+                if target_location_ids:
+                     intro += f" en **{target_location_ids[0]}**"
+                
+                interpretation.summary = f"{intro}:\n" + "\n".join(lines)
+
+            else:
+                 msg = "No he encontrado nada."
+                 if target_location_ids:
+                     # Use the first candidate for display, e.g. "E1-M1"
+                     nice_loc = target_location_ids[0]
+                     msg = f"No he encontrado nada en la ubicación **{nice_loc}** (o sus variantes). ¿Es posible que esté vacía?"
+                 else:
+                     msg = "No he encontrado coincidencias para esa búsqueda en el inventario."
+                 interpretation.summary = msg
+                 
         except Exception as e:
             print(f"ASSISTANT SEARCH ERROR: {e}")
-            interpretation.summary = "Hubo un error buscando en el inventario, pero estoy conectado."
+            interpretation.summary = f"Error buscando en el inventario: {e}"
 
     # 4. Sign Proposal (JWT)
     token_payload = interpretation.dict()

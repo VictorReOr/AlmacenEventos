@@ -78,20 +78,27 @@ class NLPService:
         print(f"NLP Analysis: Text='{text_lower}', Verbs={verbs}")
         
         # Check for inventory queries - PRIORITY
-        query_words = ["donde", "dónde", "hay", "buscar", "encuentra", "tienes", "stock", "quedan", "ver", "listar"]
+        query_words = ["donde", "dónde", "hay", "buscar", "encuentra", "tienes", "stock", "quedan", "ver", "listar", "dime", "cual", "cuál", "que", "qué", "info", "detalle"]
         is_query = any(w in text_lower for w in query_words)
         
-        if is_query and ("?" in text or any(w in text_lower for w in ["dónde", "donde está", "donde hay", "hay un", "hay una"])):
+        # Strong match patterns (Question marks or explicit phrases)
+        strong_patterns = [
+            "dónde", "donde está", "donde esta", "donde hay", "hay un", "hay una",
+            "en que", "en qué", "que hay", "qué hay", "cual es", "cuál es",
+            "en que modulo", "en qué módulo", "en que estanteria", "en qué estantería"
+        ]
+        
+        if "?" in text or any(p in text_lower for p in strong_patterns):
             print("NLP: Detected QUERY (Strong match)")
             return "QUERY"
         
-        # Check for greetings
+        # Check for greetings (if not a query)
         greetings = ["hola", "buenos días", "buenas tardes", "buenas noches", "hey", "saludos"]
-        if any(g in text_lower for g in greetings):
+        if any(g in text_lower for g in greetings) and not is_query:
             return "GREETING"
         
         # Check for thanks/goodbye
-        if any(w in text_lower for w in ["gracias", "adiós", "hasta luego", "chao"]):
+        if any(w in text_lower for w in ["gracias", "adiós", "hasta luego", "chao", "genial", "perfecto", "vale"]):
             return "COURTESY"
 
         # Analyze verbs for warehouse actions
@@ -107,6 +114,7 @@ class NLPService:
             return "MOVIMIENTO"
         
         # Fallback for Query (weak match)
+        # If it has any query word, assume it's a query if nothing else matched
         if is_query:
              print("NLP: Detected QUERY (Weak match)")
              return "QUERY"
