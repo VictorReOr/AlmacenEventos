@@ -12,8 +12,9 @@ export default defineConfig(({ command }) => ({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'SGA Eventos',
-        short_name: 'SGA Eventos',
+        short_name: 'Almacén',
         description: 'Gestión Visual de Almacén',
+        display: 'standalone',
         theme_color: '#ffffff',
         icons: [
           {
