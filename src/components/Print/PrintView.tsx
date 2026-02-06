@@ -14,19 +14,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
     const renderContents = (u: Ubicacion) => {
         const items: JSX.Element[] = [];
 
-        // 0. Shelf Slots (Legacy & New Logic) - PRIORIDAD para Estanterías
+        // 0. Shelf Slots
         if (u.cajasEstanteria && Object.keys(u.cajasEstanteria).length > 0) {
-            // Sort keys to be orderly: M1-A1, M1-A2, M1-A3...
             const sortedKeys = Object.keys(u.cajasEstanteria).sort((a, b) => {
-                // Heurística simple: string comparison funciona bien para "M1-A1" vs "M1-A2"
-                // Pero para "M1-A10" vs "M1-A2", falla. Mejor parsear.
                 try {
                     const [m_a, a_a] = a.replace('M', '').split('-A').map(Number);
                     const [m_b, a_b] = b.replace('M', '').split('-A').map(Number);
                     if (m_a !== m_b) return m_a - m_b;
-                    return a_a - a_b; // Ordenar por altura ascendente (suelo a techo) o descendente?
-                    // Normalmente visualmente leemos de arriba a abajo en lista, pero estantería es físico.
-                    // Ascendente (1, 2, 3) es lógico.
+                    return a_a - a_b;
                 } catch (e) {
                     return a.localeCompare(b);
                 }
@@ -34,14 +29,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
 
             sortedKeys.forEach((key) => {
                 const caja = u.cajasEstanteria![key];
-                // Parse key for display: "M1-A1" -> "Módulo 1 - Altura 1"
                 const fancyLoc = key.replace('M', 'Mód ').replace('A', 'Alt ');
 
                 items.push(
-                    <div key={`shelf-${key}`} style={{ marginBottom: '4px', borderBottom: '1px dashed #eee', paddingBottom: '2px' }}>
-                        <strong style={{ color: '#00796B' }}>[{fancyLoc}]</strong> {caja.descripcion}
+                    <div key={`shelf-${key}`} className="print-item">
+                        <strong className="print-location-tag">[{fancyLoc}]</strong> {caja.descripcion}
                         {caja.contenido && caja.contenido.length > 0 && (
-                            <ul style={{ margin: '2px 0 0 15px', padding: 0, listStyleType: 'square', fontSize: '0.9em' }}>
+                            <ul className="print-sublist">
                                 {caja.contenido.map((m, mIdx) => (
                                     <li key={mIdx}>{m.nombre} (x{m.cantidad})</li>
                                 ))}
@@ -52,14 +46,14 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
             });
         }
 
-        // 1. Boxes (Cajas - Pallets)
+        // 1. Boxes
         if (u.cajas && u.cajas.length > 0) {
             u.cajas.forEach((caja, idx) => {
                 items.push(
-                    <div key={`box-${idx}`} style={{ marginBottom: '4px' }}>
-                        <strong>[Caja] {caja.descripcion}</strong> {caja.cantidad ? `(x${caja.cantidad})` : ''}
+                    <div key={`box-${idx}`} className="print-item">
+                        <strong className="print-box-title">[Caja] {caja.descripcion}</strong> {caja.cantidad ? `(x${caja.cantidad})` : ''}
                         {caja.contenido && caja.contenido.length > 0 && (
-                            <ul style={{ margin: '2px 0 0 15px', padding: 0, listStyleType: 'circle' }}>
+                            <ul className="print-sublist">
                                 {caja.contenido.map((m, mIdx) => (
                                     <li key={mIdx}>{m.nombre} (x{m.cantidad})</li>
                                 ))}
@@ -70,21 +64,21 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
             });
         }
 
-        // 2. Loose Materials (Materiales Sueltos - Pallets)
+        // 2. Loose Materials
         if (u.materiales && u.materiales.length > 0) {
             u.materiales.forEach((m, idx) => {
                 items.push(
-                    <div key={`mat-${idx}`} style={{ marginBottom: '4px', color: '#E65100' }}>
+                    <div key={`mat-${idx}`} className="print-item print-loose-item">
                         <strong>[Suelto]</strong> {m.nombre} (x{m.cantidad})
                     </div>
                 );
             });
         }
 
-        // 3. Last Resort: Simple Label or Empty
+        // 3. Last Resort
         if (items.length === 0) {
             if (u.contenido) return <div>{u.contenido}</div>;
-            return <span style={{ color: '#999', fontStyle: 'italic' }}>Vacío</span>;
+            return <span className="print-empty">Vacío</span>;
         }
 
         return items;
@@ -109,7 +103,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
                 <tbody>
                     {sortedData.map(u => (
                         <tr key={u.id}>
-                            <td style={{ fontWeight: 'bold' }}>{u.id}</td>
+                            <td className="print-cell-id">{u.id}</td>
                             <td>{u.programa}</td>
                             <td>{u.tipo}</td>
                             <td>{renderContents(u)}</td>

@@ -53,29 +53,10 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useIsMobile } from './hooks/useIsMobile';
 
 // --- HISTORY HOOK ---
-const useHistory = (initialState: AlmacenState) => {
-  const [history, setHistory] = useState<AlmacenState[]>([initialState]);
-  const [pointer, setPointer] = useState(0);
+import { useHistory } from './hooks/useHistory';
 
-  const currentState = history[pointer];
+// Removed local useHistory definition
 
-  const pushState = (newState: AlmacenState) => {
-    const nextHistory = [...history.slice(0, pointer + 1), newState];
-    if (nextHistory.length > 50) nextHistory.shift();
-    setHistory(nextHistory);
-    setPointer(nextHistory.length - 1);
-  };
-
-  const undo = () => {
-    if (pointer > 0) setPointer(pointer - 1);
-  };
-
-  const redo = () => {
-    if (pointer < history.length - 1) setPointer(pointer + 1);
-  };
-
-  return { state: currentState, pushState, undo, redo, canUndo: pointer > 0, canRedo: pointer < history.length - 1 };
-};
 
 function AuthenticatedApp() {
   // The comments below were part of the original App component, now moved to AuthenticatedApp

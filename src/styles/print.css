@@ -25,20 +25,49 @@
         -webkit-print-color-adjust: exact;
     }
 
-    /* PRINT VIEW CONTAINER (LIST MODE) */
+    /* --- DEFAULT PRINT BEHAVIOR (LIST MODE) --- */
+    /* Hide everything in the App Shell */
+    #root>div {
+        display: none !important;
+    }
+
+    /* Force show ONLY the Print View Container */
+    /* This must serve as a separate layer that overrides the #root hiding if it's outside, 
+       but if it's inside #root, we need to target specifically the AppShell structure */
+
+    /* Better approach: Hide specific main containers */
     .print-view-container {
         display: block !important;
         position: absolute;
         top: 0;
         left: 0;
         width: 100%;
+        height: auto;
         background: white;
-        z-index: 9999;
-        padding: 2cm;
+        z-index: 99999;
+        /* Super high z-index */
+        padding: 1cm;
+        visibility: visible !important;
     }
 
-    /* MAP MODE SPECIAL HANDLING */
-    /* If we are printing the map, we want the map container to be visible and everything else gone. */
+    /* MAP MODE OVERRIDE */
+    /* When printing map, we HIDE the list and SHOW the map */
+    body.printing-map #root>div {
+        display: flex !important;
+        /* Restore AppShell flex */
+    }
+
+    body.printing-map .print-view-container {
+        display: none !important;
+    }
+
+    body.printing-map [class*="Header_header"],
+    body.printing-map .no-print,
+    body.printing-map .properties-panel,
+    body.printing-map button {
+        display: none !important;
+    }
+
     body.printing-map [class*="WarehouseMap_container"] {
         position: absolute;
         top: 0;
@@ -48,11 +77,7 @@
         transform: none !important;
         border: none !important;
         overflow: visible !important;
-    }
-
-    body.printing-map .print-view-container {
-        display: none !important;
-        /* In map mode, don't show the list container */
+        z-index: 9999;
     }
 
     /* Table Styles for List Mode */
@@ -96,4 +121,44 @@
 /* Hide Print View during normal usage */
 .print-view-container {
     display: none;
+}
+
+/* NEW CLEAN STYLES */
+.print-cell-id {
+    font-weight: bold;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.print-item {
+    margin-bottom: 4px;
+    border-bottom: 1px dashed #eee;
+    padding-bottom: 2px;
+}
+
+.print-location-tag {
+    color: #00796B;
+    font-weight: bold;
+}
+
+.print-sublist {
+    margin: 2px 0 0 15px;
+    padding: 0;
+    list-style-type: square;
+    font-size: 0.9em;
+}
+
+.print-box-title {
+    font-weight: bold;
+    color: #333;
+}
+
+.print-loose-item {
+    color: #E65100;
+    font-weight: 500;
+}
+
+.print-empty {
+    color: #999;
+    font-style: italic;
 }
