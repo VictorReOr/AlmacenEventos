@@ -11,14 +11,14 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Gestión Visual Almacén v1.5',
-        short_name: 'Almacén v1.5',
-        description: 'Aplicación visual gestión ubicaciones (v1.5 Instant)',
+        name: 'SGA Eventos',
+        short_name: 'SGA Eventos',
+        description: 'Gestión Visual de Almacén',
         theme_color: '#ffffff',
         icons: [
           {
             src: 'almacenito.png',
-            sizes: '192x192', // ideally resize, but using original for now
+            sizes: '192x192',
             type: 'image/png'
           },
           {
