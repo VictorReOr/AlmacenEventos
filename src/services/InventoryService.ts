@@ -159,7 +159,9 @@ export const InventoryService = {
                 }));
             }
 
+            // MERGE with existing update (Critical for Shelves that also have generic items)
             updates[id] = {
+                ...(updates[id] || {}),
                 programa: mainProgram,
                 // contenido: contentText... // REMOVED: Do not overwrite label with inventory text
                 materiales: materiales,

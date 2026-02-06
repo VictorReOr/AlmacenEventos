@@ -562,6 +562,9 @@ function AuthenticatedApp() {
       dataToPrint = allUbicaciones.filter(u => u.programa === options.programString);
     }
 
+    // FILTER OUT STRUCTURAL ELEMENTS (Walls, Doors, Van)
+    dataToPrint = dataToPrint.filter(u => u.tipo !== 'muro' && u.tipo !== 'puerta' && u.tipo !== 'zona_carga');
+
     if (dataToPrint.length === 0) {
       alert("No hay elementos para imprimir con la selección actual.");
       return;

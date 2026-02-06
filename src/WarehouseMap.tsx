@@ -106,8 +106,8 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     const bindMove = useGesture({
         onDragStart: ({ event }) => {
             // RESTRICTION: VAN ONLY MOVABLE BY ADMIN
-            if (u.id === 'van_v3' && user?.role !== 'ADMIN') {
-                if (onVisitorError) onVisitorError(); // Or a specific error
+            // RESTRICTION: VAN IS IMMOVABLE
+            if (u.id === 'van_v3') {
                 return;
             }
 
@@ -312,7 +312,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             }
         }
     }, {
-        drag: { filterTaps: true, threshold: isMobile ? 12 : 8 },
+        drag: { filterTaps: true, threshold: isMobile ? 20 : 8 },
         eventOptions: { passive: false }
     });
 
@@ -523,13 +523,16 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
         // RELIABLE CLICK SELECTION (Manual Distance Check)
         // If movement is small, treat as click.
-        // Mobile needs MORE tolerance (24px) for clumsy fingers
-        const clickThreshold = isMobile ? 24 : 8;
+        // Mobile needs MORE tolerance (40px) for clumsy fingers (prev 24)
+        const clickThreshold = isMobile ? 40 : 8;
         const dist = Math.hypot(e.clientX - startClickPos.current.x, e.clientY - startClickPos.current.y);
 
-        if (dist < clickThreshold && !isLongPressed.current && !selectionHandled.current) {
+        if (isLongPressed.current) {
+            // STOP PROPAGATION on Long Press Release to prevent "Background Click" deselecting
             e.stopPropagation();
-            console.log('DEBUG: Click detected on', u.id, u.tipo); // DEBUG LOG
+        } else if (dist < clickThreshold && !selectionHandled.current) {
+            e.stopPropagation();
+            // console.log('DEBUG: Click detected on', u.id, u.tipo); // DEBUG LOG
             const isCtrl = e.ctrlKey || e.metaKey;
             const isShift = e.shiftKey;
             onSelectLocation(u.id, { toggle: isCtrl, range: isShift });
