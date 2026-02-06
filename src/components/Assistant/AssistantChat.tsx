@@ -31,6 +31,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     onUpdate,
     isOpen,
     onClose,
+    initialAction,
+    onClearAction
 }) => {
     const { token } = useAuth();
     const [input, setInput] = useState('');
@@ -55,6 +57,71 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [messages, isOpen]);
+
+    // HANDLE INITIAL ACTION (Manual Entry from UI)
+    useEffect(() => {
+        const processInitialAction = async () => {
+            if (isOpen && initialAction) {
+                console.log("Processing Initial Action:", initialAction);
+                setIsThinking(true);
+                try {
+                    // Directly submit specific actions
+                    if (initialAction.type === 'MANUAL_ENTRY' || initialAction.type === 'MOVE_PALLET') {
+                        // For MOVE_PALLET, we might want to just pre-fill text or ask question?
+                        // But MANUAL_ENTRY is fully defined.
+
+                        if (initialAction.type === 'MANUAL_ENTRY') {
+                            const response = await AssistantService.submitAction(
+                                initialAction.payload.type, // "ENTRADA"
+                                initialAction.payload,
+                                token || ''
+                            );
+
+                            if (response.status === 'SUCCESS') {
+                                setMessages(prev => [...prev, {
+                                    id: Date.now().toString(),
+                                    text: `✅ Acción Registrada:\n${initialAction.payload.item} (x${initialAction.payload.qty}) en ${initialAction.payload.destination}`,
+                                    sender: 'bot'
+                                }]);
+                                // Refresh Map?
+                                // We rely on backend or manual refresh for now, or optimistic update if we had it.
+                                // Ideally trigger onUpdate(response.updates)
+                            } else if (response.status === 'PENDING_APPROVAL') {
+                                setMessages(prev => [...prev, {
+                                    id: Date.now().toString(),
+                                    text: `⏳ Solicitud enviada a aprobación (ID: ${response.transaction_id})`,
+                                    sender: 'bot'
+                                }]);
+                            } else {
+                                throw new Error(response.error || "Error desconocido");
+                            }
+                        }
+
+                        if (initialAction.type === 'MOVE_PALLET') {
+                            // Pre-fill text for user
+                            setMessages(prev => [...prev, {
+                                id: Date.now().toString(),
+                                text: `🚚 Moviendo contenido de ${initialAction.payload.sourceId}. ¿A dónde lo llevamos?`,
+                                sender: 'bot'
+                            }]);
+                            // We don't submit yet, we wait for destination.
+                        }
+                    }
+                } catch (e: any) {
+                    setMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        text: `❌ Error procesando acción: ${e.message}`,
+                        sender: 'bot'
+                    }]);
+                } finally {
+                    setIsThinking(false);
+                    if (onClearAction) onClearAction();
+                }
+            }
+        };
+        processInitialAction();
+    }, [isOpen, initialAction]); // Depend on isOpen to trigger when opened
+
 
     // --- HANDLERS ---
 
