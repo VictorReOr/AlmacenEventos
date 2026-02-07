@@ -61,24 +61,50 @@ export const InventoryService = {
         data.forEach(item => {
             if (!item.ID_UBICACION) return;
 
-            const locationId = String(item.ID_UBICACION).trim();
-            const parts = locationId.split('-');
+            let locationId = String(item.ID_UBICACION).trim().toUpperCase();
 
-            // CASE 1: SHELF (Format: E1-M1-A1)
-            // Regex check could be safer, but splitting by '-' length >= 3 covers E*-M*-A*
-            // We specifically look for IDs starting with 'E' to distinguish from other potential formats
-            if (parts.length >= 3 && locationId.toUpperCase().startsWith('E')) {
-                const shelfId = parts[0]; // "E1"
-                const slotId = `${parts[1]}-${parts[2]}`; // "M1-A1"
+            // INTENTO DE NORMALIZACIÓN ROBUSTA (E01 -> E1, M01 -> M1)
+            // Regex para capturar E(num)-M(num)-A(num) o variaciones
+            // Acepta: E1-M1-A1, E01-M01-A01, E-1-M-1...
+            const shelfMatch = locationId.match(/^E.*?(\d+).*?M.*?(\d+).*?A.*?(\d+)/);
+
+            if (shelfMatch) {
+                // Caso 1: Es una estantería con formato completo
+                const shelfNum = parseInt(shelfMatch[1], 10);
+                const modNum = parseInt(shelfMatch[2], 10);
+                const levelNum = parseInt(shelfMatch[3], 10);
+
+                const shelfId = `E${shelfNum}`; // Normaliza a "E1", "E2"
+                const slotId = `M${modNum}-A${levelNum}`; // Normaliza a "M1-A1"
 
                 if (!shelves[shelfId]) shelves[shelfId] = {};
                 if (!shelves[shelfId][slotId]) shelves[shelfId][slotId] = [];
                 shelves[shelfId][slotId].push(item);
+                return;
             }
-            // CASE 2: PALLET / FLOOR (Format: Numeric "1", "2"...)
-            // We treat anything else as a direct location ID mapping
+
+            // Si no matchea el regex estricto de estantería, probamos split simple por si acaso
+            const parts = locationId.split('-');
+            if (parts.length >= 3 && locationId.startsWith('E')) {
+                // Fallback para formatos raros pero que parecen estantería
+                const shelfId = parts[0];
+                const slotId = `${parts[1]}-${parts[2]}`;
+                if (!shelves[shelfId]) shelves[shelfId] = {};
+                if (!shelves[shelfId][slotId]) shelves[shelfId][slotId] = [];
+                shelves[shelfId][slotId].push(item);
+            }
+            // CASE 2: PALLET / FLOOR (Numéricos simples "1", "2")
             else {
-                // If it's a simple number like "1", matches our floor pallets
+                // Eliminar ceros a la izquierda si es numérico puro para coincidir con "1", "2"...
+                // Si el ID es "01", lo convertimos a "1" si nuestros palets son "1".
+                // Pero cuidado con IDs alfanuméricos reales.
+                // Asumimos que los palets son numéricos en el mapa.
+
+                // Si parece un número, lo normalizamos
+                if (/^\d+$/.test(locationId)) {
+                    locationId = String(parseInt(locationId, 10));
+                }
+
                 if (!pallets[locationId]) pallets[locationId] = [];
                 pallets[locationId].push(item);
             }
