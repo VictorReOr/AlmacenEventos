@@ -83,9 +83,35 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                                     text: `✅ Acción Registrada:\n${initialAction.payload.item} (x${initialAction.payload.qty}) en ${initialAction.payload.destination}`,
                                     sender: 'bot'
                                 }]);
-                                // Refresh Map?
-                                // We rely on backend or manual refresh for now, or optimistic update if we had it.
-                                // Ideally trigger onUpdate(response.updates)
+
+                                // --- OPTIMISTIC UPDATE ---
+                                try {
+                                    // Map payload to AssistantActionHandler entities
+                                    const entities = [
+                                        { label: 'DEST_LOC', text: initialAction.payload.destination },
+                                        { label: 'ITEM', text: initialAction.payload.item },
+                                        { label: 'QUANTITY', text: String(initialAction.payload.qty || 1) }
+                                    ];
+
+                                    // Map Action Type
+                                    let intent = 'UNKNOWN';
+                                    if (initialAction.payload.type === 'ENTRADA') intent = 'ADD';
+
+                                    if (intent !== 'UNKNOWN') {
+                                        const result = await AssistantActionHandler.executeAction(
+                                            intent,
+                                            entities,
+                                            ubicaciones
+                                        );
+                                        if (result.updates.length > 0) {
+                                            console.log("Optimistic update applying:", result.updates);
+                                            onUpdate(result.updates);
+                                        }
+                                    }
+                                } catch (optError) {
+                                    console.warn("Optimistic update failed:", optError);
+                                }
+
                             } else if (response.status === 'PENDING_APPROVAL') {
                                 setMessages(prev => [...prev, {
                                     id: Date.now().toString(),

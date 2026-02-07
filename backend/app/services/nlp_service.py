@@ -22,37 +22,88 @@ class NLPService:
             r"P-\d+",           # P-01
             r"RECEPCION",
             r"EXTERNO",
-            r"MUELLE"
+            r"MUELLE",
+            # Natural language mappings
+            r"palet\s*[-#]?\s*(\d+)",
+            r"estanter[iía]\s*(\d+)",
         ]
         locations = []
         for pat in patterns:
-            locations.extend(re.findall(pat, text, re.IGNORECASE))
-        return [l.upper() for l in locations]
+            param_matches = re.finditer(pat, text, re.IGNORECASE)
+            for match in param_matches:
+                full_str = match.group(0)
+                
+                # Handle capture groups for "palet 17" -> "P-17"
+                if len(match.groups()) > 0 and match.group(1):
+                    val = match.group(1)
+                    if "palet" in full_str.lower():
+                        locations.append(f"P-{val}")
+                    elif "estanter" in full_str.lower():
+                        locations.append(f"E{val}") # Assuming E1, E2... usually just shelf ID. Refine if needed.
+                else:
+                    locations.append(full_str.upper())
+                    
+        return list(set([l.upper() for l in locations])) # Dedupe
 
-    def _extract_quantities(self, doc) -> List[int]:
-        """Extract numeric quantities from spaCy doc."""
-        if not doc:
-            return []
+    def _extract_quantities(self, doc, text: str) -> List[int]:
+        """Extract numeric quantities from spaCy doc and text."""
         quantities = []
+        
+        # 1. Explicit word numbers
+        text_lower = text.lower()
+        if re.search(r"\b(un|una|uno)\b", text_lower): # un, una, uno
+             quantities.append(1)
+
+        if not doc:
+             # Fallback regex for digits
+             nums = re.findall(r"\b\d+\b", text)
+             return [int(n) for n in nums] + quantities
+
         for token in doc:
             if token.like_num:
                 try:
-                    quantities.append(int(token.text))
+                    val = int(token.text)
+                    quantities.append(val)
                 except ValueError:
+                    # Try to convert word to num if needed (uno, dos...) - spacy usually handles this somewhat
+                    if token.text.lower() in ["un", "una", "uno"]:
+                        quantities.append(1)
                     pass
-        return quantities
+        
+        return list(set(quantities))
 
-    def _extract_materials(self, doc, text: str) -> List[str]:
-        """Extract material names using spaCy nouns and context."""
-        if not doc:
-            # Fallback: extract words between quantity and location
+    def _extract_materials(self, doc, text: str, locations: List[str]) -> List[str]:
+        """Extract material names using spaCy nouns and context, REMOVING detected locations first."""
+        
+        # Clean text of known locations to avoid "palet 17" being "material palet"
+        clean_text = text
+        # We need to re-find the raw strings for locations to remove them
+        # Simple approach: Remove the patterns we know
+        patterns_to_remove = [
+             r"E\d+-M\d+-A\d+", 
+             r"P-\d+", 
+             r"RECEPCION", r"EXTERNO", r"MUELLE",
+             r"palet\s*[-#]?\s*\d+",
+             r"estanter[iía]\s*\d+",
+             r"\bdep\b", r"\bde\b" # remove prepositions often linking items
+        ]
+        
+        for pat in patterns_to_remove:
+            clean_text = re.sub(pat, " ", clean_text, flags=re.IGNORECASE)
+            
+        # Also remove numbers that were identified as quantities? 
+        # Ideally yes, but let's stick to doc analysis on the CLEANED text
+        
+        doc_clean = self.nlp(clean_text) if self.nlp else None
+        
+        if not doc_clean:
             return ["material"]
         
         materials = []
         # Look for nouns that could be materials
-        for token in doc:
+        for token in doc_clean:
             if token.pos_ in ["NOUN", "PROPN"] and token.text.lower() not in [
-                "recepcion", "muelle", "almacen", "entrada", "salida"
+                "recepcion", "muelle", "almacen", "entrada", "salida", "caja", "unidades", "unidad", "zona", "sitio", "lugar"
             ]:
                 materials.append(token.text)
         
@@ -60,6 +111,7 @@ class NLPService:
         if materials:
             return [" ".join(materials)]
         
+        # Fallback if cleaning stripped everything
         return ["material"]
 
     def _extract_verbs(self, doc) -> List[str]:
@@ -89,6 +141,9 @@ class NLPService:
         ]
         
         if "?" in text or any(p in text_lower for p in strong_patterns):
+            # Exception: "Quiero saber donde esta..." -> Query
+            # But "Ponlo donde hay sitio" -> Movement (complex).
+            # Assume Query for now if strong match.
             print("NLP: Detected QUERY (Strong match)")
             return "QUERY"
         
@@ -102,19 +157,22 @@ class NLPService:
             return "COURTESY"
 
         # Analyze verbs for warehouse actions
-        entrada_verbs = ["llegar", "entrar", "recibir", "ingresar", "registrar"]
-        salida_verbs = ["sacar", "salir", "enviar", "despachar", "retirar"]
-        movimiento_verbs = ["mover", "trasladar", "cambiar", "reubicar", "pasar"]
+        entrada_verbs = ["llegar", "entrar", "recibir", "ingresar", "registrar", "traer", "meter"]
+        salida_verbs = ["sacar", "salir", "enviar", "despachar", "retirar", "llevar"]
+        movimiento_verbs = ["mover", "trasladar", "cambiar", "reubicar", "pasar", "poner", "colocar", "dejar"]
         
-        if any(v in verbs for v in entrada_verbs) or any(w in text_lower for w in ["llegado", "entrada", "alta"]):
-            return "ENTRADA"
-        if any(v in verbs for v in salida_verbs) or any(w in text_lower for w in ["salida", "cliente"]):
+        if any(v in verbs for v in entrada_verbs) or any(w in text_lower for w in ["llegado", "entrada", "alta", "nueva codigo"]):
+             # Explicit override: "Quiero colocar..." is usually movement, but "Ha llegado... y quiero colocar" is Entry.
+             # If "llegado" is present, it's likely an Entry.
+             return "ENTRADA"
+            
+        if any(v in verbs for v in salida_verbs) or any(w in text_lower for w in ["salida", "cliente", "baja"]):
             return "SALIDA"
-        if any(v in verbs for v in movimiento_verbs) or any(w in text_lower for w in ["movimiento"]):
+            
+        if any(v in verbs for v in movimiento_verbs) or any(w in text_lower for w in ["movimiento", "cambio"]):
             return "MOVIMIENTO"
         
         # Fallback for Query (weak match)
-        # If it has any query word, assume it's a query if nothing else matched
         if is_query:
              print("NLP: Detected QUERY (Weak match)")
              return "QUERY"
@@ -132,23 +190,42 @@ class NLPService:
         """Build movement proposals based on extracted entities."""
         movements = []
         
+        # Default Logic
+        qty = quantities[0] if quantities else 1
+        item = materials[0] if materials else "material"
+        
+        # Refine destinations/origins based on what we found
+        # Example: "Palet 17" found in text
+        found_target_loc = None
+        found_source_loc = None
+        
+        # Heuristic: If 2 locations, usually Origin -> Dest.
+        # If 1 location:
+        #   ENTRADA -> Dest
+        #   SALIDA -> Origin
+        #   MOVIMIENTO -> Dest (Origin assumed implicit or currently held?) -> usually Origin->Dest needed.
+        #      If only 1 loc in Mov, assume Dest? "Mover a Palet 1". Origin = ? (Search?).
+        
+        if len(locations) >= 2:
+            found_source_loc = locations[0]
+            found_target_loc = locations[1]
+        elif len(locations) == 1:
+            if intent == "ENTRADA": found_target_loc = locations[0]
+            elif intent == "SALIDA": found_source_loc = locations[0]
+            elif intent == "MOVIMIENTO": found_target_loc = locations[0] # "Mover a X"
+        
         if intent == "QUERY":
-             # Create a dummy movement to carry the material info if needed
-             item = materials[0] if materials else "material"
              movements.append(MovementProposal(
                 item=item,
                 qty=0,
                 origin="SEARCH",
                 destination="RESULT",
-                type=ActionType.MOVIMIENTO # Dummy type
+                type=ActionType.MOVIMIENTO
             ))
              return movements
 
         if intent == "ENTRADA":
-            qty = quantities[0] if quantities else 1
-            item = materials[0] if materials else "material"
-            destination = locations[0] if locations else "RECEPCION"
-            
+            destination = found_target_loc if found_target_loc else "RECEPCION"
             movements.append(MovementProposal(
                 item=item,
                 qty=qty,
@@ -158,11 +235,7 @@ class NLPService:
             ))
         
         elif intent == "SALIDA":
-             # ... existing logic ...
-             qty = quantities[0] if quantities else 1
-             item = materials[0] if materials else "material"
-             origin = locations[0] if locations else "RECEPCION"
-             
+             origin = found_source_loc if found_source_loc else "RECEPCION" # Or Search?
              movements.append(MovementProposal(
                  item=item,
                  qty=qty,
@@ -172,18 +245,10 @@ class NLPService:
              ))
 
         elif intent == "MOVIMIENTO":
-            qty = quantities[0] if quantities else 1
-            item = materials[0] if materials else "material"
-            
-            if len(locations) >= 2:
-                origin = locations[0]
-                destination = locations[1]
-            elif len(locations) == 1:
-                origin = locations[0]
-                destination = "RECEPCION"
-            else:
-                origin = "RECEPCION"
-                destination = "RECEPCION"
+            # If we don't know origin, strictly we should fail or ask. 
+            # But for now, default to RECEPCION if unknown? Or better, "UNKNOWN".
+            origin = found_source_loc if found_source_loc else "RECEPCION"
+            destination = found_target_loc if found_target_loc else "RECEPCION"
             
             movements.append(MovementProposal(
                 item=item,
