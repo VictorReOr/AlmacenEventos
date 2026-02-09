@@ -4,7 +4,7 @@ export const config = {
     // Automatically select URL based on environment
     API_BASE_URL: isLocal
         ? '' // Use relative path to leverage Vite Proxy (avoids CORS & Port issues)
-        : 'https://warehouse-backend-856058698301.europe-southwest1.run.app',
+        : 'https://warehouse-backend-ag3evcbxeq-no.a.run.app',
 
     // Google Scripts URL (already in code, but good to centralize)
     // Google Scripts URL (Corrected from App.tsx defaults)
