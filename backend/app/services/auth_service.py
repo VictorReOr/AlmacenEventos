@@ -23,10 +23,11 @@ class AuthService:
         users = sheet_service.get_users()
         # Header: USER_ID, ROLE, NAME, PASSWORD
         for user in users:
-            # Handle potential header variations (USER_ID vs USER ID)
-            user_email = user.get("USER_ID") or user.get("USER ID")
+            # Handle potential header variations (USER_ID vs USER ID vs ID vs EMAIL)
+            user_email = user.get("USER_ID") or user.get("USER ID") or user.get("ID") or user.get("EMAIL")
+            # print(f"DEBUG: Checking user {user_email} against {email}")
             
-            if user_email and user_email.strip() == email.strip():
+            if user_email and str(user_email).strip() == str(email).strip():
                 # Normalize keys for the rest of the app to ensure consistency
                 user["USER_ID"] = user_email
                 return user

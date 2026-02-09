@@ -166,6 +166,11 @@ function AuthenticatedApp() {
     filterTaps: true,
     rubberband: true
   });
+
+  // DEBUG: Alert API URL on mount to verify connection path
+  useEffect(() => {
+    // console.log("🔌 Conectando a:", config.API_BASE_URL);
+  }, []);
   // Layout Detection
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   useEffect(() => {
@@ -181,8 +186,14 @@ function AuthenticatedApp() {
   const [showConfig, setShowConfig] = useState(false);
   const [programColors, setProgramColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('program_colors_config');
+    console.log("App: Initializing programColors. Saved:", saved ? "YES" : "NO", saved);
     return saved ? JSON.parse(saved) : PROGRAM_COLORS;
   });
+
+  useEffect(() => {
+    console.log("App: Persisting programColors to localStorage:", programColors);
+    localStorage.setItem('program_colors_config', JSON.stringify(programColors));
+  }, [programColors]);
 
   // Print State
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -345,8 +356,17 @@ function AuthenticatedApp() {
           // 2. APPLY FRESH UPDATES
           Object.entries(updates).forEach(([id, partial]) => {
             if (clearedUbicaciones[id]) {
-              // Merge partial update into the CLEARED object
-              clearedUbicaciones[id] = { ...clearedUbicaciones[id], ...partial };
+              if (clearedUbicaciones[id]) {
+                // Merge partial update into the CLEARED object
+                clearedUbicaciones[id] = { ...clearedUbicaciones[id], ...partial };
+
+                // DEBUG: Check if E1 is being updated
+                if (id === 'E1') {
+                  const items = (partial as any).cajasEstanteria ? Object.keys((partial as any).cajasEstanteria).length : 0;
+                  console.log(`App: E1 updated with ${items} slots`);
+                  // alert(`DEBUG: E1 found! Updating with ${items} slots.`); // Uncomment if needed, but console is safer
+                }
+              }
             }
           });
 
@@ -605,10 +625,7 @@ function AuthenticatedApp() {
             subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
             leftAction={
               <div style={{ display: 'flex', gap: '8px' }}>
-                {/* Menu / Config (Left Side) */}
-                <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
-                  <IconSettings size={20} />
-                </button>
+                {/* Menu / Config (Left Side) - Empty for now */}
               </div>
             }
             rightAction={
@@ -675,6 +692,10 @@ function AuthenticatedApp() {
                       style={{ backgroundColor: '#FFD54F', color: '#333' }}
                     >
                       <IconShield color="#333" size={20} />
+                    </button>
+                    {/* CONFIG BUTTON (Moved Here next to Shield) */}
+                    <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
+                      <IconSettings size={20} />
                     </button>
                   </>
                 )}
@@ -788,12 +809,17 @@ function AuthenticatedApp() {
               <ConfigModal
                 initialColors={programColors}
                 scriptUrl={scriptUrl}
-                onSave={(colors, url) => {
-                  setProgramColors(colors);
-                  localStorage.setItem('program_colors_config', JSON.stringify(colors)); // Fix: Persist!
-                  setScriptUrl(url);
-                  localStorage.setItem('google_script_url', url); // Ensure URL is also persisted here just in case
+                onSave={(newColors, newUrl) => {
+                  console.log("💾 Almacenando Configuración:", newColors);
+                  setProgramColors(newColors);
+                  // Force immediate save to ensure it persists even if useEffect is slow
+                  localStorage.setItem('program_colors_config', JSON.stringify(newColors));
+
+                  setScriptUrl(newUrl);
+                  localStorage.setItem('google_script_url', newUrl);
+
                   setShowConfig(false);
+                  alert("✅ Configuración guardada correctamente.");
                 }}
                 onClose={() => setShowConfig(false)}
               />

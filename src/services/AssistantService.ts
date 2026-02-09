@@ -64,7 +64,7 @@ export const AssistantService = {
             console.warn("Assistant API Error (Parse):", error);
             return {
                 status: 'ERROR',
-                error: 'Error de conexión con el Asistente. Verifica que el backend esté activo.',
+                error: error instanceof Error ? `Error: ${error.message}` : 'Error de conexión con el Asistente.',
                 warnings: []
             };
         }

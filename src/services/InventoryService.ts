@@ -3,7 +3,12 @@ const API_BASE_URL = config.API_BASE_URL;
 import type { Ubicacion, Caja, MaterialEnCaja } from '../types';
 
 export interface RawShelfItem {
-    ID_UBICACION: string; // "E1-M1-A1"
+    ID_UBICACION?: string; // "E1-M1-A1" (Target, but often missing)
+    ID_REGISTRO?: string;  // "E1-M1-A1" (Alternative ID from V2 Sheet)
+    ID_LUGAR?: string;     // "E1" (Shelf ID)
+    MODULO?: number | string; // 1
+    ALTURA?: number | string; // 1
+
     MATERIAL: string;     // "Caja de 5 extintores"
     CANTIDAD: number | string; // 1 or "1"
     LOTE: string;         // "Andalucía" (acts as Program)
@@ -46,7 +51,11 @@ export const InventoryService = {
             // Handle Google Script Wrapper ({ inventoryRows: [] }) vs Backend Direct Array ([])
             let data = Array.isArray(json) ? json : (json.inventoryRows || []);
 
-            console.log("Inventario cargado:", data); // DEBUG
+            console.log("Inventario RAW cargado:", data.length, "items");
+            if (data.length > 0) {
+                console.log("🔍 PRIMER ITEM KEYS:", Object.keys(data[0]));
+                console.log("🔍 PRIMER ITEM SAMPLE:", data[0]);
+            }
             return data;
         } catch (error) {
             console.error('InventoryService: Error fetching inventory:', error);
@@ -58,10 +67,39 @@ export const InventoryService = {
         const shelves: Record<string, Record<string, RawShelfItem[]>> = {};
         const pallets: Record<string, RawShelfItem[]> = {};
 
-        data.forEach(item => {
-            if (!item.ID_UBICACION) return;
+        // Helper to find value case-insensitively
+        const getValue = (item: any, keys: string[]) => {
+            for (const key of keys) {
+                if (item[key] !== undefined) return item[key];
+                const found = Object.keys(item).find(k => k.toUpperCase() === key.toUpperCase());
+                if (found) return item[found];
+            }
+            return undefined;
+        };
 
-            let locationId = String(item.ID_UBICACION).trim().toUpperCase();
+        data.forEach(item => {
+            // ROBUST ID RESOLUTION:
+            const idUbicacion = getValue(item, ['ID_UBICACION', 'UBICACION']);
+            const idRegistro = getValue(item, ['ID_REGISTRO', 'REGISTRO', 'ID']);
+            const idLugar = getValue(item, ['ID_LUGAR', 'LUGAR']);
+            const modulo = getValue(item, ['MODULO', 'MOD']);
+            const altura = getValue(item, ['ALTURA', 'NIVEL', 'HEIGHT']);
+
+            let locationId = String(idUbicacion || idRegistro || '').trim().toUpperCase();
+
+            // If still empty but we have Shelf Parts, construct it (E1-M1-A1)
+            if (!locationId && idLugar && modulo && altura) {
+                locationId = `${idLugar}-M${modulo}-A${altura}`.toUpperCase();
+            }
+
+            // FINAL FALLBACK: Use ID_LUGAR alone (for Pallets like "20")
+            if (!locationId && idLugar) {
+                locationId = String(idLugar).trim().toUpperCase();
+            }
+
+            if (!locationId) return; // Skip if absolutely no ID found
+
+            locationId = String(locationId).trim().toUpperCase();
 
             // INTENTO DE NORMALIZACIÓN ROBUSTA (E01 -> E1, M01 -> M1)
             // Regex para capturar E(num)-M(num)-A(num) o variaciones
@@ -114,37 +152,37 @@ export const InventoryService = {
 
         // 1. Process Shelves
         Object.entries(shelves).forEach(([shelfId, slots]) => {
-            // ... (keep existing shelf logic for 'cajasEstanteria')
             const cajasEstanteria: Record<string, Caja> = {};
+            const shelfItems: Record<string, Caja[]> = {};
 
             Object.entries(slots).forEach(([slotId, items]) => {
-                const programs = items.map(i => i.LOTE);
-                const mainProgram = programs[0] || 'Vacio';
+                // Strategy: Map EACH item row to a separate "Box" visual element
+                // This ensures all items are listed in the properties panel
 
-                const contentList: MaterialEnCaja[] = items.map(item => ({
-                    id: crypto.randomUUID(),
-                    materialId: 'mat-gen',
-                    nombre: item.MATERIAL,
-                    cantidad: Number(item.CANTIDAD) || 1,
-                    estado: 'operativo',
-                    programa: item.LOTE // Map LOTE to granular program
-                }));
+                const boxes: Caja[] = items
+                    .filter(item => {
+                        const mat = (item.MATERIAL || "").toUpperCase();
+                        return mat !== "LIBRE" && mat !== "VACIO" && mat !== "";
+                    })
+                    .map(item => ({
+                        id: crypto.randomUUID(), // Unique ID for React keys
+                        descripcion: item.MATERIAL || "Ítem Desconocido",
+                        programa: (item.LOTE || "Vacio") as any,
+                        cantidad: Number(item.CANTIDAD) || 1,
+                        contenido: [], // Empty content, the item itself is the 'box'
+                        tipoContenedor: (item.TIPO_ITEM === 'Suelto') ? 'Suelto' : 'Caja',
+                        estado: (item.ESTADO || 'operativo') as any
+                    }));
 
-                const tipoContenedorRaw = items[0].TIPO_DE_CONTENEDOR;
-                // Default to 'Caja' if empty or not 'Suelto'
-                const tipoContenedor: 'Caja' | 'Suelto' = (tipoContenedorRaw && tipoContenedorRaw.trim().toLowerCase() === 'suelto') ? 'Suelto' : 'Caja';
+                // Legacy support: Just take the first one
+                if (boxes.length > 0) {
+                    cajasEstanteria[slotId] = boxes[0];
+                }
 
-                cajasEstanteria[slotId] = {
-                    id: `SLOT-${shelfId}-${slotId}`,
-                    descripcion: 'Contenido',
-                    programa: mainProgram,
-                    cantidad: 1,
-                    contenido: contentList,
-                    tipoContenedor: tipoContenedor
-                };
+                shelfItems[slotId] = boxes;
             });
 
-            updates[shelfId] = { cajasEstanteria };
+            updates[shelfId] = { cajasEstanteria, shelfItems };
         });
 
         // 2. Process Pallets

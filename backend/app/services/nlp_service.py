@@ -294,8 +294,8 @@ class NLPService:
         
         # 2. Entity Extraction
         locations = self._extract_locations(text)
-        quantities = self._extract_quantities(doc)
-        materials = self._extract_materials(doc, text)
+        quantities = self._extract_quantities(doc, text)
+        materials = self._extract_materials(doc, text, locations)
         verbs = self._extract_verbs(doc)
         
         # 3. Intent Detection

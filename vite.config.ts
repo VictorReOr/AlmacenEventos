@@ -40,6 +40,17 @@ export default defineConfig(({ command }) => ({
   ],
   server: {
     port: 5200,
-    strictPort: false,
-  }
+    strictPort: true, // Force fail if 5200 is taken, to avoid confusion
+    cors: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*'
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
 }))

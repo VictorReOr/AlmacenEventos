@@ -134,6 +134,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
                 <div className={styles.footer}>
                     <button className={`${styles.button} ${styles.cancelBtn}`} onClick={onClose}>Cancelar</button>
                     <button className={`${styles.button} ${styles.saveBtn}`} onClick={() => {
+                        console.log("ConfigModal: Save Clicked. Sending colors:", colors);
                         onSave(colors, url);
                         onClose();
                     }}>Guardar Cambios</button>
