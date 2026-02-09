@@ -65,7 +65,7 @@ interface DraggablePalletProps {
 }
 
 const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, onVisitorError }) => {
-    const { user } = useAuth();
+
 
     const isLeaderDragging = dragState?.id === u.id;
     const isGroupDragging = dragState?.groupIds?.includes(u.id);

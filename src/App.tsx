@@ -34,7 +34,7 @@ import {
 
 // Logic & Types
 import { PROGRAM_COLORS } from './types';
-import type { Ubicacion, AlmacenState } from './types';
+import type { Ubicacion } from './types';
 import { generateInitialState } from './data';
 import type { WarehouseMapRef } from './WarehouseMap';
 import { GoogleSheetsService } from './services/GoogleSheetsService';
@@ -139,6 +139,7 @@ function AuthenticatedApp() {
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [assistantAlert, setAssistantAlert] = useState<string | null>(null);
+  console.log("AuthenticatedApp: useAuth() called");
   const { user, logout } = useAuth(); // Added logout
   const mapRef = useRef<WarehouseMapRef>(null);
 
