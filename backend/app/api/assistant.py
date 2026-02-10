@@ -33,7 +33,30 @@ async def parse_request(
     
     # 3. Validation
     warnings = validation_service.validate_proposal(interpretation.movements)
-    
+
+    # --- LOCATION SUGGESTION LOGIC ---
+    if interpretation.intent == "ENTRADA":
+        for mov in interpretation.movements:
+            # If NLP defaulted to RECEPCION, it means user didn't specify destination
+            if mov.destination == "RECEPCION":
+                print("ASSISTANT: No destination specified for ENTRADA. Finding suggestions...")
+                candidates = sheet_service.get_available_locations(limit=3)
+                
+                if candidates:
+                    # Suggest the first one
+                    best_option = candidates[0]
+                    mov.destination = best_option
+                    
+                    # Improve Summary
+                    others = ", ".join(candidates[1:])
+                    msg = f"He encontrado hueco en **{best_option}**."
+                    if others:
+                        msg += f" Otras opciones: {others}."
+                    msg += " ¿Confirmas?"
+                    interpretation.summary = msg
+                else:
+                    interpretation.summary = "No he encontrado huecos libres automáticamente. Por favor, indica dónde guardarlo."
+
     # --- QUERY HANDLING ---
     if interpretation.intent == "QUERY":
         try:
@@ -326,7 +349,9 @@ async def confirm_request(
         # Rehydrate objects from payload
         interpretation = Interpretation(**payload)
         
-        # 3. Role Based Execution
+    # 3. Role Based Execution
+        message = "Acción completada con éxito."
+        
         if current_user.role == "VISITOR":
              raise HTTPException(status_code=403, detail="Visitors cannot execute actions.")
              
@@ -335,12 +360,23 @@ async def confirm_request(
             action_id = sheet_service.add_pending_action(interpretation.movements, user_id=current_user.email)
             return AssistantConfirmResponse(
                 status="PENDING_APPROVAL",
-                transaction_id=action_id
+                transaction_id=action_id,
+                message="Solicitud enviada a aprobación."
             )
             
         elif current_user.role == "ADMIN":
             # Execute Immediately
             sheet_service.execute_transaction(interpretation.movements, user_id=current_user.email, transaction_id="TX-mock")
+            
+            # Generate Logic Message
+            if interpretation.intent == "ENTRADA" and interpretation.movements:
+                mov = interpretation.movements[0]
+                message = f"✅ Entrada registrada: **{mov.item}** (x{mov.qty}) en **{mov.destination}**."
+            elif interpretation.intent == "MOVIMIENTO" and interpretation.movements:
+                mov = interpretation.movements[0]
+                message = f"✅ Movimiento realizado: **{mov.item}** de {mov.origin} a **{mov.destination}**."
+            elif interpretation.intent == "SALIDA":
+                message = "✅ Salida registrada."
             
         else:
              raise HTTPException(status_code=403, detail="Unknown role permissions")
@@ -353,7 +389,8 @@ async def confirm_request(
     return AssistantConfirmResponse(
         status="SUCCESS",
         transaction_id=f"TX-{hash(request.token)}",
-        updated_balance={}
+        updated_balance={},
+        message=message
     )
 
 @router.post("/submit_action")

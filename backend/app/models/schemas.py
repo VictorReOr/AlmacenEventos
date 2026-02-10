@@ -64,6 +64,7 @@ class AssistantConfirmResponse(BaseModel):
     status: Literal["SUCCESS", "ERROR", "PENDING_APPROVAL"]
     transaction_id: Optional[str] = None
     updated_balance: Optional[Dict[str, int]] = None
+    message: Optional[str] = None # Descriptive success message or suggestions
     error: Optional[str] = None
 
 class SubmitActionRequest(BaseModel):

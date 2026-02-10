@@ -266,13 +266,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                     }
                     setMessages(prev => [...prev, {
                         id: Date.now().toString(),
-                        text: "✅ Acción Completada con éxito.",
+                        text: result.message || "✅ Acción Completada con éxito.",
                         sender: 'bot'
                     }]);
                 } catch (localErr) {
                     setMessages(prev => [...prev, {
                         id: Date.now().toString(),
-                        text: "✅ Acción registrada en servidor (pero no pude actualizar el mapa localmente). Recarga la página.",
+                        text: (result.message || "✅ Acción registrada") + " (pero no pude actualizar el mapa localmente). Recarga la página.",
                         sender: 'bot'
                     }]);
                 }

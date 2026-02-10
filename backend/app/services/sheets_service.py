@@ -427,4 +427,59 @@ class SheetService:
             print(f"SHEETS ERROR: Could not get inventory. {e}")
             return []
 
+    def get_available_locations(self, limit: int = 3) -> list[str]:
+        """Find meaningful available locations (empty shelves or pallets)."""
+        if not self.client: 
+            self.connect()
+            
+        try:
+            # 1. Get all occupied locations
+            ws_inv = self.doc.worksheet("INVENTARIO")
+            all_vals = ws_inv.get_all_values()
+            
+            occupied = set()
+            if all_vals:
+                headers = [str(h).strip().upper() for h in all_vals[0]]
+                try:
+                    idx = -1
+                    if "ID_UBICACION" in headers: idx = headers.index("ID_UBICACION")
+                    elif "ID_LUGAR" in headers: idx = headers.index("ID_LUGAR")
+                    
+                    if idx != -1:
+                        for row in all_vals[1:]:
+                            if len(row) > idx and row[idx].strip():
+                                occupied.add(row[idx].strip().upper())
+                except:
+                   pass
+
+            # 2. Compare with Valid Locations
+            # Prioritize Shelves (E*) over Pallets (Numbers)
+            free_shelves = []
+            free_pallets = []
+            
+            for loc in self._valid_locations:
+                loc_clean = loc.upper().strip()
+                if loc_clean not in occupied:
+                    if loc_clean.startswith("E"):
+                        free_shelves.append(loc_clean)
+                    elif loc_clean.isdigit() or loc_clean.startswith("P-"):
+                        free_pallets.append(loc_clean)
+            
+            # Sort naturally
+            def natural_sort_key(s):
+                import re
+                return [int(text) if text.isdigit() else text.lower()
+                        for text in re.split('([0-9]+)', s)]
+            
+            free_shelves.sort(key=natural_sort_key)
+            free_pallets.sort(key=natural_sort_key)
+            
+            # Combine: Shelves first, then Pallets
+            candidates = free_shelves + free_pallets
+            return candidates[:limit]
+
+        except Exception as e:
+            print(f"SHEETS ERROR: Could not calculate availability. {e}")
+            return []
+
 sheet_service = SheetService()
