@@ -140,13 +140,6 @@ class NLPService:
             "en que modulo", "en qué módulo", "en que estanteria", "en qué estantería"
         ]
         
-        if "?" in text or any(p in text_lower for p in strong_patterns):
-            # Exception: "Quiero saber donde esta..." -> Query
-            # But "Ponlo donde hay sitio" -> Movement (complex).
-            # Assume Query for now if strong match.
-            print("NLP: Detected QUERY (Strong match)")
-            return "QUERY"
-        
         # Check for greetings (if not a query)
         greetings = ["hola", "buenos días", "buenas tardes", "buenas noches", "hey", "saludos"]
         if any(g in text_lower for g in greetings) and not is_query:
@@ -156,7 +149,8 @@ class NLPService:
         if any(w in text_lower for w in ["gracias", "adiós", "hasta luego", "chao", "genial", "perfecto", "vale"]):
             return "COURTESY"
 
-        # Analyze verbs for warehouse actions
+        # Analyze verbs for warehouse actions - PRIORITY OVER QUERIES
+        # "Me ha llegado X, donde lo pongo?" should be ENTRADA, not QUERY.
         entrada_verbs = ["llegar", "entrar", "recibir", "ingresar", "registrar", "traer", "meter"]
         salida_verbs = ["sacar", "salir", "enviar", "despachar", "retirar", "llevar"]
         movimiento_verbs = ["mover", "trasladar", "cambiar", "reubicar", "pasar", "poner", "colocar", "dejar"]
@@ -171,6 +165,15 @@ class NLPService:
             
         if any(v in verbs for v in movimiento_verbs) or any(w in text_lower for w in ["movimiento", "cambio"]):
             return "MOVIMIENTO"
+
+        # Strong match patterns for Queries (Question marks or explicit phrases)
+        # Only check this AFTER actions to prevent "Donde lo ubico?" from masking the action intent.
+        if "?" in text or any(p in text_lower for p in strong_patterns):
+            # Exception: "Quiero saber donde esta..." -> Query
+            # But "Ponlo donde hay sitio" -> Movement (complex).
+            # Assume Query for now if strong match.
+            print("NLP: Detected QUERY (Strong match)")
+            return "QUERY"
         
         # Fallback for Query (weak match)
         if is_query:
