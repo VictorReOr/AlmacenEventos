@@ -11,13 +11,13 @@ interface PrintModalProps {
 }
 
 export interface PrintOptions {
-    format: 'LIST' | 'MAP';
+    format: 'LIST' | 'MAP' | 'CARDS';
     scope: 'ALL' | 'SELECTION' | 'PROGRAM';
     programString?: string;
 }
 
 export const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, onPrint, programs, hasSelection }) => {
-    const [format, setFormat] = useState<'LIST' | 'MAP'>('LIST');
+    const [format, setFormat] = useState<'LIST' | 'MAP' | 'CARDS'>('LIST');
     const [scope, setScope] = useState<'ALL' | 'SELECTION' | 'PROGRAM'>('ALL');
     const [selectedProgram, setSelectedProgram] = useState<string>(programs[0] || '');
 
@@ -33,7 +33,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, onPrint
 
     return (
         <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
                 <div className={styles.header}>
                     <h2>Imprimir Inventario</h2>
                     <button className={styles.closeButton} onClick={onClose}>&times;</button>
@@ -51,6 +51,13 @@ export const PrintModal: React.FC<PrintModalProps> = ({ isOpen, onClose, onPrint
                                 style={{ flex: 1, opacity: format === 'LIST' ? 1 : 0.6 }}
                             >
                                 📋 Listado
+                            </button>
+                            <button
+                                className={`${styles.actionButton} ${format === 'CARDS' ? styles.primary : ''}`}
+                                onClick={() => setFormat('CARDS')}
+                                style={{ flex: 1, opacity: format === 'CARDS' ? 1 : 0.6 }}
+                            >
+                                📇 Fichas
                             </button>
                             <button
                                 className={`${styles.actionButton} ${format === 'MAP' ? styles.primary : ''}`}

@@ -11,6 +11,7 @@ interface PropertiesPanelProps {
     onClose: () => void;
     programColors: Record<string, string>;
     onAssistantAction: (action: { type: string, payload: any }) => void;
+    onPrint?: (loc: Ubicacion) => void;
 }
 
 // --- UNIFIED ITEM CARD ---
@@ -91,7 +92,7 @@ const ItemCard: React.FC<{
 };
 
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors, onAssistantAction }) => {
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, onClose, programColors, onAssistantAction, onPrint }) => {
 
     const { user } = useAuth();
     const isVisitor = user?.role === 'VISITOR';
@@ -325,6 +326,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                 onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
                             }}>
                                 🚚 Mover Palet
+                            </button>
+                        )}
+                        {onPrint && (
+                            <button className={styles.secondaryAction} onClick={() => onPrint(location)} title="Imprimir Ficha">
+                                🖨️
                             </button>
                         )}
                     </div>

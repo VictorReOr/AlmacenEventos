@@ -199,6 +199,7 @@ function AuthenticatedApp() {
   // Print State
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printData, setPrintData] = useState<Ubicacion[] | null>(null);
+  const [printMode, setPrintMode] = useState<'list' | 'cards'>('list');
 
   // Validation State
   const [inventoryErrors, setInventoryErrors] = useState<InventoryError[]>([]);
@@ -573,8 +574,9 @@ function AuthenticatedApp() {
     }
 
     // 2. Handle Format
-    if (options.format === 'LIST') {
+    if (options.format === 'LIST' || options.format === 'CARDS') {
       setPrintData(dataToPrint);
+      setPrintMode(options.format === 'CARDS' ? 'cards' : 'list');
       // Give React a moment to render the PrintView before triggering print
       setTimeout(() => {
         window.print();
@@ -588,6 +590,15 @@ function AuthenticatedApp() {
         document.body.classList.remove('printing-map');
       }, 500);
     }
+  };
+
+  const handlePrintSingle = (loc: Ubicacion) => {
+    setPrintData([loc]);
+    setPrintMode('cards');
+    setTimeout(() => {
+      window.print();
+      setPrintData(null);
+    }, 500);
   };
 
   const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
@@ -614,15 +625,14 @@ function AuthenticatedApp() {
   // --- RENDER ---
   return (
     <div className="app-layer">
-      {/* PRINT VIEW CONTAINER (Only visible during print list mode) */}
       {printData && (
-        <PrintView data={printData} />
+        <PrintView data={printData} mode={printMode} />
       )}
 
       <AppShell
         header={
           <Header
-            title="SGA Eventos v1.5.3"
+            title="SGA Eventos v1.5.4"
             subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
             leftAction={
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -879,6 +889,7 @@ function AuthenticatedApp() {
                     setPendingAssistantAction(action);
                     setIsChatbotOpen(true);
                   }}
+                  onPrint={handlePrintSingle}
                 />
               </div>
             )}

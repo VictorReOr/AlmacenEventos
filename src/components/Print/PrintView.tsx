@@ -1,12 +1,14 @@
 import React from 'react';
 import type { Ubicacion } from '../../types';
+import { PalletCard } from './PalletCard';
 
 interface PrintViewProps {
     data: Ubicacion[];
     title?: string;
+    mode?: 'list' | 'cards';
 }
 
-export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario de Almacén" }) => {
+export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario de Almacén", mode = 'list' }) => {
 
     // Sort logic could go here (e.g. alphanumeric by ID)
     const sortedData = [...data].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
@@ -88,29 +90,37 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario 
         <div className="print-view-container">
             <div className="print-header">
                 <h1>{title}</h1>
-                <p>Fecha de impresión: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                <p>Fecha de impresión: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} • Modo: {mode === 'cards' ? 'Fichas Detalladas' : 'Listado General'}</p>
             </div>
 
-            <table className="print-table">
-                <thead>
-                    <tr>
-                        <th style={{ width: '15%' }}>ID Ubicación</th>
-                        <th style={{ width: '15%' }}>Programa</th>
-                        <th style={{ width: '15%' }}>Tipo</th>
-                        <th style={{ width: '55%' }}>Contenido</th>
-                    </tr>
-                </thead>
-                <tbody>
+            {mode === 'cards' ? (
+                <div className="print-cards-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     {sortedData.map(u => (
-                        <tr key={u.id}>
-                            <td className="print-cell-id">{u.id}</td>
-                            <td>{u.programa}</td>
-                            <td>{u.tipo}</td>
-                            <td>{renderContents(u)}</td>
-                        </tr>
+                        <PalletCard key={u.id} data={u} />
                     ))}
-                </tbody>
-            </table>
+                </div>
+            ) : (
+                <table className="print-table">
+                    <thead>
+                        <tr>
+                            <th style={{ width: '15%' }}>ID Ubicación</th>
+                            <th style={{ width: '15%' }}>Programa</th>
+                            <th style={{ width: '15%' }}>Tipo</th>
+                            <th style={{ width: '55%' }}>Contenido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sortedData.map(u => (
+                            <tr key={u.id}>
+                                <td className="print-cell-id">{u.id}</td>
+                                <td>{u.programa}</td>
+                                <td>{u.tipo}</td>
+                                <td>{renderContents(u)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
         </div>
     );
 };
