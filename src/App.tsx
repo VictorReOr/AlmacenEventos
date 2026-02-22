@@ -199,7 +199,6 @@ function AuthenticatedApp() {
   // Print State
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printData, setPrintData] = useState<Ubicacion[] | null>(null);
-  const [printMode, setPrintMode] = useState<'list' | 'cards'>('list');
 
   // Validation State
   const [inventoryErrors, setInventoryErrors] = useState<InventoryError[]>([]);
@@ -576,11 +575,9 @@ function AuthenticatedApp() {
     // 2. Handle Format
     if (options.format === 'LIST' || options.format === 'CARDS') {
       setPrintData(dataToPrint);
-      setPrintMode(options.format === 'CARDS' ? 'cards' : 'list');
       // Give React a moment to render the PrintView before triggering print
       setTimeout(() => {
         window.print();
-        setPrintData(null); // Clear after print dialog closes
       }, 500);
     } else {
       // MAP MODE
@@ -594,10 +591,8 @@ function AuthenticatedApp() {
 
   const handlePrintSingle = (loc: Ubicacion) => {
     setPrintData([loc]);
-    setPrintMode('cards');
     setTimeout(() => {
       window.print();
-      setPrintData(null);
     }, 500);
   };
 
@@ -626,7 +621,7 @@ function AuthenticatedApp() {
   return (
     <div className="app-layer">
       {printData && (
-        <PrintView data={printData} mode={printMode} />
+        <PrintView data={printData} onClose={() => setPrintData(null)} />
       )}
 
       <AppShell
@@ -850,12 +845,7 @@ function AuthenticatedApp() {
               />
             )}
 
-            {/* Hidden Print View (for List Printing) */}
-            {printData && (
-              <div className="print-view-container">
-                <PrintView data={printData} />
-              </div>
-            )}
+            {/* Hidden Print View (for List Printing) duplicated removed */}
 
             {/* Hidden Print View */}
             {assistantAlert && (

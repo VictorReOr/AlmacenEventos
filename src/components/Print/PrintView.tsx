@@ -1,126 +1,206 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Ubicacion } from '../../types';
-import { PalletCard } from './PalletCard';
 
 interface PrintViewProps {
     data: Ubicacion[];
     title?: string;
-    mode?: 'list' | 'cards';
+    mode?: 'list' | 'cards' | 'MAP';
+    onClose?: () => void;
 }
 
-export const PrintView: React.FC<PrintViewProps> = ({ data, title = "Inventario de Almacén", mode = 'list' }) => {
+interface PrintItem {
+    material: string;
+    tipo: string;
+    cantidad: number | string;
+    lote: string;
+}
 
-    // Sort logic could go here (e.g. alphanumeric by ID)
-    const sortedData = [...data].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+interface PrintPageData {
+    id: string; // Unique key for the page
+    title: string;
+    type: 'palet' | 'estanteria';
+    items: PrintItem[];
+}
 
-    const renderContents = (u: Ubicacion) => {
-        const items: JSX.Element[] = [];
+export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
+    // We only care about rendering the A4 format which overrides the old list/cards if they just want this A4 view.
+    // However, we'll keep it as the default render when PrintView is mounted.
 
-        // 0. Shelf Slots
-        if (u.cajasEstanteria && Object.keys(u.cajasEstanteria).length > 0) {
-            const sortedKeys = Object.keys(u.cajasEstanteria).sort((a, b) => {
-                try {
-                    const [m_a, a_a] = a.replace('M', '').split('-A').map(Number);
-                    const [m_b, a_b] = b.replace('M', '').split('-A').map(Number);
-                    if (m_a !== m_b) return m_a - m_b;
-                    return a_a - a_b;
-                } catch (e) {
-                    return a.localeCompare(b);
-                }
+    const pages = useMemo(() => {
+        const generatedPages: PrintPageData[] = [];
+
+        // 1. Separate into Pallets and Shelves
+        const pallets = data.filter(u => u.tipo === 'palet' || (!u.id.startsWith('E') && !u.tipo?.includes('estanteria')));
+        const shelves = data.filter(u => u.tipo === 'estanteria_modulo' || u.id.startsWith('E'));
+
+        // Helper to safely get material name
+        const getDesc = (desc: string) => desc || "Material Desconocido";
+
+        // 2. Process Pallets
+        // Order pallets numerically or alphabetically
+        pallets.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+
+        pallets.forEach(u => {
+            const items: PrintItem[] = [];
+
+            if (u.cajas) {
+                u.cajas.forEach(c => {
+                    items.push({
+                        material: getDesc(c.descripcion),
+                        tipo: c.tipoContenedor || 'Caja',
+                        cantidad: c.cantidad || 1,
+                        lote: c.programa || u.programa || 'Vacio'
+                    });
+                });
+            }
+            if (u.materiales) {
+                u.materiales.forEach(m => {
+                    items.push({
+                        material: getDesc(m.nombre),
+                        tipo: 'Suelto',
+                        cantidad: m.cantidad || 1,
+                        lote: m.programa || u.programa || 'Vacio'
+                    });
+                });
+            }
+
+            // Generate the page for this pallet, even if empty (to know it's empty)
+            generatedPages.push({
+                id: `palet-${u.id}`,
+                title: u.id,
+                type: 'palet',
+                items: items
             });
+        });
 
-            sortedKeys.forEach((key) => {
-                const caja = u.cajasEstanteria![key];
-                const fancyLoc = key.replace('M', 'Mód ').replace('A', 'Alt ');
+        // 3. Process Shelves
+        shelves.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
-                items.push(
-                    <div key={`shelf-${key}`} className="print-item">
-                        <strong className="print-location-tag">[{fancyLoc}]</strong> {caja.descripcion}
-                        {caja.contenido && caja.contenido.length > 0 && (
-                            <ul className="print-sublist">
-                                {caja.contenido.map((m, mIdx) => (
-                                    <li key={mIdx}>{m.nombre} (x{m.cantidad})</li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                );
-            });
-        }
+        shelves.forEach(u => {
+            // Group by Module
+            // keys in cajasEstanteria are like "M1-A1", "M2-A3"
+            const modules: Record<string, PrintItem[]> = {};
 
-        // 1. Boxes
-        if (u.cajas && u.cajas.length > 0) {
-            u.cajas.forEach((caja, idx) => {
-                items.push(
-                    <div key={`box-${idx}`} className="print-item">
-                        <strong className="print-box-title">[Caja] {caja.descripcion}</strong> {caja.cantidad ? `(x${caja.cantidad})` : ''}
-                        {caja.contenido && caja.contenido.length > 0 && (
-                            <ul className="print-sublist">
-                                {caja.contenido.map((m, mIdx) => (
-                                    <li key={mIdx}>{m.nombre} (x{m.cantidad})</li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                );
-            });
-        }
+            if (u.cajasEstanteria) {
+                Object.entries(u.cajasEstanteria).forEach(([slot, caja]) => {
+                    // Extract module, default to '1' if format is weird
+                    const match = slot.match(/M(\d+)/);
+                    const modNum = match ? match[1] : '1';
 
-        // 2. Loose Materials
-        if (u.materiales && u.materiales.length > 0) {
-            u.materiales.forEach((m, idx) => {
-                items.push(
-                    <div key={`mat-${idx}`} className="print-item print-loose-item">
-                        <strong>[Suelto]</strong> {m.nombre} (x{m.cantidad})
-                    </div>
-                );
-            });
-        }
+                    if (!modules[modNum]) modules[modNum] = [];
 
-        // 3. Last Resort
-        if (items.length === 0) {
-            if (u.contenido) return <div>{u.contenido}</div>;
-            return <span className="print-empty">Vacío</span>;
-        }
+                    modules[modNum].push({
+                        material: getDesc(caja.descripcion),
+                        tipo: caja.tipoContenedor || 'Estantería',
+                        cantidad: caja.cantidad || 1,
+                        lote: caja.programa || u.programa || 'Vacio'
+                    });
+                });
+            }
 
-        return items;
-    };
+            // If the shelf is completely empty but selected, maybe we want to print an empty sheet?
+            // Usually we only print modules that have something, or at least Module 1.
+            const modKeys = Object.keys(modules).sort((a, b) => parseInt(a) - parseInt(b));
+
+            if (modKeys.length === 0) {
+                generatedPages.push({
+                    id: `shelf-${u.id}-M1`,
+                    title: `${u.id}-1`,
+                    type: 'estanteria',
+                    items: [] // Empty
+                });
+            } else {
+                modKeys.forEach(mod => {
+                    generatedPages.push({
+                        id: `shelf-${u.id}-M${mod}`,
+                        title: `${u.id}-${mod}`,
+                        type: 'estanteria',
+                        items: modules[mod]
+                    });
+                });
+            }
+        });
+
+        return generatedPages;
+    }, [data]);
 
     return (
-        <div className="print-view-container">
-            <div className="print-header">
-                <h1>{title}</h1>
-                <p>Fecha de impresión: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()} • Modo: {mode === 'cards' ? 'Fichas Detalladas' : 'Listado General'}</p>
+        <div className="print-view-container" style={{ width: '100%', height: '100%', backgroundColor: '#fff', position: 'absolute', top: 0, left: 0, zIndex: 99999, overflowY: 'auto' }}>
+            <div className="no-print" style={{ position: 'fixed', top: '20px', left: '20px', display: 'flex', gap: '15px' }}>
+                <button
+                    onClick={() => window.print()}
+                    style={{
+                        padding: '12px 24px',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        backgroundColor: '#2E7D32',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    }}
+                >
+                    🖨️ Imprimir todo
+                </button>
+                <button
+                    onClick={() => {
+                        if (onClose) onClose();
+                        else window.location.reload();
+                    }}
+                    style={{
+                        padding: '12px 24px',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        backgroundColor: '#e0e0e0',
+                        color: '#333',
+                        border: '1px solid #ccc',
+                        borderRadius: '8px'
+                    }}
+                >
+                    ❌ Cerrar Vista Previa
+                </button>
             </div>
 
-            {mode === 'cards' ? (
-                <div className="print-cards-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    {sortedData.map(u => (
-                        <PalletCard key={u.id} data={u} />
-                    ))}
-                </div>
-            ) : (
-                <table className="print-table">
-                    <thead>
-                        <tr>
-                            <th style={{ width: '15%' }}>ID Ubicación</th>
-                            <th style={{ width: '15%' }}>Programa</th>
-                            <th style={{ width: '15%' }}>Tipo</th>
-                            <th style={{ width: '55%' }}>Contenido</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {sortedData.map(u => (
-                            <tr key={u.id}>
-                                <td className="print-cell-id">{u.id}</td>
-                                <td>{u.programa}</td>
-                                <td>{u.tipo}</td>
-                                <td>{renderContents(u)}</td>
+            {pages.map(page => (
+                <div key={page.id} className="print-page">
+                    <div className="print-header">
+                        <div className="print-title">{page.title}</div>
+                        {page.type === 'palet' && (
+                            <img src="/palessito.png" alt="Palessito" className="print-palessito" />
+                        )}
+                    </div>
+
+                    <table className="print-table">
+                        <thead>
+                            <tr>
+                                <th>MATERIAL</th>
+                                <th>TIPO_ITEM</th>
+                                <th>CANTIDAD</th>
+                                <th>LOTE</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
+                        </thead>
+                        <tbody>
+                            {page.items.length > 0 ? (
+                                page.items.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td>{item.material}</td>
+                                        <td>{item.tipo}</td>
+                                        <td>{item.cantidad}</td>
+                                        <td>{item.lote}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={4} style={{ textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
+                                        Vacío
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            ))}
         </div>
     );
 };
+

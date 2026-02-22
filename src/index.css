@@ -84,3 +84,90 @@ body {
   width: 100%;
   height: 100%;
 }
+
+/* --- PRINT PREVIEW A4 STYLES --- */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body {
+    margin: 0;
+  }
+
+  .print-page {
+    width: 210mm;
+    height: 297mm;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
+
+.print-view-container {
+  background-color: #e0e0e0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.print-page {
+  background: white;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 10mm;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.print-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 25px;
+  margin-bottom: 40px;
+}
+
+.print-title {
+  font-size: 70px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-bottom: 3px solid black;
+  padding-bottom: 10px;
+  color: black;
+}
+
+.print-palessito {
+  height: 100px;
+  object-fit: contain;
+}
+
+.print-table {
+  width: 90%;
+  margin: 0 auto;
+  border-collapse: collapse;
+  font-size: 26px;
+  color: black;
+}
+
+.print-table th,
+.print-table td {
+  border: 2px solid black;
+  padding: 18px;
+  text-align: left;
+}
+
+.print-table th {
+  background-color: #f2f2f2;
+}
