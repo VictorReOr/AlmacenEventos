@@ -95,15 +95,38 @@ body {
 
   body {
     margin: 0;
+    overflow: visible !important;
+  }
+
+  #root {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .app-layer>*:not(.print-view-container) {
+    display: none !important;
+  }
+
+  .print-view-container {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 0 !important;
+    display: block !important;
   }
 
   .print-page {
     width: 210mm;
-    height: 297mm;
+    min-height: 297mm;
     page-break-after: always;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
   }
 
   .no-print {
