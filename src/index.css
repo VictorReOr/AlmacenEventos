@@ -93,16 +93,29 @@ body {
     margin: 10mm;
   }
 
+  html,
   body {
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     overflow: visible !important;
+    position: static !important;
+    background: white !important;
+    color: black !important;
   }
 
-  #root {
+  #root,
+  .app-layer {
     overflow: visible !important;
     height: auto !important;
+    width: auto !important;
+    position: static !important;
+    display: block !important;
   }
 
+  body>*:not(#root),
+  #root>*:not(.app-layer),
   .app-layer>*:not(.print-view-container) {
     display: none !important;
   }
