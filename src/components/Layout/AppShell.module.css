@@ -58,3 +58,24 @@
 .footerArea>* {
     pointer-events: auto;
 }
+
+/* Fix para impresión */
+@media print {
+    .shell {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+        background: white !important;
+    }
+
+    .mainArea,
+    .headerArea,
+    .footerArea {
+        display: none !important;
+    }
+
+    .overlayArea {
+        position: static !important;
+        display: block !important;
+    }
+}
