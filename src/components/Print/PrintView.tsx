@@ -125,8 +125,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
     }, [data]);
 
     return (
-        <div className="print-view-container" style={{ width: '100%', height: '100%', backgroundColor: '#fff', position: 'absolute', top: 0, left: 0, zIndex: 99999, overflowY: 'auto' }}>
-            <div className="no-print" style={{ position: 'fixed', top: '20px', left: '20px', display: 'flex', gap: '15px' }}>
+        <div className="print-view-container" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#fff', paddingBottom: '50px' }}>
+            <div className="no-print" style={{ padding: '20px', display: 'flex', gap: '15px', borderBottom: '2px solid #ccc', marginBottom: '20px' }}>
                 <button
                     onClick={() => window.print()}
                     style={{
@@ -161,46 +161,52 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                 </button>
             </div>
 
-            {pages.map(page => (
-                <div key={page.id} className="print-page">
-                    <div className="print-header">
-                        <div className="print-title">{page.title}</div>
-                        {page.type === 'palet' && (
-                            <img src="/palessito.png" alt="Palessito" className="print-palessito" />
-                        )}
-                    </div>
+            <div style={{ color: 'black', background: 'yellow', padding: '20px', fontSize: '24px', fontWeight: 'bold', margin: '20px' }} className="no-print">
+                DEBUG: DATA LENGTH: {data.length} | PAGES LENGTH: {pages.length}
+            </div>
 
-                    <table className="print-table">
-                        <thead>
-                            <tr>
-                                <th>MATERIAL</th>
-                                <th>TIPO_ITEM</th>
-                                <th>CANTIDAD</th>
-                                <th>LOTE</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {page.items.length > 0 ? (
-                                page.items.map((item, idx) => (
-                                    <tr key={idx}>
-                                        <td>{item.material}</td>
-                                        <td>{item.tipo}</td>
-                                        <td>{item.cantidad}</td>
-                                        <td>{item.lote}</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
-                                        Vacío
-                                    </td>
-                                </tr>
+            {
+                pages.map(page => (
+                    <div key={page.id} className="print-page">
+                        <div className="print-header">
+                            <div className="print-title">{page.title}</div>
+                            {page.type === 'palet' && (
+                                <img src="/palessito.png" alt="Palessito" className="print-palessito" />
                             )}
-                        </tbody>
-                    </table>
-                </div>
-            ))}
-        </div>
+                        </div>
+
+                        <table className="print-table">
+                            <thead>
+                                <tr>
+                                    <th>MATERIAL</th>
+                                    <th>TIPO_ITEM</th>
+                                    <th>CANTIDAD</th>
+                                    <th>LOTE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {page.items.length > 0 ? (
+                                    page.items.map((item, idx) => (
+                                        <tr key={idx}>
+                                            <td>{item.material}</td>
+                                            <td>{item.tipo}</td>
+                                            <td>{item.cantidad}</td>
+                                            <td>{item.lote}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} style={{ textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
+                                            Vacío
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                ))
+            }
+        </div >
     );
 };
 
