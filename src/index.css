@@ -114,11 +114,6 @@ body {
     display: block !important;
   }
 
-  body>*:not(#root),
-  #root>*:not(.app-layer) {
-    display: none !important;
-  }
-
   .print-view-container {
     position: static !important;
     width: auto !important;
