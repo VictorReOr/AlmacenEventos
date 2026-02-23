@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { Ubicacion } from '../../types';
 
 interface PrintViewProps {
@@ -25,6 +25,14 @@ interface PrintPageData {
 export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
     // We only care about rendering the A4 format which overrides the old list/cards if they just want this A4 view.
     // However, we'll keep it as the default render when PrintView is mounted.
+
+    useEffect(() => {
+        // Automatically open the print dialog after a short delay to ensure React has flushed the DOM
+        const timer = setTimeout(() => {
+            window.print();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
 
     const pages = useMemo(() => {
         const generatedPages: PrintPageData[] = [];

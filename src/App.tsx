@@ -575,10 +575,7 @@ function AuthenticatedApp() {
     // 2. Handle Format
     if (options.format === 'LIST' || options.format === 'CARDS') {
       setPrintData(dataToPrint);
-      // Give React a moment to render the PrintView before triggering print
-      setTimeout(() => {
-        window.print();
-      }, 500);
+      // PrintView will trigger window.print() on mount once rendered.
     } else {
       // MAP MODE
       document.body.classList.add('printing-map');
@@ -591,9 +588,6 @@ function AuthenticatedApp() {
 
   const handlePrintSingle = (loc: Ubicacion) => {
     setPrintData([loc]);
-    setTimeout(() => {
-      window.print();
-    }, 500);
   };
 
   const selectedLocation = (selectedIds.size === 1) ? state.ubicaciones[Array.from(selectedIds)[0]] : null;
