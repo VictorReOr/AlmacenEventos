@@ -624,318 +624,320 @@ function AuthenticatedApp() {
         <PrintView data={printData} onClose={() => setPrintData(null)} />
       )}
 
-      <AppShell
-        header={
-          <Header
-            title="SGA Eventos v1.5.4"
-            subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
-            leftAction={
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {/* Menu / Config (Left Side) - Empty for now */}
-              </div>
-            }
-            rightAction={
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-
-                {/* Cloud Controls */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
-                    <IconCloudDown size={20} />
-                  </button>
-                  <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
-                    <IconSave size={20} />
-                  </button>
-                  <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
-                    <IconUndo size={20} />
-                  </button>
-                  <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">
-                    <IconRedo size={20} />
-                  </button>
+      <div style={{ display: printData ? 'none' : 'block' }}>
+        <AppShell
+          header={
+            <Header
+              title="SGA Eventos v1.5.4"
+              subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
+              leftAction={
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Menu / Config (Left Side) - Empty for now */}
                 </div>
+              }
+              rightAction={
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
-                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-
-                <QuickSearch
-                  ubicaciones={state.ubicaciones}
-                  onSelectLocation={(id) => handleSelectLocation(id)}
-                />
-
-                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-
-                {/* Map Controls Group */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {!isMobile && (
-                    <button
-                      onClick={() => setIsSelectionMode(!isSelectionMode)}
-                      className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
-                      title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
-                    >
-                      <IconSelection active={isSelectionMode} size={20} />
+                  {/* Cloud Controls */}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
+                      <IconCloudDown size={20} />
                     </button>
-                  )}
+                    <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
+                      <IconSave size={20} />
+                    </button>
+                    <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
+                      <IconUndo size={20} />
+                    </button>
+                    <button onClick={redo} disabled={!canRedo} className="icon-btn" title="Rehacer">
+                      <IconRedo size={20} />
+                    </button>
+                  </div>
 
-                  {!isMobile && (
-                    <>
-                      <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
-                        <IconPrinter size={20} />
+                  <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
+                  <QuickSearch
+                    ubicaciones={state.ubicaciones}
+                    onSelectLocation={(id) => handleSelectLocation(id)}
+                  />
+
+                  <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
+                  {/* Map Controls Group */}
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {!isMobile && (
+                      <button
+                        onClick={() => setIsSelectionMode(!isSelectionMode)}
+                        className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                        title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
+                      >
+                        <IconSelection active={isSelectionMode} size={20} />
                       </button>
+                    )}
 
-                      <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
-                        <IconGrid active={showGrid} size={20} />
+                    {!isMobile && (
+                      <>
+                        <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
+                          <IconPrinter size={20} />
+                        </button>
+
+                        <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                          <IconGrid active={showGrid} size={20} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* ADMIN BUTTON (Moved Here) */}
+                  {user?.role === 'ADMIN' && (
+                    <>
+                      <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+                      <button
+                        onClick={() => setIsAdminOpen(true)}
+                        className="icon-btn"
+                        title="Panel Admin"
+                        style={{ backgroundColor: '#FFD54F', color: '#333' }}
+                      >
+                        <IconShield color="#333" size={20} />
+                      </button>
+                      {/* CONFIG BUTTON (Moved Here next to Shield) */}
+                      <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
+                        <IconSettings size={20} />
                       </button>
                     </>
                   )}
+
+                  <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
+
+                  {/* User Menu (Avatar) */}
+                  <UserMenu user={user} onLogout={logout} />
                 </div>
+              }
+            />
+          }
 
-                {/* ADMIN BUTTON (Moved Here) */}
-                {user?.role === 'ADMIN' && (
-                  <>
-                    <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-                    <button
-                      onClick={() => setIsAdminOpen(true)}
-                      className="icon-btn"
-                      title="Panel Admin"
-                      style={{ backgroundColor: '#FFD54F', color: '#333' }}
-                    >
-                      <IconShield color="#333" size={20} />
-                    </button>
-                    {/* CONFIG BUTTON (Moved Here next to Shield) */}
-                    <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
-                      <IconSettings size={20} />
-                    </button>
-                  </>
-                )}
-
-                <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
-
-                {/* User Menu (Avatar) */}
-                <UserMenu user={user} onLogout={logout} />
-              </div>
-            }
-          />
-        }
-
-        main={
-          <WarehouseMap
-            ref={mapRef}
-            ubicaciones={state.ubicaciones}
-            onSelectLocation={handleSelectLocation}
-            onSelectMultiple={(ids) => setSelectedIds(new Set(ids))}
-            selectedIds={selectedIds}
-            onUpdate={handleUpdate}
-            geometry={state.geometry}
-            onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
-            rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
-            showGrid={showGrid}
-            onVisitorError={() => {
-              setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
-            }}
-            programColors={programColors}
-            isMobile={isMobile}
-            readOnly={isMobile && !isSelectionMode}
-          />
-        }
-        footer={
-          isMobile && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              width: '100%',
-              pointerEvents: 'auto',
-              zIndex: 900 // Ensure on top
-            }}>
-              {/* 1. Static Legend (Full Width) */}
-              <DraggableLegend programColors={programColors} isMobile={true} />
-
-              {/* 2. Toolbar */}
+          main={
+            <WarehouseMap
+              ref={mapRef}
+              ubicaciones={state.ubicaciones}
+              onSelectLocation={handleSelectLocation}
+              onSelectMultiple={(ids) => setSelectedIds(new Set(ids))}
+              selectedIds={selectedIds}
+              onUpdate={handleUpdate}
+              geometry={state.geometry}
+              onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
+              rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
+              showGrid={showGrid}
+              onVisitorError={() => {
+                setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
+              }}
+              programColors={programColors}
+              isMobile={isMobile}
+              readOnly={isMobile && !isSelectionMode}
+            />
+          }
+          footer={
+            isMobile && (
               <div style={{
                 display: 'flex',
-                justifyContent: 'space-around',
-                alignItems: 'center',
-                padding: '6px 10px',
-                backgroundColor: '#f5f5f5',
-                borderTop: '1px solid #ddd',
-                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
-                height: '60px'
+                flexDirection: 'column',
+                width: '100%',
+                pointerEvents: 'auto',
+                zIndex: 900 // Ensure on top
               }}>
-                <button
-                  onClick={() => setIsSelectionMode(!isSelectionMode)}
-                  className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
-                  style={{
-                    flexDirection: 'column',
-                    gap: 2,
-                    height: 'auto',
-                    width: '60px',
-                    color: isSelectionMode ? '#2E7D32' : '#555',
-                    backgroundColor: isSelectionMode ? '#e8f5e9' : 'transparent',
-                    border: isSelectionMode ? '1px solid #c8e6c9' : 'none'
-                  }}
-                >
-                  <IconSelection active={isSelectionMode} size={24} />
-                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Selección</span>
-                </button>
+                {/* 1. Static Legend (Full Width) */}
+                <DraggableLegend programColors={programColors} isMobile={true} />
 
-                <button
-                  onClick={() => setShowGrid(!showGrid)}
-                  className="icon-btn"
-                  style={{
-                    flexDirection: 'column',
-                    gap: 2,
-                    height: 'auto',
-                    width: '60px',
-                    color: showGrid ? '#2E7D32' : '#555'
-                  }}
-                >
-                  <IconGrid active={showGrid} size={24} />
-                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Rejilla</span>
-                </button>
+                {/* 2. Toolbar */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  alignItems: 'center',
+                  padding: '6px 10px',
+                  backgroundColor: '#f5f5f5',
+                  borderTop: '1px solid #ddd',
+                  boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+                  height: '60px'
+                }}>
+                  <button
+                    onClick={() => setIsSelectionMode(!isSelectionMode)}
+                    className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                    style={{
+                      flexDirection: 'column',
+                      gap: 2,
+                      height: 'auto',
+                      width: '60px',
+                      color: isSelectionMode ? '#2E7D32' : '#555',
+                      backgroundColor: isSelectionMode ? '#e8f5e9' : 'transparent',
+                      border: isSelectionMode ? '1px solid #c8e6c9' : 'none'
+                    }}
+                  >
+                    <IconSelection active={isSelectionMode} size={24} />
+                    <span style={{ fontSize: '9px', fontWeight: 600 }}>Selección</span>
+                  </button>
 
-                <button
-                  onClick={() => setShowPrintModal(true)}
-                  className="icon-btn"
-                  style={{
-                    flexDirection: 'column',
-                    gap: 2,
-                    height: 'auto',
-                    width: '60px',
-                    color: '#555'
-                  }}
-                >
-                  <IconPrinter size={24} />
-                  <span style={{ fontSize: '9px', fontWeight: 600 }}>Imprimir</span>
-                </button>
+                  <button
+                    onClick={() => setShowGrid(!showGrid)}
+                    className="icon-btn"
+                    style={{
+                      flexDirection: 'column',
+                      gap: 2,
+                      height: 'auto',
+                      width: '60px',
+                      color: showGrid ? '#2E7D32' : '#555'
+                    }}
+                  >
+                    <IconGrid active={showGrid} size={24} />
+                    <span style={{ fontSize: '9px', fontWeight: 600 }}>Rejilla</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowPrintModal(true)}
+                    className="icon-btn"
+                    style={{
+                      flexDirection: 'column',
+                      gap: 2,
+                      height: 'auto',
+                      width: '60px',
+                      color: '#555'
+                    }}
+                  >
+                    <IconPrinter size={24} />
+                    <span style={{ fontSize: '9px', fontWeight: 600 }}>Imprimir</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          )
-        }
-        overlay={
-          <>
-            {/* Modal de Configuración */}
-            {showConfig && (
-              <ConfigModal
-                initialColors={programColors}
-                scriptUrl={scriptUrl}
-                onSave={(newColors, newUrl) => {
-                  console.log("💾 Almacenando Configuración:", newColors);
-                  setProgramColors(newColors);
-                  // Force immediate save to ensure it persists even if useEffect is slow
-                  localStorage.setItem('program_colors_config', JSON.stringify(newColors));
+            )
+          }
+          overlay={
+            <>
+              {/* Modal de Configuración */}
+              {showConfig && (
+                <ConfigModal
+                  initialColors={programColors}
+                  scriptUrl={scriptUrl}
+                  onSave={(newColors, newUrl) => {
+                    console.log("💾 Almacenando Configuración:", newColors);
+                    setProgramColors(newColors);
+                    // Force immediate save to ensure it persists even if useEffect is slow
+                    localStorage.setItem('program_colors_config', JSON.stringify(newColors));
 
-                  setScriptUrl(newUrl);
-                  localStorage.setItem('google_script_url', newUrl);
+                    setScriptUrl(newUrl);
+                    localStorage.setItem('google_script_url', newUrl);
 
-                  setShowConfig(false);
-                  alert("✅ Configuración guardada correctamente.");
-                }}
-                onClose={() => setShowConfig(false)}
-              />
-            )}
-
-            {showErrorsModal && <InventoryErrorsModal errors={inventoryErrors} onClose={() => setShowErrorsModal(false)} />}
-
-
-            {/* Modal de Impresión */}
-            {showPrintModal && (
-              <PrintModal
-                isOpen={showPrintModal}
-                onClose={() => setShowPrintModal(false)}
-                onPrint={handlePrint}
-                programs={Object.keys(programColors)}
-                hasSelection={selectedIds.size > 0}
-              />
-            )}
-
-            {/* Hidden Print View (for List Printing) duplicated removed */}
-
-            {/* Hidden Print View */}
-            {assistantAlert && (
-              <AssistantAlert
-                message={assistantAlert}
-                onClose={() => setAssistantAlert(null)}
-              />
-            )}
-
-            {/* Chatbot Window */}
-            <AssistantChat
-              ubicaciones={state.ubicaciones}
-              selectedId={selectedLocation?.id}
-              onSelectLocation={(id) => handleSelectLocation(id)}
-              onUpdate={handleUpdate}
-              isOpen={isChatbotOpen}
-              onClose={() => setIsChatbotOpen(false)}
-              initialAction={pendingAssistantAction}
-              onClearAction={() => setPendingAssistantAction(null)}
-            />
-
-            {/* Panel de Propiedades (Legacy) */}
-            {selectedLocation && !isSelectionMode && selectedLocation.id !== 'van_v3' && (
-              <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
-                <PropertiesPanel
-                  location={selectedLocation}
-                  onUpdate={handleUpdate}
-                  onClose={() => setSelectedIds(new Set())}
-                  programColors={programColors}
-                  onAssistantAction={(action) => {
-                    setPendingAssistantAction(action);
-                    setIsChatbotOpen(true);
+                    setShowConfig(false);
+                    alert("✅ Configuración guardada correctamente.");
                   }}
-                  onPrint={handlePrintSingle}
+                  onClose={() => setShowConfig(false)}
                 />
-              </div>
-            )}
+              )}
 
-            {/* Asistente Flotante (Draggable) */}
-            <animated.div
-              ref={assistantRef}
-              {...bindAssistantDrag()}
-              style={{
-                position: 'fixed', // Use FIXED to stay on top of scroll
-                top: -35, // Moved UP even more (-35)
-                left: 90, // Moved LEFT to sit between gear and title
-                zIndex: 9999,
-                // Use transform for performance, but mapped from simple Spring values
-                x,
-                y,
-                touchAction: 'none',
-                cursor: 'grab',
-                pointerEvents: 'auto' // CRITICAL for overlay children
-              }}
-            >
-              <AssistantCharacter
-                size="lg"
-                state={isChatbotOpen ? 'listening' : 'idle'}
-                // Remove onClick here, handled by bindAssistantDrag
-                hasNotification={false}
+              {showErrorsModal && <InventoryErrorsModal errors={inventoryErrors} onClose={() => setShowErrorsModal(false)} />}
+
+
+              {/* Modal de Impresión */}
+              {showPrintModal && (
+                <PrintModal
+                  isOpen={showPrintModal}
+                  onClose={() => setShowPrintModal(false)}
+                  onPrint={handlePrint}
+                  programs={Object.keys(programColors)}
+                  hasSelection={selectedIds.size > 0}
+                />
+              )}
+
+              {/* Hidden Print View (for List Printing) duplicated removed */}
+
+              {/* Hidden Print View */}
+              {assistantAlert && (
+                <AssistantAlert
+                  message={assistantAlert}
+                  onClose={() => setAssistantAlert(null)}
+                />
+              )}
+
+              {/* Chatbot Window */}
+              <AssistantChat
+                ubicaciones={state.ubicaciones}
+                selectedId={selectedLocation?.id}
+                onSelectLocation={(id) => handleSelectLocation(id)}
+                onUpdate={handleUpdate}
+                isOpen={isChatbotOpen}
+                onClose={() => setIsChatbotOpen(false)}
+                initialAction={pendingAssistantAction}
+                onClearAction={() => setPendingAssistantAction(null)}
               />
-            </animated.div>
 
-            {/* Draggable Legend (UI Polish) - DESKTOP ONLY */}
-            {!isMobile && <DraggableLegend programColors={programColors} />}
+              {/* Panel de Propiedades (Legacy) */}
+              {selectedLocation && !isSelectionMode && selectedLocation.id !== 'van_v3' && (
+                <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
+                  <PropertiesPanel
+                    location={selectedLocation}
+                    onUpdate={handleUpdate}
+                    onClose={() => setSelectedIds(new Set())}
+                    programColors={programColors}
+                    onAssistantAction={(action) => {
+                      setPendingAssistantAction(action);
+                      setIsChatbotOpen(true);
+                    }}
+                    onPrint={handlePrintSingle}
+                  />
+                </div>
+              )}
 
-            {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
-            <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>
-              <button
-                className="fab-btn"
-                onClick={handleCreatePallet}
-                title="Crear Palet"
-                style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+              {/* Asistente Flotante (Draggable) */}
+              <animated.div
+                ref={assistantRef}
+                {...bindAssistantDrag()}
+                style={{
+                  position: 'fixed', // Use FIXED to stay on top of scroll
+                  top: -35, // Moved UP even more (-35)
+                  left: 90, // Moved LEFT to sit between gear and title
+                  zIndex: 9999,
+                  // Use transform for performance, but mapped from simple Spring values
+                  x,
+                  y,
+                  touchAction: 'none',
+                  cursor: 'grab',
+                  pointerEvents: 'auto' // CRITICAL for overlay children
+                }}
               >
-                +
-              </button>
-              {selectedIds.size > 0 && (
+                <AssistantCharacter
+                  size="lg"
+                  state={isChatbotOpen ? 'listening' : 'idle'}
+                  // Remove onClick here, handled by bindAssistantDrag
+                  hasNotification={false}
+                />
+              </animated.div>
+
+              {/* Draggable Legend (UI Polish) - DESKTOP ONLY */}
+              {!isMobile && <DraggableLegend programColors={programColors} />}
+
+              {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
+              <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>
                 <button
                   className="fab-btn"
-                  onClick={handleDeleteSelection}
-                  title="Eliminar"
-                  style={{ background: 'var(--color-action)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                  onClick={handleCreatePallet}
+                  title="Crear Palet"
+                  style={{ background: 'var(--color-primary)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
                 >
-                  🗑
+                  +
                 </button>
-              )}
-            </div>
-          </>
-        }
-      />
+                {selectedIds.size > 0 && (
+                  <button
+                    className="fab-btn"
+                    onClick={handleDeleteSelection}
+                    title="Eliminar"
+                    style={{ background: 'var(--color-action)', color: 'white', borderRadius: '50%', width: 48, height: 48, border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
+                  >
+                    🗑
+                  </button>
+                )}
+              </div>
+            </>
+          }
+        />
+      </div>
     </div>
   );
 }

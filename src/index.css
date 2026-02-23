@@ -97,8 +97,8 @@ body {
   body {
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
+    width: auto !important;
+    height: auto !important;
     overflow: visible !important;
     position: static !important;
     background: white !important;
@@ -115,8 +115,7 @@ body {
   }
 
   body>*:not(#root),
-  #root>*:not(.app-layer),
-  .app-layer>*:not(.print-view-container) {
+  #root>*:not(.app-layer) {
     display: none !important;
   }
 
