@@ -46,3 +46,14 @@ Esta traza incorpora:
 
 ## 6. Integraciones Críticas
 Las peticiones al Asistente Inteligente (Palessito) y el motor de lógica difusa de Natural Language Processing (spaCy) se procesan estrictamente _in-house_ en el contenedor Cloud Run, sin enviar cadenas de texto a APIs externas sin certificar (ej. un LLM externo descontrolado), asegurando que el rastro del inventario no padece de exfiltración.
+
+## 7. Alineación con la Política de Seguridad TIC de la Junta de Andalucía
+El despliegue de SGA Eventos contempla las normativas específicas de la comunidad autónoma, en particular el **Decreto 1/2011** (Política de Seguridad TIC de la Administración de la Junta de Andalucía) y sus actualizaciones (ej. **Decreto 171/2020** y directrices de la Agencia Digital Andaluza - ADA).
+
+La arquitectura mitiga los riesgos marcados por la Política TIC andaluza de la siguiente manera:
+1. **Alojamiento en Entornos Cloud Homologados:** La Política de Seguridad TIC andaluza exige cautela en arquitecturas en la nube. Al reposar el Backend y Datos sobre la infraestructura de Google Workspace/Cloud (cuyos centros de datos europeos disponen de certificación ENS de Nivel Alto acreditada por el Centro Criptológico Nacional), el aplicativo hereda el manto de cumplimiento requerido por la ADA para externalización de infraestructura.
+2. **Identidad Corporativa Única:** Cumpliendo la directriz de centralización de identidades de la Junta, el sistema SGA rechaza crear claves propias y se apoya en el correo corporativo (SSO mediante Google OAuth), evitando silos de contraseñas vulnerables en el ámbito educativo/institucional.
+3. **Roles y Segregación de Funciones:** 
+   - El perfil `ADMIN` se reserva para el personal responsable del Sistema de Información (Responsable de Seguridad).
+   - Los perfiles de trabajadores regulares quedan limitados en permisos (principio de mínimo privilegio).
+4. **Protección de Datos (RGPD y LOPDGDD):** SGA Eventos no gestiona, almacena, ni procesa Datos Personales (Categoría Especial ni Básica), puesto que su núcleo de datos versa exclusivamente sobre *Material Logístico* inanimado. La única traza personal son los correos electrónicos corporativos usados como *Identificadores de Auditoría* (uso legítimo profesional), lo que rebaja las exigencias de Evaluación de Impacto (EIPD).
