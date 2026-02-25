@@ -49,7 +49,7 @@ async def parse_request(
                     
                     # Improve Summary
                     others = ", ".join(candidates[1:])
-                    msg = f"He encontrado hueco en **{best_option}**."
+                    msg = f"He encontrado hueco en {best_option}."
                     if others:
                         msg += f" Otras opciones: {others}."
                     msg += " ¿Confirmas?"
@@ -231,7 +231,9 @@ async def parse_request(
                         mat = normalize(row.get('MATERIAL', ''))
                         loc = normalize(row.get('ID_UBICACION', ''))
                         typ = normalize(row.get('TIPO_ITEM', ''))
-                        searchable_text = f"{mat} {loc} {typ}"
+                        # Add LOTE or PROGRAMA to search 
+                        lote = normalize(row.get('LOTE', row.get('PROGRAMA', '')))
+                        searchable_text = f"{mat} {loc} {typ} {lote}"
                         
                         if all(k.lower() in searchable_text for k in search_keywords):
                             found_items.append(row)
@@ -256,7 +258,8 @@ async def parse_request(
                             mat = normalize(row.get('MATERIAL', ''))
                             loc = normalize(row.get('ID_UBICACION', ''))
                             typ = normalize(row.get('TIPO_ITEM', ''))
-                            searchable_text = f"{mat} {loc} {typ}"
+                            lote = normalize(row.get('LOTE', row.get('PROGRAMA', '')))
+                            searchable_text = f"{mat} {loc} {typ} {lote}"
                             
                             # check if this row satisfies all keyword groups
                             all_groups_match = True
@@ -277,7 +280,8 @@ async def parse_request(
                 
                 for item in found_items:
                     mat = item.get('MATERIAL', 'Desconocido')
-                    loc = item.get('ID_UBICACION', '?')
+                    loc_raw = item.get('ID_UBICACION') or item.get('ID_LUGAR')
+                    loc = str(loc_raw).strip() if loc_raw and str(loc_raw).strip() != '' else 'Ubicación Desconocida'
                     try:
                         qty = int(item.get('CANTIDAD', 0))
                     except:
@@ -311,7 +315,7 @@ async def parse_request(
                     if len(locs_list) > 3:
                         locs_str += f" (+{len(locs_list)-3} más)"
                         
-                    lines.append(f"• **{qty}** {mat} (en {locs_str})")
+                    lines.append(f"• {qty} un. de {mat} (en {locs_str})")
                     total_items_count += qty
                 
                 # Limit output lines
@@ -319,9 +323,9 @@ async def parse_request(
                     lines = lines[:8]
                     lines.append(f"... y otros.")
 
-                intro = f"He encontrado **{total_items_count}** artículos"
+                intro = f"He encontrado {total_items_count} artículos"
                 if target_location_ids:
-                     intro += f" en **{target_location_ids[0]}**"
+                     intro += f" en {target_location_ids[0]}"
                 
                 interpretation.summary = f"{intro}:\n" + "\n".join(lines)
 
@@ -330,7 +334,7 @@ async def parse_request(
                  if target_location_ids:
                      # Use the first candidate for display, e.g. "E1-M1"
                      nice_loc = target_location_ids[0]
-                     msg = f"No he encontrado nada en la ubicación **{nice_loc}** (o sus variantes). ¿Es posible que esté vacía?"
+                     msg = f"No he encontrado nada en la ubicación {nice_loc} (o sus variantes). ¿Es posible que esté vacía?"
                  else:
                      msg = "No he encontrado coincidencias para esa búsqueda en el inventario."
                  interpretation.summary = msg
