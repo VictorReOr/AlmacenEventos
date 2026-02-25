@@ -35,10 +35,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5200",
+    "http://localhost:5173",
+    "https://victorreor.github.io"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow ALL for debugging "Failed to fetch"
-    # allow_origin_regex=r"https?://(localhost|.*\.github\.io)(:\d+)?",
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

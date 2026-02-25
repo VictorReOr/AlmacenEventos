@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from datetime import timedelta
 from app.models.schemas import LoginRequest, GoogleLoginRequest, RegisterRequest, Token, User
 from app.services.auth_service import auth_service
 from app.core.security import create_access_token, verify_token
@@ -39,7 +40,10 @@ async def login(request: LoginRequest):
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     
-    access_token = create_access_token(data={"sub": user["USER_ID"], "role": user["ROLE"]})
+    access_token = create_access_token(
+        data={"sub": user["USER_ID"], "role": user["ROLE"]},
+        expires_delta=timedelta(hours=8)
+    )
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
@@ -66,7 +70,10 @@ async def google_login(request: GoogleLoginRequest):
         # Better: Frontend already has the decoded token info.
         raise HTTPException(status_code=404, detail="User not registered")
         
-    access_token = create_access_token(data={"sub": user["USER_ID"], "role": user["ROLE"]})
+    access_token = create_access_token(
+        data={"sub": user["USER_ID"], "role": user["ROLE"]},
+        expires_delta=timedelta(hours=8)
+    )
     return {
         "access_token": access_token, 
         "token_type": "bearer", 
@@ -93,7 +100,10 @@ async def register(request: RegisterRequest):
     auth_service.create_user(email, request.name, role="VISITOR")
     
     # Generate Token
-    access_token = create_access_token(data={"sub": email, "role": "VISITOR"})
+    access_token = create_access_token(
+        data={"sub": email, "role": "VISITOR"},
+        expires_delta=timedelta(hours=8)
+    )
     return {
         "access_token": access_token, 
         "token_type": "bearer", 

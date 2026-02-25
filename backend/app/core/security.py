@@ -14,11 +14,13 @@ ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None) -> str:
+    from app.core.config import get_settings
+    settings = get_settings()
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        # Default expiration: 15 minutes for confirmation tokens
         expire = datetime.utcnow() + timedelta(minutes=15)
     
     to_encode.update({"exp": expire})
