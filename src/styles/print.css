@@ -26,10 +26,6 @@
     }
 
     /* --- DEFAULT PRINT BEHAVIOR (LIST MODE) --- */
-    /* Hide everything in the App Shell */
-    #root>div {
-        display: none !important;
-    }
 
     /* Force show ONLY the Print View Container */
     /* This must serve as a separate layer that overrides the #root hiding if it's outside, 
@@ -38,15 +34,13 @@
     /* Better approach: Hide specific main containers */
     .print-view-container {
         display: block !important;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: auto;
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
         background: white;
         z-index: 99999;
         /* Super high z-index */
-        padding: 1cm;
+        padding: 0;
         visibility: visible !important;
     }
 
@@ -80,42 +74,7 @@
         z-index: 9999;
     }
 
-    /* Table Styles for List Mode */
-    .print-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: 'Segoe UI', sans-serif;
-        font-size: 12px;
-    }
-
-    .print-table th,
-    .print-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-
-    .print-table th {
-        background-color: #f2f2f2;
-        font-weight: bold;
-    }
-
-    .print-header {
-        margin-bottom: 20px;
-        border-bottom: 2px solid #333;
-        padding-bottom: 10px;
-    }
-
-    .print-header h1 {
-        font-size: 24px;
-        margin: 0;
-        color: #333;
-    }
-
-    .print-header p {
-        margin: 5px 0 0;
-        color: #666;
-    }
+    /* Styles for List Mode removed to favor index.css */
 }
 
 /* Hide Print View during normal usage */

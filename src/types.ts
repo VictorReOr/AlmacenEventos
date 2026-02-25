@@ -4,8 +4,13 @@ export const PROGRAM_COLORS: Record<string, string> = {
   'Mentor 10': '#003366', // Azul Marino Oscuro
   'Liga LED': '#FFFF00',  // Amarillo Puro
   'Liga M100': '#4CAF50', // Verde Andalucía claro
-  'Otros': '#E57373',     // Red
-  'Vacio': '#E0E0E0'      // Grey
+  'Material Deportivo': '#6A1B9A', // Morado
+  'CEEDA': '#FF6F00',     // Naranja
+  'Señalización': '#0097A7', // Turquesa
+  'Andalucía': '#8BC34A', // Verde Lima
+  'Imagen Corporativa': '#212121', // Negro Suave
+  'Otros': '#E57373',     // Rojo
+  'Vacio': '#E0E0E0'      // Gris
 };
 
 // --- SOLID BASE MODEL TYPES ---

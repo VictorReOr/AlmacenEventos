@@ -64,10 +64,18 @@ async def parse_request(
             all_items = sheet_service.get_inventory()
             found_items = []
             
+            print(f"ASSISTANT: Querying inventory. Total items available: {len(all_items)}")
+            
             def normalize(s): 
                 return str(s).lower().strip()
             
             user_query = normalize(text_to_process)
+            
+            # --- NLP SANITIZATION ---
+            # Remove punctuation to avoid keywords failing to match (e.g. "cuadernos??" -> "cuadernos")
+            import string
+            for p in string.punctuation + "¿¡":
+                user_query = user_query.replace(p, '')
             
             # --- SMART PRE-PROCESSING ---
             # Handle "Estantería X" -> "EX" conversion
@@ -145,6 +153,7 @@ async def parse_request(
             
             if target_location_ids:
                 # STRATEGY A: ID-REGISTRO/UBICACION SEARCH (Combined)
+                print(f"ASSISTANT: Running TARGET SEARCH for {target_location_ids}")
                 target_found = False
                 
                 for row in all_items:
@@ -197,8 +206,8 @@ async def parse_request(
 
             else:
                 # STRATEGY B: CONTENT/KEYWORD SEARCH (Broad)
+                print(f"ASSISTANT: Running KEYWORD SEARCH for '{user_query}'")
                 terms = user_query.split()
-                # Filter stop words but KEEP numbers and short IDs
                 # Filter stop words but KEEP numbers and short IDs
                 stop_words = [
                     "donde", "dónde", "hay", "haya", "el", "la", "los", "las", "un", "una", 
@@ -207,7 +216,9 @@ async def parse_request(
                     "buscar", "busca", "encuentra", "ver", "listar", "cual", "cuales", "quien", 
                     "mostrar", "enseñar", "ver"
                 ]
-                search_keywords = [t for t in terms if t not in stop_words]
+                search_keywords = [t for t in terms if t.lower() not in stop_words]
+                
+                print(f"ASSISTANT: Search keywords after filtering: {search_keywords}")
                 
                 if not search_keywords:
                     # If all words were stop words, return nothing or maybe hint user?
@@ -222,7 +233,7 @@ async def parse_request(
                         typ = normalize(row.get('TIPO_ITEM', ''))
                         searchable_text = f"{mat} {loc} {typ}"
                         
-                        if all(k in searchable_text for k in search_keywords):
+                        if all(k.lower() in searchable_text for k in search_keywords):
                             found_items.append(row)
                     
                     # 2. Second Pass: Relaxed (Singular/Plural) if no results found
@@ -230,10 +241,13 @@ async def parse_request(
                         # Generate variations for each keyword (e.g. "balones" -> "balon")
                         relaxed_keywords = []
                         for k in search_keywords:
-                            variations = [k]
-                            if k.endswith('es') and len(k) > 3: variations.append(k[:-2]) # balones -> balon
-                            if k.endswith('s') and len(k) > 3: variations.append(k[:-1])  # sillas -> silla
+                            variations = [k.lower()]
+                            k_lower = k.lower()
+                            if k_lower.endswith('es') and len(k_lower) > 3: variations.append(k_lower[:-2]) # balones -> balon
+                            if k_lower.endswith('s') and len(k_lower) > 3: variations.append(k_lower[:-1])  # sillas -> silla
                             relaxed_keywords.append(variations)
+                        
+                        print(f"ASSISTANT: Using relaxed keywords: {relaxed_keywords}")
                         
                         # We need to find rows that have AT LEAST ONE match for EACH keyword group
                         # e.g. search: "cajas balones" -> needs (caja OR cajas) AND (balon OR balones)
@@ -253,6 +267,8 @@ async def parse_request(
                             
                             if all_groups_match:
                                 found_items.append(row)
+                                
+                print(f"ASSISTANT: Keyword search found {len(found_items)} items")
 
             # --- SUMMARY GENERATION ---
             if found_items:

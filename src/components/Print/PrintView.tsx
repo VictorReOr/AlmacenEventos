@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from 'react';
 import type { Ubicacion } from '../../types';
+import { PROGRAM_COLORS } from '../../types';
 
 interface PrintViewProps {
     data: Ubicacion[];
@@ -133,7 +134,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
     }, [data]);
 
     return (
-        <div className="print-view-container" style={{ width: '100%', minHeight: '100vh', backgroundColor: '#fff', paddingBottom: '50px' }}>
+        <div className="print-view-container" style={{ width: '100%', minHeight: 'auto', backgroundColor: '#fff', paddingBottom: '50px' }}>
             <div className="no-print" style={{ padding: '20px', display: 'flex', gap: '15px', borderBottom: '2px solid #ccc', marginBottom: '20px' }}>
                 <button
                     onClick={() => window.print()}
@@ -177,10 +178,15 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                 pages.map(page => (
                     <div key={page.id} className="print-page">
                         <div className="print-header">
-                            <div className="print-title">{page.title}</div>
                             {page.type === 'palet' && (
-                                <img src="/palessito.png" alt="Palessito" className="print-palessito" />
+                                <img
+                                    src={`${import.meta.env.BASE_URL}almacenito.png`}
+                                    alt="Almacenito"
+                                    className="print-palessito"
+                                    style={{ height: page.items.length <= 3 ? '160px' : '70px' }}
+                                />
                             )}
+                            <div className="print-title">{page.title}</div>
                         </div>
 
                         <table className="print-table">
@@ -194,14 +200,17 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                             </thead>
                             <tbody>
                                 {page.items.length > 0 ? (
-                                    page.items.map((item, idx) => (
-                                        <tr key={idx}>
-                                            <td>{item.material}</td>
-                                            <td>{item.tipo}</td>
-                                            <td>{item.cantidad}</td>
-                                            <td>{item.lote}</td>
-                                        </tr>
-                                    ))
+                                    page.items.map((item, idx) => {
+                                        const color = PROGRAM_COLORS[item.lote] || '#ccc';
+                                        return (
+                                            <tr key={idx}>
+                                                <td style={{ borderLeft: `12px solid ${color}` }}>{item.material}</td>
+                                                <td>{item.tipo}</td>
+                                                <td>{item.cantidad}</td>
+                                                <td>{item.lote}</td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan={4} style={{ textAlign: 'center', fontStyle: 'italic', color: '#666' }}>

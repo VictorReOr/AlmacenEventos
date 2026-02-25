@@ -188,7 +188,22 @@ function AuthenticatedApp() {
   const [programColors, setProgramColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('program_colors_config');
     console.log("App: Initializing programColors. Saved:", saved ? "YES" : "NO", saved);
-    return saved ? JSON.parse(saved) : PROGRAM_COLORS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Merge saved colors, but FORCE the new PROGRAM_COLORS as base to ensure new keys and updated colors apply.
+        // If we want user customizations to survive, we do { ...PROGRAM_COLORS, ...parsed }
+        // But since we just updated the default pallet, we want to ensure they see it.
+        // Let's merge them so new keys appear. If they had old 'Material Deportivo', we overwrite it with the new definition.
+        // Actually, the cleanest way to guarantee the new base colors but allow some override is to just apply PROGRAM_COLORS.
+        // For now, to guarantee the requested update:
+        const merged = { ...parsed, ...PROGRAM_COLORS };
+        return merged;
+      } catch (e) {
+        return PROGRAM_COLORS;
+      }
+    }
+    return PROGRAM_COLORS;
   });
 
   useEffect(() => {

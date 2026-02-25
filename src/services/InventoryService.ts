@@ -77,6 +77,26 @@ export const InventoryService = {
             return undefined;
         };
 
+        // Helper to normalize Program / Lot names to strict Graphic Colors
+        const normalizeProgram = (raw: string | undefined): string => {
+            if (!raw) return 'Vacio';
+            const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Remove accents using NFD
+
+            if (s.includes('ceeda')) return 'CEEDA';
+            if (s.includes('senalizacion') || s.includes('senal')) return 'Señalización';
+            if (s.includes('imagen') || s.includes('corporativa')) return 'Imagen Corporativa';
+
+            if (s.includes('andalucia')) return 'Andalucía'; // Separado de M100
+            if (s.includes('m100') || s.includes('m 100')) return 'Liga M100';
+
+            if (s.includes('led')) return 'Liga LED';
+            if (s.includes('mentor')) return 'Mentor 10';
+            if (s.includes('material') || s.includes('deportivo')) return 'Material Deportivo';
+            if (s.includes('libre') || s.includes('vacio')) return 'Vacio';
+
+            return 'Otros';
+        };
+
         data.forEach(item => {
             // ROBUST ID RESOLUTION:
             const idUbicacion = getValue(item, ['ID_UBICACION', 'UBICACION']);
@@ -167,7 +187,7 @@ export const InventoryService = {
                     .map(item => ({
                         id: crypto.randomUUID(), // Unique ID for React keys
                         descripcion: item.MATERIAL || "Ítem Desconocido",
-                        programa: (item.LOTE || "Vacio") as any,
+                        programa: normalizeProgram(item.LOTE) as any,
                         cantidad: Number(item.CANTIDAD) || 1,
                         contenido: [], // Empty content, the item itself is the 'box'
                         tipoContenedor: (item.TIPO_ITEM === 'Suelto') ? 'Suelto' : 'Caja',
@@ -191,7 +211,7 @@ export const InventoryService = {
             // If multiple items, we might concatenate description?
 
             // Dominant Program
-            const programs = items.map(i => i.LOTE).filter(Boolean);
+            const programs = items.map(i => normalizeProgram(i.LOTE)).filter(p => p !== 'Vacio');
             const mainProgram = programs.length > 0 ? programs[0] : 'Vacio';
 
             // If multiple materials, join them? (UNUSED NOW)
@@ -210,14 +230,14 @@ export const InventoryService = {
                     nombre: item.MATERIAL,
                     cantidad: Number(item.CANTIDAD) || 1,
                     estado: 'operativo',
-                    programa: item.LOTE
+                    programa: normalizeProgram(item.LOTE)
                 }));
             } else {
                 // BOX LOGIC: Generate structural Boxes to enable "Vertical Stripes"
                 cajas = items.map(item => ({
                     id: crypto.randomUUID(),
                     descripcion: item.MATERIAL,
-                    programa: item.LOTE, // CRITICAL: This drives the multi-color stripes
+                    programa: normalizeProgram(item.LOTE), // CRITICAL: This drives the multi-color stripes
                     cantidad: Number(item.CANTIDAD) || 1,
                     contenido: [] // Empty contents for now
                 }));

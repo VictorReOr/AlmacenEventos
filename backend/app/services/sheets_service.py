@@ -386,7 +386,8 @@ class SheetService:
             for i, row in enumerate(all_values):
                 # Normalize row values to check for known headers
                 normalized_row = [str(c).strip().upper() for c in row]
-                if "ID_UBICACION" in normalized_row or "ID_LUGAR" in normalized_row or "ID_REGISTRO" in normalized_row:
+                valid_headers = ["ID_UBICACION", "ID_LUGAR", "ID_REGISTRO", "LUGAR", "UBICACION"]
+                if any(h in normalized_row for h in valid_headers):
                     header_row_index = i
                     # Capture headers with original casing but stripped
                     headers = [str(c).strip() for c in row] 
@@ -405,17 +406,18 @@ class SheetService:
                 item = {}
                 for idx, header in enumerate(headers):
                     if idx < len(row) and header: # Only map if header exists
-                        # Map ID_LUGAR to ID_UBICACION for compatibility if needed
+                        # Map LUGAR variants to ID_UBICACION for compatibility if needed
                          key = header
-                         if header.upper() == "ID_LUGAR":
+                         upper_h = header.upper()
+                         if upper_h in ["ID_LUGAR", "LUGAR", "UBICACION"]:
                              key = "ID_UBICACION"
                          
                          item[key] = row[idx]
                          
                          # Keep original too just in case
-                         if header.upper() == "ID_LUGAR":
+                         if upper_h in ["ID_LUGAR", "LUGAR", "UBICACION"]:
                              item["ID_LUGAR"] = row[idx]
-                         if header.upper() == "ID_REGISTRO":
+                         if upper_h in ["ID_REGISTRO", "REGISTRO"]:
                              item["ID_REGISTRO"] = row[idx]
 
                 results.append(item)

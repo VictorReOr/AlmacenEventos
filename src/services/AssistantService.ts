@@ -40,6 +40,11 @@ export const AssistantService = {
                 return { status: 'ERROR', error: 'Sesión expirada. Por favor, recarga la página.', warnings: [] };
             }
 
+            console.log("\n\n🚀 [ASSISTANT SERVICE] INICIANDO PETICIÓN A BACKEND NLP");
+            console.log(`URL Destino: ${API_URL}/parse`);
+            console.log("Body enviado: ", { text, user_id: 'web-user' });
+            console.log("Token preseteado? ", !!token);
+
             const response = await fetch(`${API_URL}/parse`, {
                 method: 'POST',
                 headers: {
@@ -52,14 +57,21 @@ export const AssistantService = {
                 }),
             });
 
+            console.log("✅ [ASSISTANT SERVICE] RESPUESTA RECIBIDA HTTP", response.status);
+
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
+                    console.error("❌ Error de Sesión o Permisos (401/403)");
                     return { status: 'ERROR', error: 'Sesión inválida o expirada. Recarga.', warnings: [] };
                 }
-                throw new Error(`API Error: ${response.statusText}`);
+                const errText = await response.text();
+                console.error("❌ Error API: HTTP", response.status, errText);
+                throw new Error(`API Error: ${response.statusText} - ${errText}`);
             }
 
-            return await response.json();
+            const data = await response.json();
+            console.log("🔍 [ASSISTANT SERVICE] JSON LEIDO:", data);
+            return data;
         } catch (error) {
             console.warn("Assistant API Error (Parse):", error);
             return {
