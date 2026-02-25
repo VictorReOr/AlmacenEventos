@@ -66,8 +66,12 @@ async def parse_request(
             
             print(f"ASSISTANT: Querying inventory. Total items available: {len(all_items)}")
             
+            import unicodedata
+
             def normalize(s): 
-                return str(s).lower().strip()
+                # Decode to string, lower, strip, and remove accents (diacritics)
+                text = str(s).lower().strip()
+                return ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
             
             user_query = normalize(text_to_process)
             
