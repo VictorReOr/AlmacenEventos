@@ -4,7 +4,7 @@ import { LoginModal } from './components/Login/LoginModal';
 import { useDrag } from '@use-gesture/react';
 import { useSpring, animated } from '@react-spring/web';
 
-// Components
+// Componentes
 import { AppShell } from './components/Layout/AppShell';
 import { Header } from './components/Layout/Header';
 import { AssistantCharacter } from './components/Assistant/AssistantCharacter';
@@ -32,7 +32,7 @@ import {
   IconRedo
 } from './components/UI/Icons';
 
-// Logic & Types
+// Lógica y Tipos
 import { PROGRAM_COLORS } from './types';
 import type { Ubicacion } from './types';
 import { generateInitialState } from './data';
@@ -45,46 +45,46 @@ import type { InventoryError } from './utils/inventoryValidation';
 import { InventoryErrorsModal } from './components/Admin/InventoryErrorsModal';
 import { sanitizeState } from './utils/cleanup';
 
-// Styles
+// Estilos
 import './App.css';
 
 import './styles/print.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useIsMobile } from './hooks/useIsMobile';
 
-// --- HISTORY HOOK ---
+// --- HOOK DE HISTORIAL ---
 import { useHistory } from './hooks/useHistory';
 
-// Removed local useHistory definition
+// Definición local de useHistory eliminada
 
 
 function AuthenticatedApp() {
-  // The comments below were part of the original App component, now moved to AuthenticatedApp
-  // Use hooks before conditional return to avoid Rule of Hooks violation? 
-  // Wait, if I return early, hooks below won't run. That is a violation.
-  // I must move all hooks up OR move Auth logic to a wrapper component.
-  // Converting App to RequireAuth wrapper is cleaner, but App has complex state logic.
-  // Use a sub-component?
-  // Let's assume loading state is handled.
-  // But useHistory is a hook.
+  // Los comentarios siguientes eran parte del componente App original, ahora movidos a AuthenticatedApp
+  // ¿Usar hooks antes del retorno condicional para evitar violar la Regla de Hooks?
+  // Espera, si retorno anticipadamente, los hooks de abajo no se ejecutarán. Eso es una violación.
+  // Debo mover todos los hooks arriba O mover la lógica de Autenticación a un componente envoltorio (wrapper).
+  // Convertir App a un envoltorio RequireAuth es más limpio, pero App tiene lógica de estado compleja.
+  // ¿Usar un sub-componente?
+  // Asumamos que el estado de carga (loading) está manejado.
+  // Pero useHistory es un hook.
 
-  // Refactor:
-  // AppContent = original App content
-  // App = Wrapper with Auth check.
+  // Refactorización:
+  // AppContent = contenido original de App
+  // App = Envoltorio con comprobación de Autenticación.
 
-  // Actually, I can just initialize useHistory and others, BUT if I return early, 
-  // subsequent renders must match hook order.
-  // If isLoading changes from true to false, hooks are consistent (if I call them all).
-  // But if !user returns, I skip hooks?
-  // NO. `if (!user)` is a return. Below it are hooks.
-  // If user becomes present, hooks run.
-  // React requires that the SAME number of hooks run in the SAME order on every render.
+  // En realidad, podría inicializar useHistory y otros, PERO si retorno anticipadamente, 
+  // los renderizados subsiguientes deben coincidir en el orden de los hooks.
+  // Si isLoading cambia de true a false, los hooks son consistentes (si los llamo todos).
+  // ¿Pero si !user retorna, me salto hooks?
+  // NO. `if (!user)` es un retorno. Debajo hay hooks.
+  // Si hay usuario (user), los hooks se ejecutan.
+  // React requiere que el MISMO número de hooks se ejecute en el MISMO orden en cada renderizado.
 
-  // So I CANNOT return early before hooks if the condition changes.
-  // `isLoading` starts true, then becomes false. Condition changes. Hooks below act up?
-  // Yes.
+  // Así que NO PUEDO retornar anticipadamente antes de los hooks si la condición cambia.
+  // `isLoading` empieza true, luego cambia a false. La condición cambia. ¿Los hooks de abajo fallan?
+  // Sí.
 
-  // Solution: Rename `App` to `AuthenticatedApp` and create a new `App` that handles Auth.
+  // Solución: Renombrar `App` a `AuthenticatedApp` y crear un nuevo `App` que maneja la Autenticación.
 
   console.log("AuthenticatedApp mounting...");
 
@@ -101,7 +101,7 @@ function AuthenticatedApp() {
         try {
           const parsed = JSON.parse(saved);
 
-          // Validate Parsed Data
+          // Validar Datos Parseados
           const hasGeo = parsed.geometry && Array.isArray(parsed.geometry) && parsed.geometry.length > 0;
           const hasObjs = parsed.ubicaciones && Object.keys(parsed.ubicaciones).length > 0;
 
@@ -110,11 +110,11 @@ function AuthenticatedApp() {
             return defaults;
           }
 
-          // Merge Logic
+          // Lógica de Fusión (Merge)
           let mergedUbicaciones = hasObjs ? { ...codeState.ubicaciones, ...parsed.ubicaciones } : codeState.ubicaciones;
 
-          // --- CODE SUPREMACY: DELEGATE TO CLEANUP.TS ---
-          // This enforces that only objects defined in data.ts (Pristine) exist.
+          // --- SUPREMACÍA DEL CÓDIGO: DELEGAR EN CLEANUP.TS ---
+          // Esto impone que solo los objetos definidos en data.ts (Impolares) existan.
           return sanitizeState({
             ubicaciones: mergedUbicaciones,
             geometry: hasGeo ? parsed.geometry : defaults.geometry
@@ -140,39 +140,39 @@ function AuthenticatedApp() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [assistantAlert, setAssistantAlert] = useState<string | null>(null);
   console.log("AuthenticatedApp: useAuth() called");
-  const { user, logout } = useAuth(); // Added logout
+  const { user, logout } = useAuth(); // Añadido cierre de sesión (logout)
   const mapRef = useRef<WarehouseMapRef>(null);
 
-  // Assistant Position (Draggable)
+  // Posición del Asistente (Arrastrable)
   const assistantRef = useRef<HTMLDivElement>(null);
-  // Persistent Position
+  // Posición Persistente
   const [assistantPos, setAssistantPos] = useLocalStorage<{ x: number, y: number }>('assistant_pos_v5', { x: 0, y: 0 });
 
-  // Init spring from storage
+  // Inicializar spring desde el almacenamiento
   const [{ x, y }, api] = useSpring(() => ({ x: assistantPos.x, y: assistantPos.y }));
 
   const bindAssistantDrag = useDrag(({ offset: [ox, oy], tap, down, last }) => {
     if (tap) {
       if (!down) setIsChatbotOpen(prev => !prev);
     } else {
-      // Direct mapping of offset to x/y.
+      // Mapeo directo de offset a x/y.
       api.start({ x: ox, y: oy, immediate: down });
       if (last) {
         setAssistantPos({ x: ox, y: oy });
       }
     }
   }, {
-    // Start from current values
+    // Empezar desde los valores actuales
     from: () => [x.get(), y.get()],
     filterTaps: true,
     rubberband: true
   });
 
-  // DEBUG: Alert API URL on mount to verify connection path
+  // DEBUG: Mostrar Alerta con URL de API al montar para verificar ruta de conexión
   useEffect(() => {
     // console.log("🔌 Conectando a:", config.API_BASE_URL);
   }, []);
-  // Layout Detection
+  // Detección de Diseño (Layout)
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   useEffect(() => {
     const handleResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -180,23 +180,24 @@ function AuthenticatedApp() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sync & Config
+  // Sincronización y Configuración
   const [scriptUrl, setScriptUrl] = useState<string>(() => localStorage.getItem('google_script_url') || 'https://script.google.com/macros/s/AKfycbwPJThfJGQXx1J-TnRHtgZlh_TmrpZXBvMDTyomvy6BOnL9ebuZuYmt_ZH4hQ74DiAh/exec');
   const [isSyncing, setIsSyncing] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [editMapMode, setEditMapMode] = useState(false); // Nivel Dios: Editar Geometría
   const [programColors, setProgramColors] = useState<Record<string, string>>(() => {
     const saved = localStorage.getItem('program_colors_config');
     console.log("App: Initializing programColors. Saved:", saved ? "YES" : "NO", saved);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Merge saved colors, but FORCE the new PROGRAM_COLORS as base to ensure new keys and updated colors apply.
-        // If we want user customizations to survive, we do { ...PROGRAM_COLORS, ...parsed }
-        // But since we just updated the default pallet, we want to ensure they see it.
-        // Let's merge them so new keys appear. If they had old 'Material Deportivo', we overwrite it with the new definition.
-        // Actually, the cleanest way to guarantee the new base colors but allow some override is to just apply PROGRAM_COLORS.
-        // For now, to guarantee the requested update:
+        // Mezclar colores guardados, pero FORZAR los nuevos PROGRAM_COLORS como base para asegurar que las nuevas claves y colores se apliquen.
+        // Si queremos que las personalizaciones del usuario sobrevivan, hacemos { ...PROGRAM_COLORS, ...parsed }
+        // Pero dado que acabamos de actualizar la paleta por defecto, queremos asegurarnos de que la vean.
+        // Mezclémoslos para que aparezcan las nuevas claves. Si tenían un viejo 'Material Deportivo', lo sobrescribimos con la nueva definición.
+        // En realidad, la forma más limpia de garantizar los nuevos colores base pero permitir cierta modificación es simplemente aplicar PROGRAM_COLORS.
+        // Por ahora, para garantizar la actualización solicitada:
         const merged = { ...parsed, ...PROGRAM_COLORS };
         return merged;
       } catch (e) {
@@ -211,25 +212,26 @@ function AuthenticatedApp() {
     localStorage.setItem('program_colors_config', JSON.stringify(programColors));
   }, [programColors]);
 
-  // Print State
+  // Estado de Impresión
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printData, setPrintData] = useState<Ubicacion[] | null>(null);
 
-  // Validation State
+  // Estado de Validación
   const [inventoryErrors, setInventoryErrors] = useState<InventoryError[]>([]);
   const [showErrorsModal, setShowErrorsModal] = useState(false);
 
 
 
-  const [isSelectionMode, setIsSelectionMode] = useState(false); // New state for mobile selection
+  const [isSelectionMode, setIsSelectionMode] = useState(false); // Nuevo estado para selección en móviles
+  const [isEditModeGlobal, setIsEditModeGlobal] = useState(false); // NUEVO: Bloqueo global de Drag and Drop
   const isMobile = useIsMobile();
 
-  // Effects
+  // Efectos
   useEffect(() => { localStorage.setItem('google_script_url', scriptUrl); }, [scriptUrl]);
   useEffect(() => { localStorage.setItem('warehouse_V73.1_SHELVES_FIX', JSON.stringify(state)); }, [state]);
   useEffect(() => { localStorage.setItem('program_colors_config', JSON.stringify(programColors)); }, [programColors]);
 
-  // --- HANDLERS (Same as before) ---
+  // --- MANEJADORES (Igual que antes) ---
   const handleSaveToCloud = async () => {
     if (!scriptUrl) { setShowConfig(true); return; }
     setIsSyncing(true);
@@ -244,27 +246,101 @@ function AuthenticatedApp() {
     } finally { setIsSyncing(false); }
   };
 
+  const handleExportDataTS = () => {
+    try {
+      // Recreamos paso a paso el archivo original data.ts basándonos en el estado actual
+      const geoStr = JSON.stringify(state.geometry, null, 8).replace(/"x"/g, 'x').replace(/"y"/g, 'y');
+
+      const ubicacionesStrBuilder: string[] = [];
+      Object.keys(state.ubicaciones).forEach(key => {
+        const item = state.ubicaciones[key];
+
+        // Eliminamos las piezas inventariadas que son dinámicas para no "cocinarlas" dentro del código base
+        const cleanItem = {
+          id: item.id,
+          tipo: item.tipo,
+          programa: "Vacio",
+          contenido: item.id,
+          x: item.x,
+          y: item.y,
+          rotation: item.rotation,
+          width: item.width,
+          depth: item.depth,
+          ...(item.estanteriaId !== undefined && { estanteriaId: item.estanteriaId }),
+          ...(item.mensaje !== undefined && { mensaje: item.mensaje }),
+          ...(item.labelX !== undefined && { labelX: item.labelX }),
+          ...(item.labelY !== undefined && { labelY: item.labelY }),
+          ...(item.labelRot !== undefined && { labelRot: item.labelRot }),
+        };
+
+        const json = JSON.stringify(cleanItem, null, 12)
+          .replace(/"([^"]+)":/g, '$1:');
+        ubicacionesStrBuilder.push(`        "${key}": ${json}`);
+      });
+
+      const fileContent = `import type { Ubicacion, Caja } from './types';
+import { INITIAL_INVENTORY_UPDATES } from './initialInventory';
+
+export const SHELF_MODULE_WIDTH = 1.0;
+export const SHELF_DEPTH = 0.45;
+
+const generateDummyBox = (id: string, program: string): Caja => {
+    return {
+        id: \`BOX-\${id}-\${Math.floor(Math.random() * 1000)}\`,
+        descripcion: \`Caja \${id}\`,
+        programa: program,
+        contenido: [
+            { id: crypto.randomUUID(), materialId: 'm1', nombre: 'Material Genérico', cantidad: 5, estado: 'operativo' }
+        ]
+    };
+};
+
+export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>, geometry: { x: number; y: number }[] } => {
+
+    const geometryFinal = ${geoStr};
+
+    const ubicaciones: Record<string, Ubicacion> = {
+${ubicacionesStrBuilder.join(',\n')}
+    };
+
+    return { ubicaciones, geometry: geometryFinal };
+};
+`;
+
+      const blob = new Blob([fileContent], { type: 'text/typescript;charset=utf-8' });
+      const dlNode = document.createElement('a');
+      dlNode.href = URL.createObjectURL(blob);
+      dlNode.download = 'data.ts';
+      document.body.appendChild(dlNode);
+      dlNode.click();
+      document.body.removeChild(dlNode);
+    } catch (e) {
+      console.error("Error exporting data.ts", e);
+      alert('Hubo un error al generar la exportación.');
+    }
+  };
+
   const handleLoadFromCloud = async (silent = false) => {
     if (!scriptUrl) { setShowConfig(true); return; }
     if (!silent && !confirm("Se sobrescribirán los cambios locales. ¿Continuar?")) return;
     setIsSyncing(true);
     try {
-      // Pass the code defaults as the base state so the service can populate it with cloud inventory
+      // Pasar los valores por defecto del código como estado base para que el servicio pueda poblarlo con el inventario de la nube
       const defaults = generateInitialState();
       const baseState = { ubicaciones: defaults.ubicaciones, geometry: defaults.geometry };
 
       const data = await GoogleSheetsService.load(scriptUrl, baseState);
 
       if (data) {
-        // Validation: Don't accept empty geometry from cloud
+        // Validación: No aceptar geometría vacía de la nube
         if (!data.geometry || data.geometry.length === 0) {
           console.warn("Cloud data has no geometry. Ignoring.");
           if (!silent) alert('Error: Datos de nube corruptos o vacíos (sin geometría).');
           return;
         }
 
-        // --- SANITIZE CLOUD DATA ---
-        // Prevents ghosts from ConfigJson coming back
+        // --- LIMPIAR (SANITIZE) DATOS DE LA NUBE ---
+        // Previene que regresen fantasmas del ConfigJson
         const cleanData = sanitizeState(data);
 
         pushState(cleanData);
@@ -280,13 +356,13 @@ function AuthenticatedApp() {
   };
 
 
-  // ... existing imports ...
+  // ... importaciones existentes ...
 
-  // Inside AuthenticatedApp:
+  // Dentro de AuthenticatedApp:
 
-  // Auto-Load on mount -> DISABLED to prevent overwriting local data with empty cloud data
+  // Auto-Carga al inicio -> DESACTIVADO para evitar sobrescribir datos locales con datos de nube vacíos
   // Auto-Load on mount
-  // Auto-Load on mount -> DISABLED (We use loadLiveInventory below)
+  // Auto-Carga al inicio -> DESACTIVADO (Usamos loadLiveInventory más abajo)
   /*
   useEffect(() => {
     if (scriptUrl) {
@@ -296,7 +372,7 @@ function AuthenticatedApp() {
   }, []);
   */
 
-  // --- STATE AUDITOR: GHOST HUNTER ---
+  // --- AUDITOR DE ESTADO: CAZADOR DE FANTASMAS ---
   useEffect(() => {
     const checkStateIntegrity = () => {
       console.log("🕵️‍♂️ Running State Integrity Check...");
@@ -315,7 +391,7 @@ function AuthenticatedApp() {
     checkStateIntegrity();
   }, [state.ubicaciones]);
 
-  // --- NEW: Load Inventory from Backend (Google Sheets) ---
+  // --- NUEVO: Cargar Inventario desde el Backend (Google Sheets) ---
   useEffect(() => {
     const loadLiveInventory = async () => {
       console.log("App: loadLiveInventory() STARTED 🏁");
@@ -330,75 +406,75 @@ function AuthenticatedApp() {
           console.log("App: Raw Inventory Items:", rawData.length);
           console.log("App: Parsed updates keys:", Object.keys(updates));
 
-          // Merge updates into current state
-          // We use function form of state setter if possible, but here we have `state` from useHistory
-          // We must be careful not to create a race condition if simple state updates happen.
-          // Since this runs once on mount, it should be fine to use current `state`.
-          // However, `state` in dependency array would cause loop.
-          // We use a ref or just `handleUpdate` if it merged? 
-          // `handleUpdate` uses `state` from closure.
+          // Fusionar actualizaciones en el estado actual
+          // Usamos la forma de función del setter de estado si es posible, pero aquí tenemos `state` desde useHistory
+          // Debemos tener cuidado de no crear una condición de carrera si ocurren actualizaciones de estado simples.
+          // Dado que esto se ejecuta una vez al montar, debería estar bien usar el `state` actual.
+          // Sin embargo, `state` en el array de dependencias causaría un bucle.
+          // ¿Usamos un ref o solo `handleUpdate` si se fusionó? 
+          // `handleUpdate` usa `state` desde el closure.
 
-          // Better: Create a dedicated merge function that uses the *latest* state if inside useEffect?
-          // Actually `handleUpdate` is defined in render scope, so it closes over `state`.
-          // If we call it, it uses `state` at render time (mount time).
-          // Which is fine because nothing else updates it yet.
+          // Mejor: ¿Crear una función de fusión dedicada que use el *último* estado si está dentro de useEffect?
+          // En realidad, `handleUpdate` está definida en el ámbito de renderizado, por lo que hace closure sobre `state`.
+          // Si la llamamos, usa `state` en el momento de renderizado (momento de montaje).
+          // Lo cual está bien porque nada más lo actualiza todavía.
 
-          // Note: `handleUpdate` expects Ubicacion array. 
-          // Our `updates` is Record<string, Partial<Ubicacion>>.
-          // We need to convert it.
+          // Nota: `handleUpdate` espera un array de Ubicacion. 
+          // Nuestras `updates` son Record<string, Partial<Ubicacion>>.
+          // Necesitamos convertirlo.
 
           const fullUpdates: Ubicacion[] = [];
-          const currentUbicaciones = state.ubicaciones; // Closure state
+          const currentUbicaciones = state.ubicaciones; // Estado del closure
 
-          // 1. CLEAR EXISTING INVENTORY (Prevent Ghosts)
-          // We create a fresh update for EVERY object in the state to wipe its inventory
+          // 1. LIMPIAR INVENTARIO EXISTENTE (Prevenir Fantasmas)
+          // Creamos una nueva actualización para CADA objeto en el estado para limpiar su inventario
           const clearedUbicaciones: Record<string, Ubicacion> = {};
 
           Object.values(currentUbicaciones).forEach(u => {
-            // Create a base object with CLEARED inventory fields
+            // Crear un objeto base con campos de inventario LIMPIADOS
             clearedUbicaciones[u.id] = {
               ...u,
               cajas: [],
               materiales: [],
-              items: [], // Legacy
+              items: [], // Heredado (Legacy)
               shelfItems: {},
               cajasEstanteria: {},
               niveles: u.niveles ? u.niveles.map(l => ({ ...l, items: [] })) : undefined,
-              contenido: u.tipo === 'palet' ? '' : u.contenido, // Keep structural labels
+              contenido: u.tipo === 'palet' ? '' : u.contenido, // Mantener etiquetas estructurales
               programa: u.tipo === 'palet' ? 'Vacio' as any : u.programa
             };
           });
 
-          // 2. APPLY FRESH UPDATES
+          // 2. APLICAR ACTUALIZACIONES FRESCAS
           Object.entries(updates).forEach(([id, partial]) => {
             if (clearedUbicaciones[id]) {
               if (clearedUbicaciones[id]) {
-                // Merge partial update into the CLEARED object
+                // Fusionar la actualización parcial en el objeto LIMPIO
                 clearedUbicaciones[id] = { ...clearedUbicaciones[id], ...partial };
 
-                // DEBUG: Check if E1 is being updated
+                // DEBUG: Comprobar si E1 se está actualizando
                 if (id === 'E1') {
                   const items = (partial as any).cajasEstanteria ? Object.keys((partial as any).cajasEstanteria).length : 0;
                   console.log(`App: E1 updated with ${items} slots`);
-                  // alert(`DEBUG: E1 found! Updating with ${items} slots.`); // Uncomment if needed, but console is safer
+                  // alert(`DEBUG: E1 found! Updating with ${items} slots.`); // Descomentar si es necesario, pero la consola es más segura
                 }
               }
             }
           });
 
-          // 3. CONVERT TO ARRAY FOR HANDLEUPDATE
+          // 3. CONVERTIR A ARRAY PARA HANDLEUPDATE
           Object.values(clearedUbicaciones).forEach(u => fullUpdates.push(u));
 
-          // --- DIAGNOSTIC: CONTRACT VERIFICATION ---
+          // --- DIAGNÓSTICO: VERIFICACIÓN DE CONTRATO ---
           let renderedMaterialsCount = 0;
           fullUpdates.forEach(u => {
-            // Count Boxed Materials (Pallets)
+            // Contar Materiales Empaquetados (Cajas) (Palés)
             u.cajas?.forEach(c => renderedMaterialsCount += c.contenido.length);
 
-            // Count Loose Materials (Pallets)
+            // Contar Materiales Sueltos (Palés)
             if (u.materiales) renderedMaterialsCount += u.materiales.length;
 
-            // Count Shelf Materials
+            // Contar Materiales en Estanterías
             if (u.cajasEstanteria) {
               Object.values(u.cajasEstanteria).forEach(c => renderedMaterialsCount += c.contenido.length);
             }
@@ -410,7 +486,7 @@ function AuthenticatedApp() {
 
           if (rawData.length !== renderedMaterialsCount) {
             console.error(`⚠️ DISCREPANCY DETECTED! Input ${rawData.length} != Rendered ${renderedMaterialsCount}. Check for rejected ghosts or unmapped items.`);
-            // In strict mode, we might want to alert, but for now log error is sufficient.
+            // En modo estricto, podríamos querer alertar, pero por ahora registrar el error es suficiente.
           } else {
             console.log(`✅ DATA INTEGRITY VERIFIED. 1:1 Match.`);
           }
@@ -419,8 +495,8 @@ function AuthenticatedApp() {
             handleUpdate(fullUpdates);
             console.log("App: Live inventory applied.");
 
-            // Run Validation on the NEW state (approximated by merging locally)
-            // fullUpdates contains the NEW objects. We need to merge them with current to validate all.
+            // Ejecutar Validación en el NUEVO estado (aproximado mediante fusión local)
+            // fullUpdates contiene los objetos NUEVOS. Necesitamos fusionarlos con los actuales para validar todos.
             const validationState = { ...currentUbicaciones };
             fullUpdates.forEach(u => {
               if (validationState[u.id]) {
@@ -434,7 +510,7 @@ function AuthenticatedApp() {
             if (errors.length > 0) {
               console.warn("App: Inventory Errors Detected:", errors.length);
               setInventoryErrors(errors);
-              // setShowErrorsModal(true); // Optional: Auto-open? No, just alert.
+              // setShowErrorsModal(true); // Opcional: ¿Auto-abrir? No, solo alertar.
             }
           }
         }
@@ -445,10 +521,10 @@ function AuthenticatedApp() {
 
     loadLiveInventory();
     // console.warn("App: Live Inventory Loading DISABLED by user request.");
-  }, []); // Run once on mount
+  }, []); // Ejecutar una vez al montar
 
   const handleUpdate = async (updated: Ubicacion | Ubicacion[]) => {
-    // Intercept for USER role (Proposals)
+    // Interceptar para el rol USER (Propuestas)
     if (user?.role === 'USER') {
       const updates = Array.isArray(updated) ? updated : [updated];
       if (updates.length === 0) return;
@@ -466,8 +542,8 @@ function AuthenticatedApp() {
             width: u.width, depth: u.depth
           }, token);
         }
-        // Notify user
-        // Ideally use a toast, but alert is fine for now/User requested notification
+        // Notificar al usuario
+        // Idealmente usar un "toast", pero la alerta está bien por ahora / El usuario solicitó la notificación
         const msg = document.createElement('div');
         msg.textContent = "⏳ Propuesta enviada a Admin";
         msg.style.cssText = "position:fixed;top:80px;right:20px;background:#ff9800;color:white;padding:10px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 5px rgba(0,0,0,0.2);animation:fadeout 3s forwards;";
@@ -481,7 +557,7 @@ function AuthenticatedApp() {
       return;
     }
 
-    // Default Behavior (Admin / Local)
+    // Comportamiento por Defecto (Admin / Local)
     const updates = Array.isArray(updated) ? updated : [updated];
     if (updates.length === 0) return;
     const nextUbicaciones = { ...state.ubicaciones };
@@ -489,7 +565,7 @@ function AuthenticatedApp() {
     pushState({ ...state, ubicaciones: nextUbicaciones });
   };
 
-  // Range Selection Helper
+  // Ayudante de Selección de Rango
   const resolveRange = (startId: string, endId: string) => {
     const allIds = Object.keys(state.ubicaciones).sort((a, b) => {
       const na = parseInt(a);
@@ -507,16 +583,16 @@ function AuthenticatedApp() {
 
   const handleSelectLocation = (id: string | null, modifiers: { toggle?: boolean, range?: boolean } = {}) => {
     if (id === null) {
-      // If we are in selection mode, clicking empty space might NOT clear selection? 
-      // Usually users expect "click outside" to clear. Let's keep it clearing for now 
-      // OR make it so only the explicit "Clear" button clears in mobile mode.
-      // For now, standard behavior: click background -> clear.
+      // Si estamos en modo de selección, ¿hacer clic en un espacio vacío NO debería limpiar la selección? 
+      // Usualmente los usuarios esperan que "hacer clic afuera" limpie. Mantengámoslo limpiando por ahora 
+      // O hacer que solo el botón explícito de "Limpiar" limpie en el modo móvil.
+      // Por ahora, comportamiento estándar: clic en el fondo -> limpiar.
       setSelectedIds(new Set());
       setLastFocusedId(null);
       return;
     }
 
-    // Force toggle behavior if Selection Mode is active (and it's not a range select)
+    // Forzar el comportamiento de alternancia (toggle) si el Modo de Selección está activo (y no es una selección de rango)
     const shouldToggle = modifiers.toggle || (isSelectionMode && !modifiers.range);
 
     if (modifiers.range && lastFocusedId) {
@@ -563,11 +639,11 @@ function AuthenticatedApp() {
     }
   };
 
-  // PRINT HANDLER
+  // MANEJADOR DE IMPRESIÓN
   const handlePrint = (options: PrintOptions) => {
     setShowPrintModal(false);
 
-    // 1. Filter Data
+    // 1. Filtrar Datos
     let dataToPrint: Ubicacion[] = [];
     const allUbicaciones = Object.values(state.ubicaciones);
 
@@ -579,7 +655,7 @@ function AuthenticatedApp() {
       dataToPrint = allUbicaciones.filter(u => u.programa === options.programString);
     }
 
-    // FILTER OUT STRUCTURAL ELEMENTS (Walls, Doors, Van)
+    // FILTRAR ELEMENTOS ESTRUCTURALES (Muros, Puertas, Furgoneta)
     dataToPrint = dataToPrint.filter(u => u.tipo !== 'muro' && u.tipo !== 'puerta' && u.tipo !== 'zona_carga');
 
     if (dataToPrint.length === 0) {
@@ -587,12 +663,12 @@ function AuthenticatedApp() {
       return;
     }
 
-    // 2. Handle Format
+    // 2. Manejar Formato
     if (options.format === 'LIST' || options.format === 'CARDS') {
       setPrintData(dataToPrint);
-      // PrintView will trigger window.print() on mount once rendered.
+      // PrintView activará window.print() al montarse una vez renderizado.
     } else {
-      // MAP MODE
+      // MODO MAPA
       document.body.classList.add('printing-map');
       setTimeout(() => {
         window.print();
@@ -641,13 +717,13 @@ function AuthenticatedApp() {
               subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
               leftAction={
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  {/* Menu / Config (Left Side) - Empty for now */}
+                  {/* Menú / Configuración (Lado Izquierdo) - Vacío por ahora */}
                 </div>
               }
               rightAction={
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
-                  {/* Cloud Controls */}
+                  {/* Controles de la Nube */}
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
                       <IconCloudDown size={20} />
@@ -672,8 +748,30 @@ function AuthenticatedApp() {
 
                   <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                  {/* Map Controls Group */}
+                  {/* Grupo de Controles del Mapa */}
                   <div style={{ display: 'flex', gap: 4 }}>
+                    {!isMobile && user?.role === 'ADMIN' && (
+                      <button
+                        onClick={() => setIsEditModeGlobal(!isEditModeGlobal)}
+                        className={`icon-btn ${isEditModeGlobal ? 'active' : ''}`}
+                        title={isEditModeGlobal ? "Bloquear Movimiento" : "Modo Edición (Mover Objetos)"}
+                        style={isEditModeGlobal ? { backgroundColor: '#4CAF50', color: 'white' } : {}}
+                      >
+                        ✋
+                      </button>
+                    )}
+
+                    {!isMobile && user?.role === 'ADMIN' && (
+                      <button
+                        onClick={() => setEditMapMode(!editMapMode)}
+                        className={`icon-btn ${editMapMode ? 'active' : ''}`}
+                        title={editMapMode ? "Cerrar Modo Mapeado" : "Editar Muros del Almacén"}
+                        style={editMapMode ? { backgroundColor: '#F44336', color: 'white' } : {}}
+                      >
+                        📐
+                      </button>
+                    )}
+
                     {!isMobile && (
                       <button
                         onClick={() => setIsSelectionMode(!isSelectionMode)}
@@ -697,7 +795,7 @@ function AuthenticatedApp() {
                     )}
                   </div>
 
-                  {/* ADMIN BUTTON (Moved Here) */}
+                  {/* BOTÓN DE ADMINISTRADOR (Movido Aquí) */}
                   {user?.role === 'ADMIN' && (
                     <>
                       <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
@@ -709,7 +807,7 @@ function AuthenticatedApp() {
                       >
                         <IconShield color="#333" size={20} />
                       </button>
-                      {/* CONFIG BUTTON (Moved Here next to Shield) */}
+                      {/* BOTÓN DE CONFIGURACIÓN (Movido Aquí junto al Escudo) */}
                       <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
                         <IconSettings size={20} />
                       </button>
@@ -718,8 +816,8 @@ function AuthenticatedApp() {
 
                   <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                  {/* User Menu (Avatar) */}
-                  <UserMenu user={user} onLogout={logout} />
+                  {/* Menú de Usuario (Avatar) */}
+                  <UserMenu user={user} onLogout={logout} onExportDataTS={handleExportDataTS} />
                 </div>
               }
             />
@@ -737,6 +835,8 @@ function AuthenticatedApp() {
               onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
               rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
               showGrid={showGrid}
+              showGeoPoints={editMapMode} // Pass explicit prop for map editing mode
+              isEditModeGlobal={isEditModeGlobal} // NUEVO PROP DE BLOQUEO DE MOVIMIENTO
               onVisitorError={() => {
                 setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
               }}
@@ -754,10 +854,10 @@ function AuthenticatedApp() {
                 pointerEvents: 'auto',
                 zIndex: 900 // Ensure on top
               }}>
-                {/* 1. Static Legend (Full Width) */}
+                {/* 1. Leyenda Estática (Ancho Completo) */}
                 <DraggableLegend programColors={programColors} isMobile={true} />
 
-                {/* 2. Toolbar */}
+                {/* 2. Barra de Herramientas */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-around',
@@ -828,7 +928,7 @@ function AuthenticatedApp() {
                   onSave={(newColors, newUrl) => {
                     console.log("💾 Almacenando Configuración:", newColors);
                     setProgramColors(newColors);
-                    // Force immediate save to ensure it persists even if useEffect is slow
+                    // Forzar guardado inmediato para asegurar que persista incluso si useEffect es lento
                     localStorage.setItem('program_colors_config', JSON.stringify(newColors));
 
                     setScriptUrl(newUrl);
@@ -855,9 +955,9 @@ function AuthenticatedApp() {
                 />
               )}
 
-              {/* Hidden Print View (for List Printing) duplicated removed */}
+              {/* Vista de Impresión Oculta (para Impresión de Lista) duplicado eliminado */}
 
-              {/* Hidden Print View */}
+              {/* Vista de Impresión Oculta */}
               {assistantAlert && (
                 <AssistantAlert
                   message={assistantAlert}
@@ -865,7 +965,7 @@ function AuthenticatedApp() {
                 />
               )}
 
-              {/* Chatbot Window */}
+              {/* Ventana del Chatbot */}
               <AssistantChat
                 ubicaciones={state.ubicaciones}
                 selectedId={selectedLocation?.id}
@@ -877,7 +977,7 @@ function AuthenticatedApp() {
                 onClearAction={() => setPendingAssistantAction(null)}
               />
 
-              {/* Panel de Propiedades (Legacy) */}
+              {/* Panel de Propiedades (Legado) */}
               {selectedLocation && !isSelectionMode && selectedLocation.id !== 'van_v3' && (
                 <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
                   <PropertiesPanel
@@ -894,32 +994,32 @@ function AuthenticatedApp() {
                 </div>
               )}
 
-              {/* Asistente Flotante (Draggable) */}
+              {/* Asistente Flotante (Arrastrable) */}
               <animated.div
                 ref={assistantRef}
                 {...bindAssistantDrag()}
                 style={{
-                  position: 'fixed', // Use FIXED to stay on top of scroll
-                  top: -35, // Moved UP even more (-35)
-                  left: 90, // Moved LEFT to sit between gear and title
+                  position: 'fixed', // Usar FIXED (Fijo) para mantenerse encima del scroll
+                  top: -35, // Movido hacia ARRIBA aún más (-35)
+                  left: 90, // Movido a la IZQUIERDA para situarse entre el engranaje y el título
                   zIndex: 9999,
-                  // Use transform for performance, but mapped from simple Spring values
+                  // Usar transform para rendimiento, pero mapeado desde valores simples de Spring
                   x,
                   y,
                   touchAction: 'none',
                   cursor: 'grab',
-                  pointerEvents: 'auto' // CRITICAL for overlay children
+                  pointerEvents: 'auto' // CRÍTICO para los hijos de la superposición (overlay)
                 }}
               >
                 <AssistantCharacter
                   size="lg"
                   state={isChatbotOpen ? 'listening' : 'idle'}
-                  // Remove onClick here, handled by bindAssistantDrag
+                  // Eliminar onClick aquí, manejado por bindAssistantDrag
                   hasNotification={false}
                 />
               </animated.div>
 
-              {/* Draggable Legend (UI Polish) - DESKTOP ONLY */}
+              {/* Leyenda Arrastrable (Pulido de UI) - SOLO ESCRITORIO */}
               {!isMobile && <DraggableLegend programColors={programColors} />}
 
               {/* Controles Flotantes Secundarios (Lado Izquierdo) */}

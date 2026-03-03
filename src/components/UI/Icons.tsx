@@ -7,7 +7,7 @@ type IconProps = {
     strokeWidth?: number;
 };
 
-// Default props
+// Props por defecto
 const D = { s: 20, c: "currentColor", w: 2 };
 
 export const IconSettings: React.FC<IconProps> = ({ size = D.s, color = D.c, strokeWidth = D.w, className }) => (
@@ -23,14 +23,14 @@ export const IconShield: React.FC<IconProps> = ({ size = D.s, color = D.c, strok
     </svg>
 );
 
-// Selection = Mouse Cursor (Redesigned)
+// Selección = Cursor del Ratón (Rediseñado)
 export const IconSelection: React.FC<IconProps & { active?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? `${color}33` : "none"} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
     </svg>
 );
 
-// Grid = 4 Panes (Redesigned)
+// Cuadrícula = 4 Paneles (Rediseñado)
 export const IconGrid: React.FC<IconProps & { active?: boolean }> = ({ size = D.s, color = D.c, strokeWidth = D.w, className, active }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? `${color}33` : "none"} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
         <rect x="3" y="3" width="7" height="7" />

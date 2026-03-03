@@ -21,20 +21,20 @@ export const BoxDetailPanel: React.FC<BoxDetailPanelProps> = ({
 }) => {
     const badgeColor = programColors[box.programa] || '#e2e8f0';
 
-    // Fix: Handle legacy string content or undefined
+    // Arreglo: Manejar contenido de texto antiguo o indefinido
     let materials: MaterialEnCaja[] = [];
     if (Array.isArray(box.contenido)) {
         materials = box.contenido;
     } else if (typeof box.contenido === 'string' && (box.contenido as string).trim() !== '') {
-        // Migration on the fly for display
+        // Migración sobre la marcha para la visualización
         materials = [{
             id: 'legacy-1',
             nombre: box.contenido,
             cantidad: 1,
-            estado: 'operativo', // Fixed: Use valid literal type
+            estado: 'operativo', // Corregido: Usar tipo literal válido
             programa: box.programa,
-            tipo: 'material' // This doesn't exist on MaterialEnCaja type? Let's check.
-        } as unknown as MaterialEnCaja]; // Cast to avoid partial mismatch if type is strict
+            tipo: 'material' // ¿Esto no existe en el tipo MaterialEnCaja? Vamos a comprobarlo.
+        } as unknown as MaterialEnCaja]; // Cast para evitar falta de coincidencia parcial si el tipo es estricto
     }
 
     return (
@@ -93,7 +93,7 @@ export const BoxDetailPanel: React.FC<BoxDetailPanelProps> = ({
                                         onClick={() => {
                                             const newMats = [...materials];
                                             const newQty = Math.max(0, mat.cantidad - 1);
-                                            // Optional: remove if 0? Or keep as 0? Keep as 0 for now.
+                                            // Opcional: ¿eliminar si es 0? ¿O mantener como 0? Mantener como 0 por ahora.
                                             newMats[idx] = { ...mat, cantidad: newQty };
                                             onUpdateBox({ ...box, contenido: newMats });
                                         }}

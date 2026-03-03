@@ -3,19 +3,19 @@ const API_BASE_URL = config.API_BASE_URL;
 import type { Ubicacion, Caja, MaterialEnCaja } from '../types';
 
 export interface RawShelfItem {
-    ID_UBICACION?: string; // "E1-M1-A1" (Target, but often missing)
-    ID_REGISTRO?: string;  // "E1-M1-A1" (Alternative ID from V2 Sheet)
-    ID_LUGAR?: string;     // "E1" (Shelf ID)
+    ID_UBICACION?: string; // "E1-M1-A1" (Objetivo, pero a menudo falta)
+    ID_REGISTRO?: string;  // "E1-M1-A1" (ID Alternativo de la hoja V2)
+    ID_LUGAR?: string;     // "E1" (ID de Estantería)
     MODULO?: number | string; // 1
     ALTURA?: number | string; // 1
 
     MATERIAL: string;     // "Caja de 5 extintores"
-    CANTIDAD: number | string; // 1 or "1"
-    LOTE: string;         // "Andalucía" (acts as Program)
-    ESTADO: string;       // "estanteria_modulo" (acts as Type)
+    CANTIDAD: number | string; // 1 u "1"
+    LOTE: string;         // "Andalucía" (actúa como Programa)
+    ESTADO: string;       // "estanteria_modulo" (actúa como Tipo)
     RESPONSABLE?: string;
-    TIPO_DE_CONTENEDOR?: string; // Kept for reference
-    [key: string]: any; // Allow accessing properties with spaces like "TIPO DE CONTENEDOR"
+    TIPO_DE_CONTENEDOR?: string; // Mantenido para referencia
+    [key: string]: any; // Permite acceder a propiedades con espacios como "TIPO DE CONTENEDOR"
 }
 
 export const InventoryService = {
@@ -31,7 +31,7 @@ export const InventoryService = {
 
             let response;
 
-            // CHECK IF GOOGLE SCRIPT IS CONFIGURED
+            // COMPROBAR SI GOOGLE SCRIPT ESTÁ CONFIGURADO
             const useGoogleScript = config.GOOGLE_SCRIPT_URL && !config.GOOGLE_SCRIPT_URL.includes('XXXXXXXX');
 
             if (useGoogleScript) {
@@ -48,7 +48,7 @@ export const InventoryService = {
 
             const json = await response.json();
 
-            // Handle Google Script Wrapper ({ inventoryRows: [] }) vs Backend Direct Array ([])
+            // Manejar el Envoltorio de Google Script ({ inventoryRows: [] }) vs Array Directo del Backend ([])
             let data = Array.isArray(json) ? json : (json.inventoryRows || []);
 
             console.log("Inventario RAW cargado:", data.length, "items");
@@ -67,7 +67,7 @@ export const InventoryService = {
         const shelves: Record<string, Record<string, RawShelfItem[]>> = {};
         const pallets: Record<string, RawShelfItem[]> = {};
 
-        // Helper to find value case-insensitively
+        // Ayudante para encontrar valor sin distinguir mayúsculas/minúsculas
         const getValue = (item: any, keys: string[]) => {
             for (const key of keys) {
                 if (item[key] !== undefined) return item[key];
@@ -77,10 +77,10 @@ export const InventoryService = {
             return undefined;
         };
 
-        // Helper to normalize Program / Lot names to strict Graphic Colors
+        // Ayudante para normalizar nombres de Programa / Lote a Colores Gráficos estrictos
         const normalizeProgram = (raw: string | undefined): string => {
             if (!raw) return 'Vacio';
-            const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Remove accents using NFD
+            const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Eliminar acentos usando NFD
 
             if (s.includes('ceeda')) return 'CEEDA';
             if (s.includes('senalizacion') || s.includes('senal')) return 'Señalización';
@@ -98,7 +98,7 @@ export const InventoryService = {
         };
 
         data.forEach(item => {
-            // ROBUST ID RESOLUTION:
+            // RESOLUCIÓN ROBUSTA DE ID:
             const idUbicacion = getValue(item, ['ID_UBICACION', 'UBICACION']);
             const idRegistro = getValue(item, ['ID_REGISTRO', 'REGISTRO', 'ID']);
             const idLugar = getValue(item, ['ID_LUGAR', 'LUGAR']);
@@ -107,17 +107,17 @@ export const InventoryService = {
 
             let locationId = String(idUbicacion || idRegistro || '').trim().toUpperCase();
 
-            // If still empty but we have Shelf Parts, construct it (E1-M1-A1)
+            // Si sigue vacío pero tenemos Partes de Estantería, construirlo (E1-M1-A1)
             if (!locationId && idLugar && modulo && altura) {
                 locationId = `${idLugar}-M${modulo}-A${altura}`.toUpperCase();
             }
 
-            // FINAL FALLBACK: Use ID_LUGAR alone (for Pallets like "20")
+            // ÚLTIMO RECURSO: Usar solo ID_LUGAR (para Palés como "20")
             if (!locationId && idLugar) {
                 locationId = String(idLugar).trim().toUpperCase();
             }
 
-            if (!locationId) return; // Skip if absolutely no ID found
+            if (!locationId) return; // Omitir si no se encuentra absolutamente ningún ID
 
             locationId = String(locationId).trim().toUpperCase();
 
@@ -151,7 +151,7 @@ export const InventoryService = {
                 if (!shelves[shelfId][slotId]) shelves[shelfId][slotId] = [];
                 shelves[shelfId][slotId].push(item);
             }
-            // CASE 2: PALLET / FLOOR (Numéricos simples "1", "2")
+            // CASO 2: PALÉ / SUELO (Numéricos simples "1", "2")
             else {
                 // Eliminar ceros a la izquierda si es numérico puro para coincidir con "1", "2"...
                 // Si el ID es "01", lo convertimos a "1" si nuestros palets son "1".
@@ -170,14 +170,14 @@ export const InventoryService = {
 
         const updates: Record<string, Partial<Ubicacion>> = {};
 
-        // 1. Process Shelves
+        // 1. Procesar Estanterías
         Object.entries(shelves).forEach(([shelfId, slots]) => {
             const cajasEstanteria: Record<string, Caja> = {};
             const shelfItems: Record<string, Caja[]> = {};
 
             Object.entries(slots).forEach(([slotId, items]) => {
-                // Strategy: Map EACH item row to a separate "Box" visual element
-                // This ensures all items are listed in the properties panel
+                // Estrategia: Mapear CADA fila de ítem a un elemento visual separado "Caja"
+                // Esto asegura que todos los ítems se listen en el panel de propiedades
 
                 const boxes: Caja[] = items
                     .filter(item => {
@@ -185,16 +185,16 @@ export const InventoryService = {
                         return mat !== "LIBRE" && mat !== "VACIO" && mat !== "";
                     })
                     .map(item => ({
-                        id: crypto.randomUUID(), // Unique ID for React keys
+                        id: crypto.randomUUID(), // ID Único para keys de React
                         descripcion: item.MATERIAL || "Ítem Desconocido",
                         programa: normalizeProgram(item.LOTE) as any,
                         cantidad: Number(item.CANTIDAD) || 1,
-                        contenido: [], // Empty content, the item itself is the 'box'
+                        contenido: [], // Contenido vacío, el ítem en sí es la 'caja'
                         tipoContenedor: (item.TIPO_ITEM === 'Suelto') ? 'Suelto' : 'Caja',
                         estado: (item.ESTADO || 'operativo') as any
                     }));
 
-                // Legacy support: Just take the first one
+                // Soporte de legado: Solo tomar el primero
                 if (boxes.length > 0) {
                     cajasEstanteria[slotId] = boxes[0];
                 }
@@ -205,20 +205,20 @@ export const InventoryService = {
             updates[shelfId] = { cajasEstanteria, shelfItems };
         });
 
-        // 2. Process Pallets
+        // 2. Procesar Palés
         Object.entries(pallets).forEach(([id, items]) => {
-            // For pallets, we update 'programa' and 'contenido'
-            // If multiple items, we might concatenate description?
+            // Para palés, actualizamos 'programa' y 'contenido'
+            // Si hay múltiples ítems, ¿podríamos concatenar la descripción?
 
-            // Dominant Program
+            // Programa Dominante
             const programs = items.map(i => normalizeProgram(i.LOTE)).filter(p => p !== 'Vacio');
             const mainProgram = programs.length > 0 ? programs[0] : 'Vacio';
 
-            // If multiple materials, join them? (UNUSED NOW)
+            // Si hay múltiples materiales, ¿unirlos? (NO USADO AHORA)
             // const materials = items.map(i => `${i.CANTIDAD}x ${i.MATERIAL}`);
             // const contentText = materials.join(', ');
 
-            // NEW LOGIC: Check for Loose Items (Suelto)
+            // NUEVA LÓGICA: Comprobar Ítems Sueltos (Suelto)
             const isSuelto = items.some(i => i.TIPO_DE_CONTENEDOR?.toLowerCase() === 'suelto');
             let materiales: MaterialEnCaja[] | undefined = undefined;
             let cajas: Caja[] | undefined = undefined;
@@ -233,21 +233,21 @@ export const InventoryService = {
                     programa: normalizeProgram(item.LOTE)
                 }));
             } else {
-                // BOX LOGIC: Generate structural Boxes to enable "Vertical Stripes"
+                // LÓGICA DE CAJAS: Generar Cajas estructurales para permitir "Franjas Verticales"
                 cajas = items.map(item => ({
                     id: crypto.randomUUID(),
                     descripcion: item.MATERIAL,
-                    programa: normalizeProgram(item.LOTE), // CRITICAL: This drives the multi-color stripes
+                    programa: normalizeProgram(item.LOTE), // CRÍTICO: Esto impulsa las franjas multicolores
                     cantidad: Number(item.CANTIDAD) || 1,
-                    contenido: [] // Empty contents for now
+                    contenido: [] // Contenidos vacíos por ahora
                 }));
             }
 
-            // MERGE with existing update (Critical for Shelves that also have generic items)
+            // FUSIONAR con actualización existente (Crítico para Estanterías que también tienen ítems genéricos)
             updates[id] = {
                 ...(updates[id] || {}),
                 programa: mainProgram,
-                // contenido: contentText... // REMOVED: Do not overwrite label with inventory text
+                // contenido: contentText... // ELIMINADO: No sobrescribir etiqueta con texto de inventario
                 materiales: materiales,
                 cajas: cajas
             };

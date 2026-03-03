@@ -319,13 +319,10 @@ async def parse_request(
                     if len(locs_list) > 3:
                         locs_str += f" (+{len(locs_list)-3} más)"
                         
-                    lines.append(f"• {qty} un. de {mat} (en {locs_str})")
+                    lines.append(f"• **{qty}** un. de **{mat}** (en **{locs_str}**)")
                     total_items_count += qty
                 
-                # Limit output lines
-                if len(lines) > 8:
-                    lines = lines[:8]
-                    lines.append(f"... y otros.")
+                # Remove output lines limit to show all items.
 
                 intro = f"He encontrado {total_items_count} artículos"
                 if target_location_ids:
@@ -428,7 +425,8 @@ async def submit_action(
 
     # USER -> Pending
     if current_user.role == "USER":
-         action_id = sheet_service.add_pending_action(request.action_type, request.payload, user_id=current_user.email)
+         payload_list = [request.payload] if isinstance(request.payload, dict) else request.payload
+         action_id = sheet_service.add_pending_action(request.action_type, payload_list, user_id=current_user.email)
          return {
              "status": "PENDING_APPROVAL",
              "transaction_id": action_id
@@ -439,7 +437,14 @@ async def submit_action(
          # Execute immediately
          # We generate a mock transaction ID or real one if we had one
          tx_id = f"TX-ADM-{hash(str(request.payload))}"
-         sheet_service.execute_transaction(request.action_type, request.payload, user_id=current_user.email, transaction_id=tx_id)
+         
+         # The execute_transaction expects a list of movements for "MOVEMENT" action type.
+         # SubmitActionRequest sends `payload` as a single Dict from the frontend UI.
+         # FastApi Pydantic preserves the Dict, but we must construct a list containing this dict.
+         payload_list = [request.payload] if isinstance(request.payload, dict) else request.payload
+         print(f"DEBUG ASSISTANT PAYLOAD_LIST TYPE: {type(payload_list)} = {payload_list}")
+         
+         sheet_service.execute_transaction(request.action_type, payload_list, user_id=current_user.email, transaction_id=tx_id)
          return {
              "status": "SUCCESS",
              "transaction_id": tx_id

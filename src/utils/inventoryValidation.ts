@@ -4,7 +4,7 @@ import { SHELF_MODULE_WIDTH } from '../data';
 export interface InventoryError {
     shelfId: string;
     description: string;
-    details: string; // "Item 'X' asignado a Módulo 8 (Máx 6)"
+    details: string; // "Ítem 'X' asignado a Módulo 8 (Máx 6)"
     reason: 'out_of_bounds' | 'invalid_format' | 'other';
 }
 
@@ -14,19 +14,19 @@ export const validateInventory = (ubicaciones: Record<string, Ubicacion>): Inven
     Object.values(ubicaciones).forEach(u => {
         if (u.tipo === 'estanteria_modulo' && u.cajasEstanteria) {
 
-            // Calculate Max Modules
-            // E.g. Width 6 / ModuleWidth 1 = 6 Modules
+            // Calcular Módulos Máximos
+            // Ej. Ancho 6 / ModuleWidth 1 = 6 Módulos
             const maxModules = Math.round(u.width / SHELF_MODULE_WIDTH);
 
             Object.entries(u.cajasEstanteria).forEach(([slotKey, box]) => {
-                // slotKey format: "M{num}-A{num}"
+                // formato de slotKey: "M{num}-A{num}"
                 const match = slotKey.match(/M(\d+)-A(\d+)/i);
 
                 if (match) {
                     const moduleNum = parseInt(match[1]);
                     const levelNum = parseInt(match[2]);
 
-                    // Check Module Bounds
+                    // Comprobar Límites del Módulo
                     if (moduleNum > maxModules) {
                         errors.push({
                             shelfId: u.id,
@@ -36,8 +36,8 @@ export const validateInventory = (ubicaciones: Record<string, Ubicacion>): Inven
                         });
                     }
 
-                    // Check Level Bounds (Soft Limit matching Renderer)
-                    // Renderer ignores > 5. So > 5 is an error.
+                    // Comprobar Límites del Nivel (Límite Suave coincidiendo con el Renderizador)
+                    // El Renderizador ignora > 5. Así que > 5 es un error.
                     if (levelNum > 5) {
                         errors.push({
                             shelfId: u.id,
@@ -48,8 +48,8 @@ export const validateInventory = (ubicaciones: Record<string, Ubicacion>): Inven
                     }
 
                 } else {
-                    // Invalid Slot Key Format (if strictly using M-A)
-                    // We might ignore this if legacy data exists.
+                    // Formato de Clave de Slot Inválida (si estrictamente se usa M-A)
+                    // Podríamos ignorar esto si existen datos de legado.
                 }
             });
         }

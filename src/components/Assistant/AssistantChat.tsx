@@ -39,11 +39,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
-            text: 'Hola. Soy Almacenito. Puedo registrar movimientos o entradas. Escribe o sube una foto.',
+            text: 'Hola. Soy Palessito. Puedo registrar movimientos o entradas. Escribe o sube una foto.',
             sender: 'bot'
         }
     ]);
     const [isThinking, setIsThinking] = useState(false);
+
+    const [size, setSize] = useState({ w: 360, h: 500 });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +59,39 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [messages, isOpen]);
+
+    // MANEJADORES DE REDIMENSIÓN MANUAL SUPERIOR IZQUIERDA
+    const handleResizeStart = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = size.w;
+        const startH = size.h;
+
+        const onPointerMove = (eMove: PointerEvent) => {
+            eMove.preventDefault();
+            // Al arrastrar Top-Left hacia arriba/izquierda, la X/Y decrece, así que el delta positivo es (Start - Move)
+            const deltaX = startX - eMove.clientX;
+            const deltaY = startY - eMove.clientY;
+
+            const newW = Math.max(300, startW + deltaX);
+            const newH = Math.max(400, Math.min(window.innerHeight * 0.8, startH + deltaY));
+
+            setSize({ w: newW, h: newH });
+        };
+
+        const onPointerUp = () => {
+            document.body.style.cursor = '';
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        };
+
+        document.body.style.cursor = 'nwse-resize';
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+    };
 
     // HANDLE INITIAL ACTION (Manual Entry from UI)
     useEffect(() => {
@@ -72,7 +107,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
                         if (initialAction.type === 'MANUAL_ENTRY') {
                             const response = await AssistantService.submitAction(
-                                initialAction.payload.type, // "ENTRADA"
+                                'MOVEMENT', // The backend expects 'MOVEMENT' as the top-level action_type for all inventory actions (ENTRADA, SALIDA, MOVIMIENTO)
                                 initialAction.payload,
                                 token || ''
                             );
@@ -315,10 +350,17 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     };
 
     return (
-        <div className={styles.window}>
+        <div className={styles.window} style={{ width: size.w, height: size.h }}>
+            {/* Tirador visual para redimensionar (arrastrar) */}
+            <div
+                className={styles.resizeHandleTopLeft}
+                onPointerDown={handleResizeStart}
+                title="Redimensionar Chat"
+            ></div>
+
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🧠 Almacenito</span>
+                    <span>🧠 Palessito</span>
                 </div>
                 <button className={styles.closeBtn} onClick={onClose}>×</button>
             </div>

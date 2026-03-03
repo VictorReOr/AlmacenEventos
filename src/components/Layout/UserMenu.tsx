@@ -9,9 +9,10 @@ interface User {
 interface UserMenuProps {
     user: User | null;
     onLogout: () => void;
+    onExportDataTS?: () => void;
 }
 
-export const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
+export const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout, onExportDataTS }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     if (!user) return null;
@@ -81,6 +82,34 @@ export const UserMenu: React.FC<UserMenuProps> = ({ user, onLogout }) => {
                         <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{user.email}</div>
                         <div style={{ fontSize: '10px', color: '#888', marginTop: '4px' }}>Versión v1.1 (Mobile OK)</div>
                     </div>
+
+                    {user.role === 'ADMIN' && onExportDataTS && (
+                        <button
+                            onClick={() => {
+                                onExportDataTS();
+                                setIsOpen(false);
+                            }}
+                            style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '8px',
+                                background: 'none',
+                                border: 'none',
+                                color: '#1565C0',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                borderRadius: '4px',
+                                marginBottom: '4px',
+                                fontWeight: 'bold'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E3F2FD'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                            💾 Descargar data.ts
+                        </button>
+                    )}
 
                     <button
                         onClick={onLogout}

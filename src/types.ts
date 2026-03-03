@@ -1,4 +1,4 @@
-export type Programa = string; // Was strict union, now dynamic
+export type Programa = string; // Antes era una unión estricta, ahora es dinámico
 
 export const PROGRAM_COLORS: Record<string, string> = {
   'Mentor 10': '#003366', // Azul Marino Oscuro
@@ -13,22 +13,22 @@ export const PROGRAM_COLORS: Record<string, string> = {
   'Vacio': '#E0E0E0'      // Gris
 };
 
-// --- SOLID BASE MODEL TYPES ---
+// --- TIPOS DEL MODELO BASE SÓLIDO ---
 
 // 3. CONTENIDO
 export interface Material {
   id: string; // "m1", "m2"
   nombre: string; // "Balones Nike"
-  // Catalog info, not inventory
+  // Información del catálogo, no del inventario
 }
 
 export interface MaterialEnCaja {
-  id: string; // Unique ID for this record
-  materialId: string; // Ref to Material catalog (optional for now, can use name)
-  nombre: string; // Copied for display speed
+  id: string; // ID Único para este registro
+  materialId: string; // Ref al catálogo de Materiales (opcional por ahora, puede usar nombre)
+  nombre: string; // Copiado para velocidad de dibujado
   cantidad: number;
   estado: 'operativo' | 'prestamo' | 'baja';
-  programa?: string; // Derived from LOTE for granular coloring
+  programa?: string; // Derivado del LOTE para coloreado granular
 }
 
 // 2. CONTENEDORES
@@ -37,44 +37,49 @@ export interface Caja {
   descripcion: string; // "Caja de Balones"
   programa: string;
   contenido: MaterialEnCaja[];
-  cantidad?: number; // Added for grouped display (e.g. "x8 boxes")
+  cantidad?: number; // Añadido para visualización agrupada (ej. "x8 cajas")
   tipoContenedor?: 'Caja' | 'Suelto';
 }
 
-// 1. ESTRUCTURA FISICA & UBICACIONES
+// 1. ESTRUCTURA FÍSICA & UBICACIONES
 export interface Ubicacion {
   id: string;
   tipo: 'palet' | 'estanteria_modulo' | 'zona_carga' | 'puerta' | 'muro';
   programa: Programa;
-  contenido: string; // Human readable label
+  contenido: string; // Etiqueta legible por humanos
 
-  // Physical Properties
+  // Propiedades Físicas
   x: number;
   y: number;
   rotation: number;
   width: number;
   depth: number;
 
-  // --- NEW STRICT STRUCTURE ---
+  // Propiedades de Etiqueta (Arrastre Independiente)
+  labelX?: number;
+  labelY?: number;
+  labelRot?: number;
 
-  // For Pallets => List of Boxes
+  // --- NUEVA ESTRUCTURA ESTRICTA ---
+
+  // Para Palés => Lista de Cajas
   cajas?: Caja[];
 
-  // For Shelves => Matrix of Boxes
-  // Key: "M{module}-A{level}" (e.g. "M1-A1") -> Box (0 or 1)
-  // We can treat shelves as having specific slots.
-  // To keep compatibility with Map rendering loop, we just need a way to look up content.
-  // Let's use `cajasEstanteria` map.
+  // Para Estanterías => Matriz de Cajas
+  // Clave: "M{module}-A{level}" (ej. "M1-A1") -> Caja (0 o 1)
+  // Podemos tratar las estanterías como poseedoras de huecos específicos.
+  // Para mantener compatibilidad con el bucle de renderizado del Mapa, solo necesitamos una vía de acceso al contenido.
+  // Usemos el mapa `cajasEstanteria`.
   cajasEstanteria?: Record<string, Caja>;
 
-  // For loose materials (not in boxes) on Pallets
+  // Para materiales sueltos (sin caja) en los Palés
   materiales?: MaterialEnCaja[];
 
 
-  // Legacy/Optional props to be cleaned up or kept for UI helpers
+  // Propiedades de Herencia/Opcionales a ser limpiadas o mantenidas para ayudas de UI
   notas?: string;
 
-  // Shelf Specific Properties
+  // Propiedades Específicas de Estantería
   estanteriaId?: number;
   mensaje?: string;
   niveles?: {
@@ -82,11 +87,11 @@ export interface Ubicacion {
     items: Caja[];
   }[];
 
-  // Index signature to allow for legacy/nested properties
+  // Firma de índice para permitir propiedades de herencia o anidadas
   [key: string]: any;
 }
 
-// State Wrapper
+// Envoltorio del Estado (State Wrapper)
 export interface AlmacenState {
   ubicaciones: Record<string, Ubicacion>;
   geometry: { x: number; y: number }[];

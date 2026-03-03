@@ -15,15 +15,15 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // --- SEARCH INDEXING ---
-    // Memoize or rebuild when ubicaciones changes? 
-    // Given the size, rebuilding on open or effect is fine.
+    // --- INDEXACIÓN DE BÚSQUEDA ---
+    // ¿Memoizar o reconstruir cuando las ubicaciones cambian? 
+    // Dado el tamaño, reconstruir al abrir o por efecto está bien.
     const [fuse, setFuse] = useState<Fuse<any> | null>(null);
 
     useEffect(() => {
         const list: any[] = [];
         Object.values(ubicaciones).forEach(u => {
-            // Add Location itself
+            // Añadir la Ubicación en sí
             list.push({
                 type: 'location',
                 id: u.id,
@@ -32,19 +32,19 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
                 searchStr: `${u.id} ${u.contenido} ${u.programa}`
             });
 
-            // Helper to process boxes
+            // Ayudante para procesar cajas
             const processBoxes = (boxes: any[]) => {
                 boxes.forEach(box => {
-                    // Index Box
+                    // Indexar Caja
                     list.push({
                         type: 'caja',
-                        id: u.id, // Target location ID
+                        id: u.id, // ID de la ubicación destino
                         label: box.descripcion,
                         detail: `en ${u.id} (${box.programa})`,
                         searchStr: `${box.descripcion} ${box.programa} ${box.id}`
                     });
 
-                    // Index Materials in Box
+                    // Indexar Materiales en Caja
                     if (box.contenido) {
                         box.contenido.forEach((m: any) => {
                             list.push({
@@ -59,25 +59,25 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
                 });
             };
 
-            // Pallets
+            // Palés
             if (u.cajas) {
                 processBoxes(u.cajas);
             }
 
-            // Shelves
+            // Estanterías
             if (u.cajasEstanteria) {
-                // Pass both box and slotKey
+                // Pasar tanto la caja como el slotKey (clave de ranura)
                 Object.entries(u.cajasEstanteria).forEach(([slotKey, box]) => {
-                    // Index Box with Slot Info
+                    // Indexar Caja con Info de Ranura
                     list.push({
                         type: 'caja',
-                        id: u.id, // Target parent location
+                        id: u.id, // Ubicación padre destino
                         label: `${box.descripcion} [${slotKey}]`,
                         detail: `en ${u.id} - ${slotKey} (${box.programa})`,
                         searchStr: `${box.descripcion} ${box.programa} ${box.id} ${slotKey} ${u.id}-${slotKey}`
                     });
 
-                    // Index Materials in Box
+                    // Indexar Materiales en Caja
                     if (box.contenido) {
                         box.contenido.forEach((m: any) => {
                             list.push({
@@ -102,10 +102,10 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
 
     }, [ubicaciones]);
 
-    // --- HANDLERS ---
+    // --- MANEJADORES ---
     useEffect(() => {
         if (query && fuse) {
-            const res = fuse.search(query).slice(0, 8); // Limit results
+            const res = fuse.search(query).slice(0, 8); // Limitar resultados
             setResults(res.map(r => r.item));
         } else {
             setResults([]);
@@ -120,7 +120,7 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
         }
     }, [isOpen]);
 
-    // Click outside to close
+    // Clic fuera para cerrar
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -160,7 +160,7 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
                     />
                     <button className={styles.closeBtn} onClick={() => setIsOpen(false)}>×</button>
 
-                    {/* RESULTS DROPDOWN */}
+                    {/* MENÚ DESPLEGABLE DE RESULTADOS */}
                     {results.length > 0 && (
                         <div className={styles.resultsMenu}>
                             {results.map((item, idx) => (

@@ -6,7 +6,7 @@ interface DraggableLegendProps {
 }
 
 export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors, isMobile }) => {
-    // Mobile Style (Static, Full Width, Scrollable)
+    // Estilo Móvil (Estático, Ancho Completo, Desplazable)
     if (isMobile) {
         return (
             <div
@@ -20,12 +20,12 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
                     whiteSpace: 'nowrap',
                     overflowX: 'auto',
                     width: '100%',
-                    // Hide Scrollbar
+                    // Ocultar Barra de Desplazamiento
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none'
                 }}
             >
-                {/* State Section */}
+                {/* Sección de Estado */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4CAF50' }}></div>
                     <span style={{ fontSize: '11px', fontWeight: 600, color: '#333' }}>Libre</span>
@@ -33,7 +33,7 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
 
                 <div style={{ width: 1, height: 16, backgroundColor: '#ccc', flexShrink: 0 }}></div>
 
-                {/* Programs Section */}
+                {/* Sección de Programas */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     {Object.entries(programColors)
                         .filter(([name]) => !['Vacio'].includes(name))
@@ -48,36 +48,36 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
         );
     }
 
-    // Desktop/Floating Style
+    // Estilo de Escritorio/Flotante
     return (
         <div
             style={{
                 position: 'fixed',
                 bottom: '24px',
                 left: '50%',
-                transform: 'translateX(-50%)', // Access Center
+                transform: 'translateX(-50%)', // Acceder al Centro
                 backgroundColor: 'white',
                 padding: '10px 20px',
                 borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)', // Slightly stronger shadow for floating element
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)', // Sombra ligeramente más fuerte para elemento flotante
                 zIndex: 900,
                 border: '1px solid #e0e0e0',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                whiteSpace: 'nowrap' // Prevent wrapping if possible
+                whiteSpace: 'nowrap' // Prevenir salto de línea si es posible
             }}
         >
-            {/* State Section */}
+            {/* Sección de Estado */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4CAF50' }}></div>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#333' }}>Libre</span>
             </div>
 
-            {/* Vertical Divider */}
+            {/* Divisor Vertical */}
             <div style={{ width: 1, height: 16, backgroundColor: '#ccc' }}></div>
 
-            {/* Programs Section */}
+            {/* Sección de Programas */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 {Object.entries(programColors)
                     .filter(([name]) => !['Vacio'].includes(name))

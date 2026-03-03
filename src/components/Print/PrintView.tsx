@@ -17,18 +17,18 @@ interface PrintItem {
 }
 
 interface PrintPageData {
-    id: string; // Unique key for the page
+    id: string; // Clave única para la página
     title: string;
     type: 'palet' | 'estanteria';
     items: PrintItem[];
 }
 
 export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
-    // We only care about rendering the A4 format which overrides the old list/cards if they just want this A4 view.
-    // However, we'll keep it as the default render when PrintView is mounted.
+    // Solo nos importa renderizar el formato A4 que anula la lista/tarjetas antiguas si solo quieren esta vista A4.
+    // Sin embargo, lo mantendremos como el renderizado por defecto cuando PrintView se monta.
 
     useEffect(() => {
-        // Automatically open the print dialog after a short delay to ensure React has flushed the DOM
+        // Abrir automáticamente el diálogo de impresión tras un breve retardo para asegurar que React ha volcado el DOM
         const timer = setTimeout(() => {
             window.print();
         }, 300);
@@ -38,15 +38,15 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
     const pages = useMemo(() => {
         const generatedPages: PrintPageData[] = [];
 
-        // 1. Separate into Pallets and Shelves
+        // 1. Separar en Palés y Estanterías
         const pallets = data.filter(u => u.tipo === 'palet' || (!u.id.startsWith('E') && !u.tipo?.includes('estanteria')));
         const shelves = data.filter(u => u.tipo === 'estanteria_modulo' || u.id.startsWith('E'));
 
-        // Helper to safely get material name
+        // Ayudante para obtener de forma segura el nombre del material
         const getDesc = (desc: string) => desc || "Material Desconocido";
 
-        // 2. Process Pallets
-        // Order pallets numerically or alphabetically
+        // 2. Procesar Palés
+        // Ordenar palés numérica o alfabéticamente
         pallets.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
         pallets.forEach(u => {
@@ -73,7 +73,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                 });
             }
 
-            // Generate the page for this pallet, even if empty (to know it's empty)
+            // Generar la página para este palé, incluso si está vacío (para saber que está vacío)
             generatedPages.push({
                 id: `palet-${u.id}`,
                 title: u.id,
@@ -82,17 +82,17 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
             });
         });
 
-        // 3. Process Shelves
+        // 3. Procesar Estanterías
         shelves.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
         shelves.forEach(u => {
-            // Group by Module
-            // keys in cajasEstanteria are like "M1-A1", "M2-A3"
+            // Agrupar por Módulo
+            // las claves en cajasEstanteria son como "M1-A1", "M2-A3"
             const modules: Record<string, PrintItem[]> = {};
 
             if (u.cajasEstanteria) {
                 Object.entries(u.cajasEstanteria).forEach(([slot, caja]) => {
-                    // Extract module, default to '1' if format is weird
+                    // Extraer módulo, por defecto '1' si el formato es raro
                     const match = slot.match(/M(\d+)/);
                     const modNum = match ? match[1] : '1';
 
@@ -107,8 +107,8 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                 });
             }
 
-            // If the shelf is completely empty but selected, maybe we want to print an empty sheet?
-            // Usually we only print modules that have something, or at least Module 1.
+            // Si la estantería está completamente vacía pero seleccionada, ¿quizás queramos imprimir una hoja vacía?
+            // Usualmente solo imprimimos módulos que tienen algo, o al menos el Módulo 1.
             const modKeys = Object.keys(modules).sort((a, b) => parseInt(a) - parseInt(b));
 
             if (modKeys.length === 0) {
@@ -116,7 +116,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                     id: `shelf-${u.id}-M1`,
                     title: `${u.id}-1`,
                     type: 'estanteria',
-                    items: [] // Empty
+                    items: [] // Vacío
                 });
             } else {
                 modKeys.forEach(mod => {
@@ -181,7 +181,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ data, onClose }) => {
                             {page.type === 'palet' && (
                                 <img
                                     src={`${import.meta.env.BASE_URL}almacenito.png`}
-                                    alt="Almacenito"
+                                    alt="Palessito"
                                     className="print-palessito"
                                     style={{ height: page.items.length <= 3 ? '160px' : '70px' }}
                                 />

@@ -152,14 +152,13 @@ export const AssistantService = {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.detail || "Error submitting action");
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.detail || response.statusText || "Error submitting action");
             }
             return await response.json();
         } catch (e) {
-            console.warn("Offline: Submit Action failed", e);
-            // Return fake success
-            return { status: "SUCCESS", offline: true };
+            console.error("Assistant API Submit Action Error:", e);
+            throw e;
         }
     }
 };

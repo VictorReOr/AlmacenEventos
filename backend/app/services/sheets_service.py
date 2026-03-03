@@ -162,15 +162,15 @@ class SheetService:
             
             # Fetch all data (heavy but safe)
             all_inv = ws_inv.get_all_values()
-            headers = all_inv[0] # ID_UBICACION, MATERIAL, CANTIDAD, ...
+            headers = all_inv[0] # ID_LUGAR, MATERIAL, CANTIDAD, ...
             
             # Map indices
             try:
-                idx_loc = headers.index("ID_UBICACION")
+                idx_loc = headers.index("ID_LUGAR")
                 idx_mat = headers.index("MATERIAL")
                 idx_qty = headers.index("CANTIDAD")
             except ValueError:
-                print("SHEETS ERROR: Inventory headers mismatch.")
+                print(f"SHEETS ERROR: Inventory headers mismatch. Found headers: {headers}")
                 return
 
             # Build index map: (Loc, Material) -> Row Number (0-based in array, 1-based in sheet)
@@ -205,14 +205,45 @@ class SheetService:
                         
                         updates.append(gspread.Cell(row_num, idx_qty+1, new_qty))
                     else:
-                        # Insert new
+                        # Headers: ['ID_REGISTRO', 'TIPO_UBICACION', 'ID_LUGAR', 'MODULO', 'ALTURA', 'TIPO_ITEM', 'MATERIAL', 'CANTIDAD', 'LOTE', 'ESTADO', 'RESPONSABLE', 'OBSERVACIONES', '', '', '', '', '', '', '', '']
+                        # Calculate a simple ID_REGISTRO based on row count
+                        next_id = len(all_inv) + len(rows_to_append)
+                        
+                        m_program = mov.get('program', '') if isinstance(mov, dict) else getattr(mov, 'program', '')
+                        raw_item_type = mov.get('item_type', 'Caja') if isinstance(mov, dict) else getattr(mov, 'item_type', 'Caja')
+                        m_item_type = "Suelto" if raw_item_type == "MATERIAL" else "Caja"
+                        
+                        # Determine if it's a shelf location (starts with 'E')
+                        is_shelf = m_dest.startswith('E')
+                        tipo_ubicacion = "Estantería" if is_shelf else "Palet"
+                        
+                        # Extract Modulo and Altura if it's a shelf (e.g. E1-M1-A2)
+                        modulo = ""
+                        altura = ""
+                        id_lugar = m_dest
+                        
+                        if is_shelf:
+                            parts = m_dest.split('-')
+                            id_lugar = parts[0].replace('E', '') if len(parts) > 0 else m_dest
+                            modulo = parts[1].replace('M', '') if len(parts) > 1 else ""
+                            altura = parts[2].replace('A', '') if len(parts) > 2 else ""
+                        else:
+                            # For pallets, ID_REGISTRO should be the pallet ID (ID_LUGAR) according to user
+                            pass
+
                         rows_to_append.append([
-                            m_dest,
-                            m_item,
-                            m_qty,
-                            "", # LOTE
-                            m_state,
-                            "" # RESPONSABLE
+                            m_dest,         # ID_REGISTRO (User requested this to be where it's located, e.g. pallet ID or full location string)
+                            tipo_ubicacion, # TIPO_UBICACION 
+                            id_lugar,       # ID_LUGAR
+                            modulo,         # MODULO
+                            altura,         # ALTURA
+                            m_item_type,    # TIPO_ITEM
+                            m_item,         # MATERIAL
+                            m_qty,          # CANTIDAD
+                            m_program,      # LOTE (Program goes here based on user confirmation)
+                            m_state,        # ESTADO (Default STOCK or the provided state)
+                            user_id,        # RESPONSABLE
+                            ""              # OBSERVACIONES
                         ])
                 
                 # ORIGIN Logic (Deduct)

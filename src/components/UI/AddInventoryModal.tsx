@@ -18,7 +18,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
     const handleSave = () => {
         if (!name.trim()) return;
         onSave({ program, name, quantity, type });
-        // Reset and close
+        // Restablecer y cerrar
         setName('');
         setQuantity(1);
         setType('CAJA');
@@ -48,7 +48,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
             }}>
                 <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem', color: '#1a1a1a' }}>📥 Añadir Existencias</h3>
 
-                {/* Type Selector */}
+                {/* Selector de Tipo */}
                 <div style={{ marginBottom: '20px', display: 'flex', backgroundColor: '#f0f2f5', padding: 4, borderRadius: 8 }}>
                     <button
                         onClick={() => setType('CAJA')}
@@ -86,7 +86,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
                     </button>
                 </div>
 
-                {/* Program Selector */}
+                {/* Selector de Programa */}
                 <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '8px' }}>Programa:</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -115,7 +115,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
                     </div>
                 </div>
 
-                {/* Name Input */}
+                {/* Entrada de Nombre */}
                 <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '8px' }}>Descripción:</label>
                     <input
@@ -136,7 +136,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
                     </div>
                 </div>
 
-                {/* Quantity Input */}
+                {/* Entrada de Cantidad */}
                 <div style={{ marginBottom: '24px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', color: '#666', marginBottom: '8px' }}>Cantidad:</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -152,7 +152,7 @@ export const AddInventoryModal: React.FC<AddInventoryModalProps> = ({ isOpen, on
                     </div>
                 </div>
 
-                {/* Actions */}
+                {/* Acciones */}
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                     <button
                         onClick={onClose}

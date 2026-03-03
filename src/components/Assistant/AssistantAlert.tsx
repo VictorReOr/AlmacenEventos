@@ -12,7 +12,7 @@ export const AssistantAlert: React.FC<AssistantAlertProps> = ({ message, onClose
             <div className={styles.modal}>
                 <div className={styles.header}>
                     <span className={styles.avatar}>🧠</span>
-                    <span className={styles.title}>Almacenito dice:</span>
+                    <span className={styles.title}>Palessito dice:</span>
                     <button className={styles.closeBtn} onClick={onClose}>&times;</button>
                 </div>
                 <div className={styles.body}>

@@ -32,7 +32,7 @@ export const AssistantCharacter: React.FC<AssistantCharacterProps> = ({
             <div className={`${styles.avatarWrapper} ${styles[state]} `}>
                 <img
                     src={almacenitoIcon}
-                    alt="Almacenito Asistente"
+                    alt="Palessito Asistente"
                     className={styles.image}
                     draggable={false}
                     style={{ userSelect: 'none', pointerEvents: 'none' }}

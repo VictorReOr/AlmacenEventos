@@ -57,6 +57,16 @@ export const ChatConfirmationBubble: React.FC<ChatConfirmationBubbleProps> = ({ 
 
     const isQuery = interpretation.intent === 'QUERY' || interpretation.intent === 'SEARCH';
 
+    // Helper to render bold text from "**" markers
+    const renderMessage = (text: string) => {
+        if (!text) return null;
+        const parts = text.split(/\*\*(.*?)\*\*/g);
+        return parts.map((part, i) => {
+            if (i % 2 === 1) return <strong key={i}>{part}</strong>;
+            return <span key={i}>{part}</span>;
+        });
+    };
+
     return (
         <div style={{
             background: 'white',
@@ -73,7 +83,7 @@ export const ChatConfirmationBubble: React.FC<ChatConfirmationBubbleProps> = ({ 
 
             <div style={{ fontSize: '0.9em', color: '#555', marginBottom: '10px' }}>
                 <p style={{ margin: '4px 0', fontStyle: 'italic', fontWeight: isQuery ? '500' : 'normal', color: isQuery ? '#000' : '#555', whiteSpace: 'pre-line' }}>
-                    {interpretation.summary}
+                    {renderMessage(interpretation.summary)}
                 </p>
 
                 {!isQuery && interpretation.movements.length > 0 && (

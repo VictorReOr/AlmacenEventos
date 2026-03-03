@@ -26,11 +26,9 @@ interface WarehouseMapProps {
     onSelectMultiple?: (ids: string[]) => void;
     rotationMode?: 'normal' | 'vertical-ccw';
     showGrid?: boolean;
-    showGeoPoints?: boolean; // Nivel Dios: Editar Muros
     programColors?: Record<string, string>; // Optional to stay backward compatible or default
     isMobile?: boolean;
     readOnly?: boolean;
-    isEditModeGlobal?: boolean; // NUEVO PROP PARA BLOQUEAR ARRASTRE
     onVisitorError?: () => void;
 }
 
@@ -63,11 +61,10 @@ interface DraggablePalletProps {
     programColors: Record<string, string>;
     isMobile: boolean;
     readOnly?: boolean;
-    isEditModeGlobal?: boolean; // NUEVO PROP PARA BLOQUEAR ARRASTRE
     onVisitorError?: () => void;
 }
 
-const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError }) => {
+const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, onVisitorError }) => {
 
 
     const isLeaderDragging = dragState?.id === u.id;
@@ -79,7 +76,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     // console.log(`🎨 Render Object: ${u.id} (${u.tipo})`);
 
     // Modo de Interacción Local
-    const [interactionMode, setInteractionMode] = useState<'move' | 'resize' | 'rotate' | 'move-label' | null>(null);
+    const [interactionMode, setInteractionMode] = useState<'move' | 'resize' | 'rotate' | null>(null);
 
     // Estado Actual (Visual)
     const currentX = isDragging ? (isLeaderDragging ? dragState.x : (dragState?.deltaX !== undefined ? u.x + dragState.deltaX : u.x)) : u.x;
@@ -126,11 +123,9 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 selectionHandled.current = true;
             }
 
-            // NUEVO PROP: Bloqueo Global de Edición para Administradores
-            if (readOnly || !isEditModeGlobal) {
-                // RETORNO SILENCIOSO: El usuario podría estar tocando sin mucha precisión o el mapa está bloqueado para arraste.
-                // Ya hemos seleccionado el artículo arriba para el panel derecho. Simplemente detenemos el arrastre.
-                cancel();
+            if (readOnly) {
+                // RETORNO SILENCIOSO: El usuario podría estar tocando sin mucha precisión. 
+                // Ya hemos seleccionado el artículo arriba. Simplemente detenemos el arrastre.
                 return;
             }
 
@@ -163,7 +158,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             */
 
             if (u.id === 'van_v3' || u.tipo === 'zona_carga') return cancel();
-            if (readOnly || !isEditModeGlobal) return cancel();
+            if (readOnly) return cancel();
             if (pinching) return cancel();
             event.stopPropagation();
             hasDragged.current = true;
@@ -318,70 +313,13 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         eventOptions: { passive: false }
     });
 
-    // --- LÓGICA DE ARRASTRE DE ETIQUETA INDEPENDIENTE ---
-    const rawLabelPos = useRef({ x: u.labelX || 0, y: u.labelY || 0 });
-    const [liveLabelPos, setLiveLabelPos] = useState({ x: u.labelX || 0, y: u.labelY || 0 });
-
-    const bindLabelMove = useGesture({
-        onDragStart: ({ event, cancel }) => {
-            if (readOnly) return cancel();
-            event.stopPropagation(); // Evitar arrastrar la estantería entera
-            setInteractionMode('move-label');
-            // Reset the delta accumulator for this drag session.
-            // We use rawScreenDelta to prevent precision loss.
-            rawLabelPos.current = { x: u.labelX || 0, y: u.labelY || 0 };
-        },
-        onDrag: ({ event, cancel, delta: [dx, dy] }) => {
-            if (readOnly) return cancel();
-            event.stopPropagation();
-
-            // dx y dy son los píxeles reales que el ratón se movió en el monitor.
-            // Paso 1: Reducir por el factor de zoom de la cámara (pan/zoom)
-            const absoluteDx = dx / zoomScale;
-            const absoluteDy = dy / zoomScale;
-
-            // Paso 2: El mapa principal puede estar rotado (-90deg en vertical-ccw).
-            let mapDx = absoluteDx;
-            let mapDy = absoluteDy;
-
-            if (rotationMode === 'vertical-ccw') {
-                // Al rotar el mapa entero -90, los ejes de pantalla y mapa se cruzan
-                mapDx = -absoluteDy;
-                mapDy = absoluteDx;
-            }
-
-            // Paso 3: El objeto principal (la estantería) sobre la que vive esta etiqueta
-            // tiene su propia rotación 'u.rotation' ("currentRot").
-            const rad = (-currentRot * Math.PI) / 180; // Inverso porque estamos des-haciendo la rotación para encontrar el desplazamiento puro.
-            const cos = Math.cos(rad);
-            const sin = Math.sin(rad);
-
-            const localDx = mapDx * cos - mapDy * sin;
-            const localDy = mapDx * sin + mapDy * cos;
-
-            // Las coordenadas internas del SVG son 1 unidad de coordenada = 1 px al 100% de zoom.
-            rawLabelPos.current.x += localDx;
-            rawLabelPos.current.y += localDy;
-
-            setLiveLabelPos({ x: rawLabelPos.current.x, y: rawLabelPos.current.y });
-        },
-        onDragEnd: ({ event }) => {
-            if (readOnly) return;
-            event.stopPropagation();
-            setInteractionMode(null);
-            onUpdate({ ...u, labelX: rawLabelPos.current.x, labelY: rawLabelPos.current.y });
-        }
-    }, {
-        drag: { filterTaps: true, threshold: 3 },
-        eventOptions: { passive: false }
-    });
 
     // --- LÓGICA DE REDIMENSIONAMIENTO ---
     // --- LÓGICA DE REDIMENSIONAMIENTO ---
     const bindResize = useGesture({
         onDragStart: ({ event, cancel }) => {
             if (u.id === 'van_v3' || u.tipo === 'zona_carga') return cancel();
-            if (readOnly || !isEditModeGlobal) {
+            if (readOnly) {
                 if (onVisitorError) onVisitorError();
                 return;
             }
@@ -390,7 +328,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             setInteractionMode('resize');
         },
         onDrag: ({ event, delta: [dx, dy], last, args: [handleType], cancel }) => {
-            if (readOnly || !isEditModeGlobal) return cancel();
+            if (readOnly) return cancel();
             event.stopPropagation();
             const isAlt = event.altKey;
             const isShift = event.shiftKey;
@@ -485,7 +423,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
     const bindRotate = useGesture({
         onDragStart: ({ event, cancel }) => {
             if (u.id === 'van_v3' || u.tipo === 'zona_carga') return cancel();
-            if (readOnly || !isEditModeGlobal) {
+            if (readOnly) {
                 if (onVisitorError) onVisitorError();
                 return;
             }
@@ -494,7 +432,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
             setInteractionMode('rotate');
         },
         onDrag: ({ event, xy: [x, y], last, memo, cancel }) => {
-            if (readOnly || !isEditModeGlobal) return cancel();
+            if (readOnly) return cancel();
             event.stopPropagation();
 
             // Calcular el centro si no está memorizado
@@ -561,9 +499,9 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         selectionHandled.current = false; // REINICIAR ESTADO EN NUEVO TOQUE
 
         // v1.5 SELECCIÓN INSTANTÁNEA (Solo Modo Seguro)
-        // Si estamos en "readOnly" (Modo Seguro) o con edición global desactivada, seleccionar INMEDIATAMENTE al tocar.
+        // Si estamos en "readOnly" (Modo Seguro), seleccionar INMEDIATAMENTE al tocar.
         // Esto elimina problemas de tolerancias/tiempos y es 100% responsivo.
-        if (readOnly || !isEditModeGlobal) {
+        if (readOnly) {
             onSelectLocation(u.id);
             selectionHandled.current = true; // Mark as handled so Up/Drag don't repeat
         }
@@ -629,32 +567,31 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         const C_VERDE = "#007A33";
         const C_GRIS_OSCURO = "#333333";
         // const C_GRIS_CLARO = "#f5f5f5";
+        const C_BORDE = "#9e9e9e";
 
         if (u.tipo === 'estanteria_modulo') {
+            const uprightW = Math.max(3, 0.08 * SCALE);
             const numModules = Math.round(u.width / SHELF_MODULE_WIDTH);
 
-            // Pestaña Superior (Estilo Carpeta)
-            const TAB_THICKNESS = 6;
-            const C_BG = "#FFFFFF";
-            const C_STROKE = "#CFD8DC";
-
-            // Separadores finos completos
+            // Separadores
             const dividers = [];
             for (let i = 1; i < numModules; i++) {
                 if (rotationMode === 'vertical-ccw') {
                     const xPos = -finalSvgW / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(<line key={`d-${i}`} x1={xPos} y1={-finalSvgH / 2 + TAB_THICKNESS} x2={xPos} y2={finalSvgH / 2} stroke="#e0e0e0" strokeWidth={1} />);
+                    dividers.push(<rect key={i} x={xPos - 0.5} y={-finalSvgH / 2} width={1} height={finalSvgH} fill={C_BORDE} />);
                 } else {
                     const yPos = -finalSvgH / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(<line key={`d-${i}`} x1={-finalSvgW / 2 + TAB_THICKNESS} y1={yPos} x2={finalSvgW / 2} y2={yPos} stroke="#e0e0e0" strokeWidth={1} />);
+                    dividers.push(<rect key={i} x={-finalSvgW / 2} y={yPos - 0.5} width={finalSvgW} height={1} fill={C_BORDE} />);
                 }
             }
 
             // Lógica de Visualización de Inventario (Fichitas de color)
+            // Calculamos qué programas existen dentro de cada módulo.
             const modulePrograms = new Map<number, Set<string>>();
 
             if (u.cajasEstanteria) {
                 Object.entries(u.cajasEstanteria).forEach(([key, caja]) => {
+                    // key format is usually "M1-A2"
                     const mMatch = key.match(/M(\d+)/);
                     if (mMatch && caja.programa) {
                         const mNum = parseInt(mMatch[1], 10);
@@ -666,193 +603,139 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 });
             }
 
+            // Generamos las "fichas" visuales (SVG Rects -> ahora Círculos) para cada módulo
             const programIndicators: React.ReactNode[] = [];
-            const isReversed = ['E1', 'E2', 'E3', 'E4a', 'E4b'].includes(u.id);
+            const indicatorRadius = 5;
+            const indicatorGap = 4;
+            const indicatorDiam = indicatorRadius * 2;
 
-            for (let visualPos = 1; visualPos <= numModules; visualPos++) {
-                // En las estanterías invertidas, la posición visual 1 (izquierda)
-                // corresponde al módulo de mayor numeración.
-                const logicalModuleId = isReversed ? (numModules - visualPos + 1) : visualPos;
-
-                const programs = Array.from(modulePrograms.get(logicalModuleId) || []);
+            for (let i = 1; i <= numModules; i++) {
+                const programs = Array.from(modulePrograms.get(i) || []);
                 if (programs.length > 0) {
-                    const indicatorRadius = 5;
-                    const indicatorGap = 4;
-                    const indicatorDiam = indicatorRadius * 2;
                     const totalWidth = (programs.length * indicatorDiam) + ((programs.length - 1) * indicatorGap);
-                    let startOffset = -totalWidth / 2 + indicatorRadius;
-
-                    let centerX, centerY;
-                    if (rotationMode === 'vertical-ccw') {
-                        // Centrado considerando la pestaña superior
-                        centerX = -finalSvgW / 2 + ((visualPos - 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                        centerY = TAB_THICKNESS / 2;
-                    } else {
-                        // Centrado considerando la pestaña izquierda
-                        centerX = TAB_THICKNESS / 2;
-                        centerY = -finalSvgH / 2 + ((visualPos - 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                    }
+                    let startOffset = -totalWidth / 2 + indicatorRadius; // Start offset aligns the circles' centers
 
                     programs.forEach((prog, index) => {
                         const color = programColors[prog] || programColors['Otros'] || '#E57373';
                         const offset = startOffset + (index * (indicatorDiam + indicatorGap));
 
+                        // Posición central del módulo actual basado en rotationMode
                         if (rotationMode === 'vertical-ccw') {
+                            const xPos = -finalSvgW / 2 + ((i - 0.5) * SHELF_MODULE_WIDTH * SCALE);
+                            const yPos = finalSvgH / 2 - 10; // Cerca del borde inferior
                             programIndicators.push(
-                                <circle key={`ind-${visualPos}-${index}`} cx={centerX + offset} cy={centerY} r={indicatorRadius} fill={color} stroke="#ffffff" strokeWidth={1.5} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }} />
+                                <circle
+                                    key={`ind-${i}-${index}`}
+                                    cx={xPos + offset}
+                                    cy={yPos}
+                                    r={indicatorRadius}
+                                    fill={color}
+                                    stroke="#ffffff"
+                                    strokeWidth={1.5}
+                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}
+                                />
                             );
                         } else {
+                            const yPos = -finalSvgH / 2 + ((i - 0.5) * SHELF_MODULE_WIDTH * SCALE);
+                            const xPos = finalSvgW / 2 - 10; // Cerca del borde derecho
                             programIndicators.push(
-                                <circle key={`ind-${visualPos}-${index}`} cx={centerX} cy={centerY + offset} r={indicatorRadius} fill={color} stroke="#ffffff" strokeWidth={1.5} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }} />
+                                <circle
+                                    key={`ind-${i}-${index}`}
+                                    cx={xPos}
+                                    cy={yPos + offset}
+                                    r={indicatorRadius}
+                                    fill={color}
+                                    stroke="#ffffff"
+                                    strokeWidth={1.5}
+                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }}
+                                />
                             );
                         }
                     });
                 }
             }
 
-            const labelText = u.contenido && u.contenido.length < 10 ? u.contenido : u.id;
-
             content = (
-                <React.Fragment>
-                    <g {...bindMove()} style={{ cursor: interactionMode === 'move' ? 'grabbing' : 'grab', touchAction: 'none' }}>
-                        {/* Sombra base suave */}
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))' }} />
+                <g>
+                    {/* Sombra */}
+                    <rect x={-finalSvgW / 2 + 3} y={-finalSvgH / 2 + 3} width={finalSvgW} height={finalSvgH} fill="rgba(0,0,0,0.1)" rx={2} />
 
-                        {/* Halo de Selección */}
-                        {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#2E7D32" strokeWidth={2} rx={3} />}
+                    {/* Halo de Selección */}
+                    {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#2E7D32" strokeWidth={2} rx={3} />}
 
-                        {/* Superficie Blanca Limpia */}
-                        <rect
-                            x={-finalSvgW / 2}
-                            y={-finalSvgH / 2}
-                            width={finalSvgW}
-                            height={finalSvgH}
-                            fill={C_BG}
-                            stroke={C_STROKE}
-                            strokeWidth={1}
-                            rx={2}
-                        />
+                    {/* Cuerpo Principal - Superficie Blanca Limpia */}
+                    <rect
+                        x={-finalSvgW / 2}
+                        y={-finalSvgH / 2}
+                        width={finalSvgW}
+                        height={finalSvgH}
+                        fill="#FFFFFF"
+                        stroke={isValid ? "#A5D6A7" : "#e57373"} // Borde verde tenue
+                        strokeWidth={1.5}
+                        rx={2}
+                    />
 
-                        {/* Franja de Pestaña (Color Institucional Verde o Gris) */}
-                        {rotationMode === 'vertical-ccw' ? (
-                            <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={TAB_THICKNESS} fill={C_VERDE} />
-                        ) : (
-                            <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={TAB_THICKNESS} height={finalSvgH} fill={C_VERDE} />
-                        )}
+                    {/* Tooltip Nativo (Hover en PC, Long-press en Móvil) */}
+                    <title>{u.contenido || u.id}</title>
 
-                        {/* Líneas divisorias internas */}
-                        {dividers}
+                    {/* Fichas de Color del Inventario */}
+                    {programIndicators}
 
-                        {/* Tooltip Nativo (Hover) */}
-                        <title>{u.contenido || u.id}</title>
+                    {/* Postes Verticales (Detalle Técnico) */}
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={uprightW} fill="#4E5F50" rx={1} />
+                    <rect x={-finalSvgW / 2} y={finalSvgH / 2 - uprightW} width={finalSvgW} height={uprightW} fill="#4E5F50" rx={1} />
 
-                        {/* Fichas de Color del Inventario (Centradas) */}
-                        {programIndicators}
+                    {dividers}
 
-                        {/* Módulo IDs */}
-                        {Array.from({ length: numModules }).map((_, i) => {
-                            // INVERSIÓN ESPECÍFICA DE ESTANTERÍAS DEL MURO OESTE/SUR
-                            // El cliente requiere explícitamente que E1, E2, E3, E4a y E4b
-                            // inicien su módulo "1" en el origen de las mismas.
-                            const isReversed = ['E1', 'E2', 'E3', 'E4a', 'E4b'].includes(u.id);
-                            const moduleIndex = isReversed ? (numModules - i) : (i + 1);
+                    {/* Etiqueta Limpia / Marcas de Agua por Módulo para Móvil */}
+                    {Array.from({ length: numModules }).map((_, i) => {
+                        const moduleIndex = i + 1;
+                        let xPos, yPos;
 
-                            let textX, textY;
-
-                            if (rotationMode === 'vertical-ccw') {
-                                textX = -finalSvgW / 2 + ((i + 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                                textY = TAB_THICKNESS / 2;
-                            } else {
-                                textY = -finalSvgH / 2 + ((i + 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                                textX = TAB_THICKNESS / 2;
-                            }
-
-                            return (
-                                <text key={`lbl-${moduleIndex}`} x={textX - 8} y={textY - 2} fontSize={9} fontWeight="800" fill="#cfcfcf" textAnchor="middle" dominantBaseline="middle" style={{ userSelect: 'none', pointerEvents: 'none' }}>
-                                    {moduleIndex}
-                                </text>
-                            );
-                        })}
-
-                    </g>
-
-                    {/* Nombre flotante estilo pestaña adherido a la estructura o arrastrable */}
-                    {(() => {
-                        let textX = 0;
-                        let textY = 0;
-
-                        if (u.labelX !== undefined && u.labelY !== undefined) {
-                            // Coordenadas manuales del arrastre libre
-                            textX = liveLabelPos.x;
-                            textY = liveLabelPos.y;
+                        if (rotationMode === 'vertical-ccw') {
+                            xPos = -finalSvgW / 2 + ((moduleIndex - 0.5) * SHELF_MODULE_WIDTH * SCALE);
+                            yPos = 0; // Centro vertical alineado
                         } else {
-                            // Posición automática por defecto: flotando fuera de la esquina superior izquierda
-                            // Se añaden unos -25px para que la etiqueta nazca bien despegada y sea súper fácil de pinchar
-                            if (rotationMode === 'vertical-ccw') {
-                                textX = -finalSvgW / 2 - 25;
-                                textY = -finalSvgH / 2 - 15;
-                            } else {
-                                textX = -finalSvgW / 2 - 25;
-                                textY = -finalSvgH / 2 - 15;
-                            }
-                            // Inicializar useRef para que el primer tick de arrastre parta de aquí
-                            rawLabelPos.current = { x: textX, y: textY };
+                            yPos = -finalSvgH / 2 + ((moduleIndex - 0.5) * SHELF_MODULE_WIDTH * SCALE);
+                            xPos = 0; // Centro horizontal alineado
                         }
 
-                        // Rotación individual
-                        const labelRot = u.labelRot || 0;
-
-                        // Extraemos los manejadores para poder interceptar y detener la propagación manual
-                        const labelMoveHandlers = bindLabelMove() as any;
-
-                        // Envolvemos en un grupo <g> y usamos transform translate.
-                        // Añadimos un <rect> transparente pero con fill="transparent" (no "none") para crear una zona táctil maciza enorme alrededor del texto.
-                        // pointerEvents="all" fuerza a que el recuadro invisible capture los eventos del ratón por encima de todo.
+                        // El texto se dibuja girado igual que el objeto para ser siempre legible desde abajo
                         return (
-                            <g
-                                {...labelMoveHandlers}
-                                onPointerDown={(e) => {
-                                    // CRÍTICO: Detener propagación para que el DraggableObject padre no intercepte nuestro arrastre como un clic en la estantería
-                                    e.stopPropagation();
-                                    if (labelMoveHandlers.onPointerDown) labelMoveHandlers.onPointerDown(e);
-                                }}
-                                onPointerUp={(e) => {
-                                    e.stopPropagation();
-                                    if (labelMoveHandlers.onPointerUp) labelMoveHandlers.onPointerUp(e);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                onDoubleClick={(e) => {
-                                    if (readOnly) return;
-                                    e.stopPropagation();
-                                    const newRot = (labelRot + 90) % 360;
-                                    onUpdate({ ...u, labelRot: newRot });
-                                }}
-                                transform={`translate(${textX}, ${textY}) rotate(${labelRot})`}
-                                style={{
-                                    userSelect: 'none',
-                                    cursor: interactionMode === 'move-label' ? 'grabbing' : 'grab',
-                                    pointerEvents: 'all',
-                                    touchAction: 'none'
-                                }}
-                            >
-                                {/* Área táctil súper grande invisible para atrapar bien el dedo/ratón (pointerEvents="all") */}
-                                <rect x={-15} y={-15} width={50} height={30} fill="transparent" />
-                                <text
-                                    x={0}
-                                    y={0}
-                                    fontSize={10}
-                                    fontWeight="900"
-                                    fill={C_VERDE}
-                                    textAnchor="start"
-                                    dominantBaseline="auto"
-                                    style={{ pointerEvents: 'none' }}
-                                >
-                                    {labelText}
+                            <g key={`lbl-${moduleIndex}`} transform={`translate(${xPos}, ${yPos}) rotate(${-currentRot})`}>
+                                {/* Número de módulo desplazado a la esquina superior izquierda para no tapar fichas */}
+                                <text x={-10} y={-4} fontSize={12} fontWeight="800" fill="#bdbdbd" textAnchor="middle" dominantBaseline="middle" style={{ userSelect: 'none', pointerEvents: 'none' }}>
+                                    {moduleIndex}
+                                </text>
+                            </g>
+                        );
+                    })}
+
+                    {/* Etiqueta Global de la Estantería (Pegada al Módulo 1 como un cartel de pasillo) */}
+                    {(() => {
+                        // Colocamos el cartel anclado al inicio geométrico de la estantería (Módulo 1)
+                        let labelX = 0;
+                        let labelY = 0;
+
+                        if (rotationMode === 'vertical-ccw') {
+                            // Estantería horizontal visualmente, el origen es la izquierda
+                            labelX = -finalSvgW / 2 - 12;
+                            labelY = 0;
+                        } else {
+                            // Estantería vertical visualmente, el origen es arriba
+                            labelX = 0;
+                            labelY = -finalSvgH / 2 - 12;
+                        }
+
+                        return (
+                            <g transform={`translate(${labelX}, ${labelY}) rotate(${-currentRot})`}>
+                                <text x={0} y={0} fontSize={14} fontWeight="800" fill="#2E7D32" textAnchor="middle" dominantBaseline="middle" style={{ userSelect: 'none', pointerEvents: 'none', filter: 'drop-shadow(0px 1px 1px #ffffff)' }}>
+                                    {u.contenido && u.contenido.length < 10 ? u.contenido : u.id}
                                 </text>
                             </g>
                         );
                     })()}
-                </React.Fragment>
+                </g >
             );
         } else if (u.tipo === 'zona_carga') {
             // FURGONETA: Diseño detallado estilo técnico
@@ -1001,9 +884,7 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 <g>
                     <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke="none" />
                     {doorContent}
-                    {u.contenido && !u.contenido.startsWith('door_') && (
-                        <text x={0} y={0} fontSize={9} fill={C_GRIS_OSCURO} textAnchor="middle" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>{u.contenido}</text>
-                    )}
+                    <text x={0} y={0} fontSize={9} fill={C_GRIS_OSCURO} textAnchor="middle" transform={`rotate(${-currentRot})`} style={{ pointerEvents: 'none' }}>{u.contenido}</text>
                 </g>
             );
 
@@ -1218,22 +1099,11 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 // Componente Simple de Cuadrícula (Eliminado: sin uso)
 // const Grid: React.FC<{ width: number, height: number, scale: number }> = ({ width, height, scale }) => { ... };
 
-const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
-    ubicaciones,
-    onSelectLocation,
-    selectedIds,
-    onUpdate,
-    geometry,
-    onUpdateGeometry,
-    onSelectMultiple,
-    rotationMode = 'normal',
-    showGrid = false,
-    showGeoPoints = false,
-    programColors = {},
-    isMobile = false,
-    readOnly = false,
-    onVisitorError
-}, ref) => {
+const WarehouseMap = forwardRef((props: WarehouseMapProps, ref: React.ForwardedRef<WarehouseMapRef>) => {
+    const {
+        ubicaciones, onSelectLocation, selectedIds, onUpdate, geometry, onUpdateGeometry,
+        onSelectMultiple, rotationMode = 'normal', showGrid = false, programColors = {}, readOnly, onVisitorError
+    } = props;
 
     // Verificación de Autenticación
     const { user } = useAuth();
@@ -1458,6 +1328,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
     // --- EDICIÓN DE GEOMETRÍA ---
     const [editingPointIndex, setEditingPointIndex] = useState<number | null>(null);
+    const [showGeoPoints] = useState(false);
 
     // Calcular Muros Dinámicos para Colisión
     const currentWalls = React.useMemo(() => generateWallsFromFloor(geometry), [geometry]);
@@ -1650,7 +1521,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                     zoomScale={view.k}
                     rotationMode={rotationMode}
                     programColors={programColors}
-                    isMobile={isMobile}
+                    isMobile={!!props.isMobile}
                     readOnly={isVisitor || readOnly}
                     onVisitorError={onVisitorError}
                 />
@@ -1774,6 +1645,29 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
                     {/* ZONAS Y RECURSOS */}
                     {renderObjects()}
+
+                    {/* ZONAS TEMPORALES (VICTOR) AL FINAL DEL DOM (Mayor "Z-Index") */}
+                    <g style={{ pointerEvents: 'none', opacity: 0.65 }}>
+                        {(() => {
+                            const lbls = [
+                                { name: "PARED OESTE (Izq)", x: 1.5, y: 7.5 },
+                                { name: "PARED NORTE (Fondo)", x: 4.5, y: 0.5 },
+                                { name: "PARED ESTE (Der)", x: 7.0, y: 7.5 },
+                                { name: "ISLA CENTRAL - IZQ", x: 3.4, y: 11 },
+                                { name: "ISLA CENTRAL - DER", x: 4.6, y: 11 },
+                                { name: "ZONA SUR (Estanterías)", x: 4.29, y: 22 },
+                            ];
+                            return lbls.map(l => {
+                                const pos = toSVG(l.x, l.y);
+                                return (
+                                    <g key={l.name} transform={`translate(${pos.x}, ${pos.y})`}>
+                                        <rect x="-90" y="-12" width="180" height="24" fill="#E91E63" rx="4" />
+                                        <text x="0" y="0" dominantBaseline="middle" textAnchor="middle" fill="#FFF" fontSize="12" fontWeight="bold">{l.name}</text>
+                                    </g>
+                                )
+                            });
+                        })()}
+                    </g>
 
                     {/* PUNTOS DE CONTROL DE GEOMETRÍA (Capa Superior) */}
                     {renderEdgeHitTargets()}

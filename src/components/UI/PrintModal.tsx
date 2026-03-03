@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from '../../ConfigModal.module.css'; // Reusing modal styles for consistency
+import styles from '../../ConfigModal.module.css'; // Reutilizando estilos de modal para consistencia
 
 
 interface PrintModalProps {

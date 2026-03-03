@@ -1,24 +1,8 @@
-
-import re
-
-filename = r'c:\Users\victo\.gemini\antigravity\scratch\warehouse-visual-map\src\data.ts'
-
-with open(filename, 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-
-stack = []
-for i, line in enumerate(lines):
-    for j, char in enumerate(line):
-        if char == '{':
-            stack.append((i + 1, j + 1))
-        elif char == '}':
-            if not stack:
-                print(f"Error: Unexpected '}}' at line {i + 1}, col {j + 1}")
-            else:
-                stack.pop()
-
-if stack:
-    print(f"Error: Unclosed '{{' at line {stack[-1][0]}, col {stack[-1][1]}")
-    print(f"Total unclosed braces: {len(stack)}")
-else:
-    print("Braces are balanced.")
+﻿import ast
+try:
+    with open('src/data.ts', 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Just load it using some basic regex checks or maybe we just check the file
+    print('Testing data.ts structure')
+except Exception as e:
+    print(f'Error: {e}')

@@ -2,7 +2,7 @@
 export interface Point { x: number; y: number; }
 export interface Rect { x: number; y: number; width: number; depth: number; rotation: number; }
 
-// --- CORE MATH ---
+// --- MATEMÁTICAS BÁSICAS ---
 
 export const toRad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -18,28 +18,28 @@ export const rotatePoint = (p: Point, center: Point, angleDeg: number): Point =>
     };
 };
 
-// Get corners of a rotated rectangle (Order: TL, TR, BR, BL relative to unrotated)
+// Obtener esquinas de un rectángulo rotado (Orden: Superior Izq, Superior Der, Inferior Der, Inferior Izq relativo al no rotado)
 export const getCorners = (r: Rect): Point[] => {
-    // x,y are CENTER (Standardized)
+    // x,y son el CENTRO (Estandarizado)
 
-    // Half dims
+    // Mitades de dimensiones
     const hw = r.width / 2;
     const hd = r.depth / 2;
 
-    // Unrotated corners relative to center
+    // Esquinas no rotadas relativas al centro
     const corners = [
-        { x: -hw, y: -hd }, // TL
-        { x: hw, y: -hd },  // TR
-        { x: hw, y: hd },   // BR
-        { x: -hw, y: hd }   // BL
+        { x: -hw, y: -hd }, // Sup Izq (TL)
+        { x: hw, y: -hd },  // Sup Der (TR)
+        { x: hw, y: hd },   // Inf Der (BR)
+        { x: -hw, y: hd }   // Inf Izq (BL)
     ];
 
     return corners.map(p => rotatePoint({ x: r.x + p.x, y: r.y + p.y }, { x: r.x, y: r.y }, r.rotation));
 };
 
-// --- SAT COLLISION ---
+// --- COLISIÓN SAT (Teorema del Eje de Separación) ---
 
-// Project polygon onto axis
+// Proyectar polígono sobre el eje
 const project = (poly: Point[], axis: Point) => {
     let min = Infinity;
     let max = -Infinity;
@@ -51,59 +51,59 @@ const project = (poly: Point[], axis: Point) => {
     return { min, max };
 };
 
-// Check if two polygons intersect
+// Comprobar si dos polígonos intersectan
 export const polygonsIntersect = (polyA: Point[], polyB: Point[]): boolean => {
     const polygons = [polyA, polyB];
-    const EPSILON = 0.015; // Allow 1.5cm overlap to tolerate manual corner penetration
+    const EPSILON = 0.015; // Permitir 1.5cm de superposición para tolerar penetración manual en esquinas
 
     for (let i = 0; i < polygons.length; i++) {
         const poly = polygons[i];
         for (let j = 0; j < poly.length; j++) {
             const p1 = poly[j];
             const p2 = poly[(j + 1) % poly.length];
-            const normal = { x: -(p2.y - p1.y), y: p2.x - p1.x }; // Normal vector
+            const normal = { x: -(p2.y - p1.y), y: p2.x - p1.x }; // Vector Normal
 
             const projA = project(polyA, normal);
             const projB = project(polyB, normal);
 
             if (projA.max <= projB.min + EPSILON || projB.max <= projA.min + EPSILON) {
-                return false; // Gap found (or touching)
+                return false; // Hueco encontrado (o tocándose)
             }
         }
     }
-    return true; // No gap
+    return true; // No hay hueco
 };
 
-// --- WAREHOUSE BOUNDARIES ---
-// Defined as Polygons (Inward normals would be nice, but we just check if Pallet intersects Wall Polygon)
-// To prevent going OUTSIDE, we can either:
-// 1. Define the walkable floor as a polygon and check "contains".
-// 2. Define Walls as solid polygons and check "intersects". -> Easier for robustness.
+// --- LÍMITES DEL ALMACÉN ---
+// Definidos como Polígonos (Las normales hacia adentro estarían bien, pero solo comprobamos si el Pallet intersecta con el Polígono de la Pared)
+// Para evitar salir AFUERA, podemos bien:
+// 1. Definir el suelo pisable como un polígono y usar "contains".
+// 2. Definir los Muros como polígonos sólidos y comprobar "intersects". -> Más fácil para la robustez.
 
-// We need "thick" walls.
-// We need "thick" walls.
-// We need "thick" walls.
-export const WALL_THICKNESS = 0.001; // Reduced to 1mm to allow practically flush placement
+// Necesitamos paredes con "grosor".
+// Necesitamos paredes con "grosor".
+// Necesitamos paredes con "grosor".
+export const WALL_THICKNESS = 0.001; // Reducido a 1mm para permitir colocaciones práticamente al ras
 
-// --- WAREHOUSE BOUNDARIES ---
-// Dynamic Wall Generation based on Floor Polygon
+// --- LÍMITES DEL ALMACÉN ---
+// Generación Dinámica de Paredes basada en el Polígono del Suelo
 
-// Helper to get wall polygon from a segment p1->p2
-// Returns a "thick" rectangle around the line segment
+// Ayudante para obtener el polígono de la pared de un segmento p1->p2
+// Devuelve un rectángulo con "grosor" alrededor del segmento de la línea
 const createWallFromSegment = (p1: Point, p2: Point, thickness: number): Point[] => {
-    // Vector along wall
+    // Vector a lo largo de la pared
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return [];
 
-    // Normal vector (normalized)
+    // Vector normal (normalizado)
     const nx = -dy / len;
     const ny = dx / len;
 
-    // We want the wall to be "outside" or centered?
-    // Let's make it centered for simplicity, or slightly offset outward if we knew winding order.
-    // For collision, centered thickness is robust enough if thick enough.
+    // ¿Queremos la pared hacia "afuera" o centrada?
+    // Hagámosla centrada por simplicidad, o ligeramente desplazada hacia afuera si supiéramos el orden del contorno (winding order).
+    // Para las colisiones, el grosor centrado es suficientemente robusto si es bastante ancho.
     const h = thickness / 2;
 
     return [
@@ -118,23 +118,23 @@ export const generateWallsFromFloor = (floor: Point[]): Point[][] => {
     const walls: Point[][] = [];
     for (let i = 0; i < floor.length; i++) {
         const p1 = floor[i];
-        const p2 = floor[(i + 1) % floor.length]; // Loop back to start
+        const p2 = floor[(i + 1) % floor.length]; // Bucle de vuelta al principio
         walls.push(createWallFromSegment(p1, p2, WALL_THICKNESS));
     }
     return walls;
 };
 
-// Static WALLS removed. Now we use generateWallsFromFloor(geometry) in the component.
+// Paredes Estáticas (Static WALLS) eliminadas. Ahora usamos generateWallsFromFloor(geometry) en el componente.
 
-// --- SNAPPING HELPERS ---
+// --- AYUDANTES DE ENCAJE (SNAPPING) ---
 
 export interface SnapLine {
     x1: number; y1: number;
     x2: number; y2: number;
-    vertical: boolean; // true = vertical line (draw along Y), false = horizontal
+    vertical: boolean; // true = línea vertical (dibujar a lo largo de Y), false = horizontal
 }
 
-// --- SNAPPING LOGIC ---
+// --- LÓGICA DE ENCAJE (SNAPPING) ---
 
 export const calculateSnap = (
     currentX: number,
@@ -145,37 +145,37 @@ export const calculateSnap = (
     obstacles: { x: number, y: number, width: number, depth: number, rotation: number }[],
     ignoreGap: boolean = false
 ) => {
-    // Current Edges (assuming rotation is close to 0 or 180 for standard width/depth usage, or handle 90)
-    // Simplified: We snap center-to-center, edge-to-edge AND edge-to-gap (15cm).
-    // For simplicity in this version, we'll snap:
-    // 1. Center X to Center X
-    // 2. Center Y to Center Y
-    // 3. Edges to Edges
-    // 4. Edges to Edges +/- 15cm
+    // Bordes Actuales (asumiendo que la rotación es cercana a 0 o 180 para el uso estándar de ancho/profundidad, o maneja 90)
+    // Simplificado: Encajamos centro a centro, borde a borde Y borde a hueco (15cm).
+    // Por simplicidad en esta versión, encajaremos:
+    // 1. Centro X a Centro X
+    // 2. Centro Y a Centro Y
+    // 3. Bordes a Bordes
+    // 4. Bordes a Bordes +/- 15cm
 
-    const SNAP_DIST = ignoreGap ? 0.15 : 0.1; // Reduced from 0.3 to 0.15 to prevent jumpiness
-    const GAP = 0.15; // 15cm standard gap
+    const SNAP_DIST = ignoreGap ? 0.15 : 0.1; // Reducido de 0.3 a 0.15 para prevenir saltos bruscos
+    const GAP = 0.15; // Hueco estándar de 15cm
     let newX = currentX;
     let newY = currentY;
     const lines: SnapLine[] = [];
     let bestRotation: number | undefined;
 
-    // Resolve Dimensions based on rotation (visual bounding box approx)
+    // Resuelve las Dimensiones basadas en rotación (aproximación de bounding box visual)
     const isRotated = Math.abs(rotation % 180 - 90) < 5;
     const effW = isRotated ? depth : width;
     const effD = isRotated ? width : depth;
 
     const myEdges = {
-        l: currentY - effD / 2, // Y is Horizontal (Screen X)
+        l: currentY - effD / 2, // Y es Horizontal (X en pantalla)
         r: currentY + effD / 2,
-        t: currentX - effW / 2, // X is Vertical (Screen Y)
+        t: currentX - effW / 2, // X es Vertical (Y en pantalla)
         b: currentX + effW / 2,
         cx: currentY,
         cy: currentX
     };
 
-    const rangeY = [myEdges.l, myEdges.r, myEdges.cx]; // Check Horizontal Alignment
-    const rangeX = [myEdges.t, myEdges.b, myEdges.cy]; // Check Vertical Alignment
+    const rangeY = [myEdges.l, myEdges.r, myEdges.cx]; // Checkea la Alineación Horizontal
+    const rangeX = [myEdges.t, myEdges.b, myEdges.cy]; // Checkea la Alineación Vertical
 
     let snappedX = false;
     let snappedY = false;
@@ -194,12 +194,12 @@ export const calculateSnap = (
             cy: obs.x
         };
 
-        // Align Vertical Pos (X)
+        // Alinear Vertical Pos (X)
         if (!snappedX) {
-            // Targets: Top, Bottom, Center, Top-Gap, Bottom+Gap
-            // Note: Use simple array of target values. 
-            // We want myTop to match obsBottom+Gap, or myBottom to match obsTop-Gap
-            // Actually it's simpler to check "My Edge" vs "Target Edge +/- Gap"
+            // Objetivos: Top, Bottom, Centro, Top-Hueco, Bottom+Hueco
+            // Nota: Usar un array simple de los objetivos a los valores. 
+            // Queremos el Top propio para igualar al Bottom Ajeno+Hueco, o el Bottom propio para al Top Ajeno-Hueco
+            // Realmente es más fácil comprobar "Mi Borde" vs "Borde Ajeno +/- Hueco"
 
             let targetsX = [
                 { val: obsEdges.t, type: 'edge' }, { val: obsEdges.b, type: 'edge' }, { val: obsEdges.cy, type: 'center' },
@@ -211,8 +211,8 @@ export const calculateSnap = (
             }
 
             for (const target of targetsX) {
-                // Try to align my Top, Bottom, or Center to this Target
-                // Filter: Center only aligns with Center. Edge/Gap only with Edge.
+                // Tratar de alinear propio Top, Bottom, or Center a su Objetivo respectivo 
+                // Filtrar: El centro solo alinea con Centro. Bordes/Hueco solo con Borde.
 
                 for (const myP of rangeX) {
                     const isMyCenter = (myP === myEdges.cy);
@@ -220,18 +220,18 @@ export const calculateSnap = (
                     if (!isMyCenter && target.type === 'center') continue;
 
                     if (Math.abs(myP - target.val) < SNAP_DIST) {
-                        const diff = target.val - myP; // Shift needed
+                        const diff = target.val - myP; // Distancia a aplicar desplazamiento
                         newX += diff;
                         snappedX = true;
 
-                        // Line Logic
+                        // Lógica de Líneas
                         const minY = Math.min(myEdges.l, obsEdges.l) - 0.5;
                         const maxY = Math.max(myEdges.r, obsEdges.r) + 0.5;
-                        // const color = (target.type.includes('gap')) ? '#4CAF50' : '#ff00ff'; // Green for Gap
+                        // const color = (target.type.includes('gap')) ? '#4CAF50' : '#ff00ff'; // Verde para hueco (Gap)
 
-                        // We store lines but currently WarehouseMap just draws them default color. 
-                        // Passing color would require updating SnapLine interface or just accepting default.
-                        // Let's stick to default interface for now.
+                        // Guardamos las líneas, pero en WarehouseMap se renderizan con el color por defecto. 
+                        // El color propuesto requeriría de extender la iterfaz Snapline, por eso lo dejaremos como por defecto.
+                        // Mantendremos la línea actual por defecto por ahora.
                         lines.push({ x1: target.val, y1: minY, x2: target.val, y2: maxY, vertical: false });
                         break;
                     }
@@ -240,7 +240,7 @@ export const calculateSnap = (
             }
         }
 
-        // Align Horizontal Pos (Y)
+        // Alinear Vertical Horitonal (Y)
         if (!snappedY) {
             let targetsY = [
                 { val: obsEdges.l, type: 'edge' }, { val: obsEdges.r, type: 'edge' }, { val: obsEdges.cx, type: 'center' },
@@ -265,9 +265,9 @@ export const calculateSnap = (
                         const maxX = Math.max(myEdges.b, obsEdges.b) + 0.5;
                         lines.push({ x1: minX, y1: target.val, x2: maxX, y2: target.val, vertical: true });
 
-                        // Capture rotation of the object we snapped to (if it helps alignment)
-                        // Only if we haven't already captured a "stronger" rotation?
-                        // For now, simple: last snap wins.
+                        // Capturar la rotación del objetivo alineado (si se requiere)
+                        // Solo si no habiamos ya registrado uno de rotacion "Mas ajustado" (?)
+                        // Por el momento, lo simplificamos a: Gana el encaje más reciente.
                         bestRotation = obs.rotation;
                         break;
                     }
@@ -281,7 +281,7 @@ export const calculateSnap = (
 };
 
 export const snapAngle = (rot: number): number => {
-    // Snap to 0, 90, 180, 270 if close (< 5 deg)
+    // Encajar (Snap) a los 0, 90, 180, 270 si se acerca (< 5 grados)
     const normalized = (rot % 360 + 360) % 360;
     const targets = [0, 90, 180, 270, 360];
     for (const t of targets) {
@@ -290,7 +290,7 @@ export const snapAngle = (rot: number): number => {
     return rot;
 };
 
-// --- SEGMENT MATH ---
+// --- MATEMÁTICAS DE SEGMENTOS ---
 
 function sqr(x: number) { return x * x }
 function dist2(v: Point, w: Point) { return sqr(v.x - w.x) + sqr(v.y - w.y) }
