@@ -676,11 +676,11 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
                 const programs = Array.from(modulePrograms.get(logicalModuleId) || []);
                 if (programs.length > 0) {
-                    const indicatorRadius = 5;
-                    const indicatorGap = 4;
-                    const indicatorDiam = indicatorRadius * 2;
-                    const totalWidth = (programs.length * indicatorDiam) + ((programs.length - 1) * indicatorGap);
-                    let startOffset = -totalWidth / 2 + indicatorRadius;
+                    // Tamaño de la "cajita" representativa del palet
+                    const rectSize = 10; // Ancho y alto de la cajita (px)
+                    const rectGap = 3;   // Espacio entre cajitas (px)
+                    const totalWidth = (programs.length * rectSize) + ((programs.length - 1) * rectGap);
+                    let startOffset = -totalWidth / 2; // Offset inicial para centrar todas las cajitas
 
                     let centerX, centerY;
                     if (rotationMode === 'vertical-ccw') {
@@ -695,15 +695,35 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
 
                     programs.forEach((prog, index) => {
                         const color = programColors[prog] || programColors['Otros'] || '#E57373';
-                        const offset = startOffset + (index * (indicatorDiam + indicatorGap));
+                        const offset = startOffset + (index * (rectSize + rectGap));
 
                         if (rotationMode === 'vertical-ccw') {
                             programIndicators.push(
-                                <circle key={`ind-${visualPos}-${index}`} cx={centerX + offset} cy={centerY} r={indicatorRadius} fill={color} stroke="#ffffff" strokeWidth={1.5} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }} />
+                                <rect
+                                    key={`ind-${visualPos}-${index}`}
+                                    x={centerX + offset}
+                                    y={centerY - rectSize / 2}
+                                    width={rectSize}
+                                    height={rectSize}
+                                    fill={color}
+                                    stroke="none"
+                                    rx={2} // Bordes ligeramente redondeados (cajita)
+                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.25))' }}
+                                />
                             );
                         } else {
                             programIndicators.push(
-                                <circle key={`ind-${visualPos}-${index}`} cx={centerX} cy={centerY + offset} r={indicatorRadius} fill={color} stroke="#ffffff" strokeWidth={1.5} style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))' }} />
+                                <rect
+                                    key={`ind-${visualPos}-${index}`}
+                                    x={centerX - rectSize / 2}
+                                    y={centerY + offset}
+                                    width={rectSize}
+                                    height={rectSize}
+                                    fill={color}
+                                    stroke="none"
+                                    rx={2} // Bordes ligeramente redondeados (cajita)
+                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.25))' }}
+                                />
                             );
                         }
                     });
