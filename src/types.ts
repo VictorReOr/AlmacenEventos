@@ -2,14 +2,15 @@ export type Programa = string; // Antes era una unión estricta, ahora es dinám
 
 export const PROGRAM_COLORS: Record<string, string> = {
   'Mentor 10': '#003366', // Azul Marino Oscuro
-  'Liga LED': '#FFFF00',  // Amarillo Puro
-  'Liga M100': '#4CAF50', // Verde Andalucía claro
+  'Liga LED': '#FFD600',  // Amarillo/Dorado Puro (Mejorado para dar más fuerza)
+  'Liga M100': '#1B5E20', // Verde Militar Oscuro (Totalmente distinto del lima)
   'Material Deportivo': '#6A1B9A', // Morado
-  'CEEDA': '#FF6F00',     // Naranja
-  'Señalización': '#0097A7', // Turquesa
-  'Andalucía': '#8BC34A', // Verde Lima
+  'CEEDA': '#E65100',     // Naranja Sangre/Teja (Más intenso que el butano normal)
+  'Señalización': '#00B8D4', // Turquesa/Cian Brillante
+  'Comunicaciones': '#E91E63', // Rosa Magenta Puro
+  'Andalucía': '#009739', // Verde Bandera Andalucía (Contrastará maravillosamente con M100)
   'Imagen Corporativa': '#212121', // Negro Suave
-  'Otros': '#E57373',     // Rojo
+  'Otros': '#D50000',     // Rojo Carmesí Sangre Puro (Se aleja radicalmente del Magenta de Comunicaciones)
   'Vacio': '#E0E0E0'      // Gris
 };
 
@@ -59,6 +60,8 @@ export interface Ubicacion {
   labelX?: number;
   labelY?: number;
   labelRot?: number;
+  labelXV?: number; // Posición manual para vista vertical
+  labelYV?: number;
 
   // --- NUEVA ESTRUCTURA ESTRICTA ---
 

@@ -139,6 +139,7 @@ function AuthenticatedApp() {
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [assistantAlert, setAssistantAlert] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   console.log("AuthenticatedApp: useAuth() called");
   const { user, logout } = useAuth(); // Añadido cierre de sesión (logout)
   const mapRef = useRef<WarehouseMapRef>(null);
@@ -219,6 +220,7 @@ function AuthenticatedApp() {
   // Estado de Validación
   const [inventoryErrors, setInventoryErrors] = useState<InventoryError[]>([]);
   const [showErrorsModal, setShowErrorsModal] = useState(false);
+  const [showLegendModal, setShowLegendModal] = useState(false);
 
 
 
@@ -271,6 +273,8 @@ function AuthenticatedApp() {
           ...(item.labelX !== undefined && { labelX: item.labelX }),
           ...(item.labelY !== undefined && { labelY: item.labelY }),
           ...(item.labelRot !== undefined && { labelRot: item.labelRot }),
+          ...(item.labelXV !== undefined && { labelXV: item.labelXV }),
+          ...(item.labelYV !== undefined && { labelYV: item.labelYV }),
         };
 
         const json = JSON.stringify(cleanItem, null, 12)
@@ -394,17 +398,17 @@ ${ubicacionesStrBuilder.join(',\n')}
   // --- NUEVO: Cargar Inventario desde el Backend (Google Sheets) ---
   useEffect(() => {
     const loadLiveInventory = async () => {
-      console.log("App: loadLiveInventory() STARTED 🏁");
+      console.warn("App: loadLiveInventory() STARTED 🏁");
       try {
-        console.log("App: Fetching live inventory...");
+        console.warn("App: Fetching live inventory...");
         const rawData = await InventoryService.fetchInventory();
         console.log("App: Fetch returned! 📦", rawData ? rawData.length : "NULL");
 
         if (rawData && rawData.length > 0) {
           console.log("App: Parsing inventory...");
           const updates = InventoryService.parseInventoryToState(rawData);
-          console.log("App: Raw Inventory Items:", rawData.length);
-          console.log("App: Parsed updates keys:", Object.keys(updates));
+          console.warn(`App: Raw Inventory Items: ${rawData.length}`);
+          console.warn("App: Parsed updates keys:", Object.keys(updates));
 
           // Fusionar actualizaciones en el estado actual
           // Usamos la forma de función del setter de estado si es posible, pero aquí tenemos `state` desde useHistory
@@ -447,18 +451,12 @@ ${ubicacionesStrBuilder.join(',\n')}
 
           // 2. APLICAR ACTUALIZACIONES FRESCAS
           Object.entries(updates).forEach(([id, partial]) => {
-            if (clearedUbicaciones[id]) {
-              if (clearedUbicaciones[id]) {
-                // Fusionar la actualización parcial en el objeto LIMPIO
-                clearedUbicaciones[id] = { ...clearedUbicaciones[id], ...partial };
+            const realId = Object.keys(clearedUbicaciones).find(k => k.toLowerCase() === id.toLowerCase());
+            if (realId) {
+              // Fusionar la actualización parcial en el objeto LIMPIO
+              clearedUbicaciones[realId] = { ...clearedUbicaciones[realId], ...partial };
 
-                // DEBUG: Comprobar si E1 se está actualizando
-                if (id === 'E1') {
-                  const items = (partial as any).cajasEstanteria ? Object.keys((partial as any).cajasEstanteria).length : 0;
-                  console.log(`App: E1 updated with ${items} slots`);
-                  // alert(`DEBUG: E1 found! Updating with ${items} slots.`); // Descomentar si es necesario, pero la consola es más segura
-                }
-              }
+              // Evitar logs innecesarios por cada actualización local
             }
           });
 
@@ -515,7 +513,7 @@ ${ubicacionesStrBuilder.join(',\n')}
           }
         }
       } catch (e) {
-        console.error("App: Failed to load live inventory", e);
+        console.warn("App: Failed to load live inventory", e);
       }
     };
 
@@ -750,7 +748,7 @@ ${ubicacionesStrBuilder.join(',\n')}
 
                   {/* Grupo de Controles del Mapa */}
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {!isMobile && user?.role === 'ADMIN' && (
+                    {user?.role === 'ADMIN' && (
                       <button
                         onClick={() => setIsEditModeGlobal(!isEditModeGlobal)}
                         className={`icon-btn ${isEditModeGlobal ? 'active' : ''}`}
@@ -761,7 +759,7 @@ ${ubicacionesStrBuilder.join(',\n')}
                       </button>
                     )}
 
-                    {!isMobile && user?.role === 'ADMIN' && (
+                    {user?.role === 'ADMIN' && (
                       <button
                         onClick={() => setEditMapMode(!editMapMode)}
                         className={`icon-btn ${editMapMode ? 'active' : ''}`}
@@ -772,27 +770,21 @@ ${ubicacionesStrBuilder.join(',\n')}
                       </button>
                     )}
 
-                    {!isMobile && (
-                      <button
-                        onClick={() => setIsSelectionMode(!isSelectionMode)}
-                        className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
-                        title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
-                      >
-                        <IconSelection active={isSelectionMode} size={20} />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setIsSelectionMode(!isSelectionMode)}
+                      className={`icon-btn ${isSelectionMode ? 'active' : ''}`}
+                      title={isSelectionMode ? "Modo Selección Activo" : "Activar Selección Múltiple"}
+                    >
+                      <IconSelection active={isSelectionMode} size={20} />
+                    </button>
 
-                    {!isMobile && (
-                      <>
-                        <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
-                          <IconPrinter size={20} />
-                        </button>
+                    <button onClick={() => setShowPrintModal(true)} className="icon-btn" title="Imprimir">
+                      <IconPrinter size={20} />
+                    </button>
 
-                        <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
-                          <IconGrid active={showGrid} size={20} />
-                        </button>
-                      </>
-                    )}
+                    <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                      <IconGrid active={showGrid} size={20} />
+                    </button>
                   </div>
 
                   {/* BOTÓN DE ADMINISTRADOR (Movido Aquí) */}
@@ -808,9 +800,11 @@ ${ubicacionesStrBuilder.join(',\n')}
                         <IconShield color="#333" size={20} />
                       </button>
                       {/* BOTÓN DE CONFIGURACIÓN (Movido Aquí junto al Escudo) */}
-                      <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
-                        <IconSettings size={20} />
-                      </button>
+                      {!isMobile && (
+                        <button className="icon-btn" onClick={() => setShowConfig(true)} title="Configuración">
+                          <IconSettings size={20} />
+                        </button>
+                      )}
                     </>
                   )}
 
@@ -842,7 +836,8 @@ ${ubicacionesStrBuilder.join(',\n')}
               }}
               programColors={programColors}
               isMobile={isMobile}
-              readOnly={isMobile && !isSelectionMode}
+              readOnly={(isMobile && !isSelectionMode) && !isEditModeGlobal}
+              activeFilter={activeFilter}
             />
           }
           footer={
@@ -854,10 +849,14 @@ ${ubicacionesStrBuilder.join(',\n')}
                 pointerEvents: 'auto',
                 zIndex: 900 // Ensure on top
               }}>
-                {/* 1. Leyenda Estática (Ancho Completo) */}
-                <DraggableLegend programColors={programColors} isMobile={true} />
+                {/* 1. Botón para Desplegar Leyenda Estática (Ancho Completo) en MÓVIL para salvar espacio */}
+                <div style={{ padding: '4px', background: '#fff', textAlign: 'center', borderBottom: '1px solid #ddd' }}>
+                  <span style={{ fontSize: '10px', color: '#666', cursor: 'pointer' }} onClick={() => setShowLegendModal(true)}>
+                    👉 Toca aquí para ver la Leyenda de Colores Oculta 👈
+                  </span>
+                </div>
 
-                {/* 2. Barra de Herramientas */}
+                {/* 2. Barra de Herramientas Inferior */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-around',
@@ -1020,7 +1019,11 @@ ${ubicacionesStrBuilder.join(',\n')}
               </animated.div>
 
               {/* Leyenda Arrastrable (Pulido de UI) - SOLO ESCRITORIO */}
-              {!isMobile && <DraggableLegend programColors={programColors} />}
+              {!isMobile && <DraggableLegend
+                programColors={programColors}
+                activeFilter={activeFilter}
+                onFilterClick={setActiveFilter}
+              />}
 
               {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
               <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>
@@ -1046,6 +1049,57 @@ ${ubicacionesStrBuilder.join(',\n')}
             </>
           }
         />
+        {/* Modal Desplegable de Leyenda Móvil */}
+        {showLegendModal && isMobile && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.6)', zIndex: 99999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 15
+          }} onClick={() => setShowLegendModal(false)}>
+            <div style={{
+              background: 'white', borderRadius: 12, padding: '25px 20px 20px 20px', width: '100%', maxWidth: 360,
+              display: 'flex', flexDirection: 'column', gap: 20, position: 'relative',
+              maxHeight: '90vh', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            }} onClick={e => e.stopPropagation()}>
+
+              <h3 style={{ margin: 0, borderBottom: '1px solid #eee', paddingBottom: 15, fontSize: 22, color: '#333' }}>
+                Leyenda de Colores
+              </h3>
+
+              <button
+                onClick={() => setShowLegendModal(false)}
+                style={{ position: 'absolute', top: 15, right: 15, background: 'transparent', border: 'none', fontSize: 28, cursor: 'pointer', color: '#999', padding: 5, lineHeight: 1 }}
+              >✖</button>
+
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: '16px',
+                overflowY: 'auto', paddingBottom: 10, paddingRight: 5
+              }}>
+                {Object.entries(programColors).map(([prog, col]) => (
+                  <div
+                    key={prog}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      background: activeFilter === prog ? '#f0f8ff' : 'transparent',
+                      border: activeFilter === prog ? '1px solid #4CAF50' : '1px solid transparent',
+                      opacity: activeFilter && activeFilter !== prog ? 0.4 : 1
+                    }}
+                    onClick={() => setActiveFilter(prev => prev === prog ? null : prog)}
+                  >
+                    <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', background: col, border: '3px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} />
+                    <span style={{ fontSize: 18, fontWeight: 500, color: '#444', lineHeight: 1.3 }}>{prog}</span>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

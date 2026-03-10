@@ -798,7 +798,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         mensaje: "Estantería 2 (6 Módulos)",
                         labelX: 2.5198337063584435,
                         labelY: 122.6595958428652,
-                        labelRot: 270
+                        labelRot: 270,
+                        labelXV: 120.14851485148509,
+                        labelYV: 5.5903465346534675
                 },
                 "E3": {
                         id: "E3",
@@ -814,7 +816,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         mensaje: "Estantería 3 (6 Módulos)",
                         labelX: 3.6616745377703928,
                         labelY: 122.52525674441851,
-                        labelRot: 270
+                        labelRot: 270,
+                        labelXV: 118.06930693069293,
+                        labelYV: 5.59034653465347
                 },
                 "E1": {
                         id: "E1",
@@ -830,7 +834,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         mensaje: "Estantería 1 (3M)",
                         labelX: 2.7213838594143533,
                         labelY: 66.42264262988196,
-                        labelRot: 270
+                        labelRot: 270,
+                        labelXV: 64.52970297029701,
+                        labelYV: 4.550742574257427
                 },
                 "E7": {
                         id: "E7",
@@ -845,7 +851,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         estanteriaId: 0,
                         mensaje: "Estantería 7 (2 Módulos)",
                         labelX: -22.330418406571034,
-                        labelY: 4.066146765198246
+                        labelY: 4.066146765198246,
+                        labelXV: -6.336633663366339,
+                        labelYV: 18.065594059405942
                 },
                 "E6": {
                         id: "E6",
@@ -860,7 +868,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         estanteriaId: 0,
                         mensaje: "Estantería 6 (2 Módulos)",
                         labelX: -22.128978934543735,
-                        labelY: 3.394483554931032
+                        labelY: 3.394483554931032,
+                        labelXV: -5.29702970297032,
+                        labelYV: 20.14480198019802
                 },
                 "E5": {
                         id: "E5",
@@ -875,7 +885,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         estanteriaId: 0,
                         mensaje: "Estantería 5 (2 Módulos)",
                         labelX: -24.076596100902915,
-                        labelY: -5.605304475679063
+                        labelY: -5.605304475679063,
+                        labelXV: -7.3762376237624,
+                        labelYV: 19.105198019801982
                 },
                 "E8": {
                         id: "E8",
@@ -891,7 +903,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         mensaje: "Estantería 8 (1 Módulo)",
                         labelX: -5.792709751338942,
                         labelY: 27.181894775926033,
-                        labelRot: 0
+                        labelRot: 0,
+                        labelXV: 22.407121120040706,
+                        labelYV: 3.370241207171878
                 },
                 "E4a": {
                         id: "E4a",
@@ -907,7 +921,9 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         mensaje: "Estantería 4a (2 Módulos)",
                         labelX: 1.941396163935087,
                         labelY: -42.79675590017259,
-                        labelRot: 270
+                        labelRot: 270,
+                        labelXV: -45.22803400791438,
+                        labelYV: 6.8336565422157225
                 },
                 "E4b": {
                         id: "E4b",
@@ -915,15 +931,17 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         programa: "Vacio",
                         contenido: "E4b",
                         x: -0.35,
-                        y: 21.4,
+                        y: 20.9,
                         rotation: 88.18,
-                        width: 6,
+                        width: 7,
                         depth: 0.45,
                         estanteriaId: 0,
-                        mensaje: "Estantería 4b (6 Módulos)",
+                        mensaje: "Estantería 4b (7 Módulos)",
                         labelX: 2.748301155516231,
                         labelY: 127.13938513670307,
-                        labelRot: 270
+                        labelRot: 270,
+                        labelXV: 117.96474760592724,
+                        labelYV: 6.930480520362396
                 },
                 "van_v3": {
                         id: "van_v3",

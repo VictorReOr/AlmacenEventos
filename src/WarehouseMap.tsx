@@ -4,8 +4,9 @@ import { useGesture } from '@use-gesture/react';
 import type { Ubicacion } from './types';
 import styles from './WarehouseMap.module.css';
 import { getCorners, polygonsIntersect, calculateSnap, generateWallsFromFloor, projectPointOnSegment } from './geometry';
-import { getLotAttributes } from './utils/lotVisualizer';
 import type { SnapLine } from './geometry';
+import { ShelfGraphic } from './components/Map/ShelfGraphic';
+import { PalletGraphic } from './components/Map/PalletGraphic';
 
 // Comprobación de Reconstrucción Forzada
 
@@ -32,6 +33,7 @@ interface WarehouseMapProps {
     readOnly?: boolean;
     isEditModeGlobal?: boolean; // NUEVO PROP PARA BLOQUEAR ARRASTRE
     onVisitorError?: () => void;
+    activeFilter?: string | null;
 }
 
 export interface WarehouseMapRef {
@@ -65,9 +67,12 @@ interface DraggablePalletProps {
     readOnly?: boolean;
     isEditModeGlobal?: boolean; // NUEVO PROP PARA BLOQUEAR ARRASTRE
     onVisitorError?: () => void;
+    activeFilter?: string | null;
+    onHover?: (id: string, x: number, y: number) => void;
+    onLeave?: () => void;
 }
 
-const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError }) => {
+const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError, activeFilter, onHover, onLeave }) => {
 
 
     const isLeaderDragging = dragState?.id === u.id;
@@ -631,248 +636,25 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
         // const C_GRIS_CLARO = "#f5f5f5";
 
         if (u.tipo === 'estanteria_modulo') {
-            const numModules = Math.round(u.width / SHELF_MODULE_WIDTH);
-
-            // Pestaña Superior (Estilo Carpeta)
-            const TAB_THICKNESS = 6;
-            const C_BG = "#FFFFFF";
-            const C_STROKE = "#CFD8DC";
-
-            // Separadores finos completos
-            const dividers = [];
-            for (let i = 1; i < numModules; i++) {
-                if (rotationMode === 'vertical-ccw') {
-                    const xPos = -finalSvgW / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(<line key={`d-${i}`} x1={xPos} y1={-finalSvgH / 2 + TAB_THICKNESS} x2={xPos} y2={finalSvgH / 2} stroke="#e0e0e0" strokeWidth={1} />);
-                } else {
-                    const yPos = -finalSvgH / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-                    dividers.push(<line key={`d-${i}`} x1={-finalSvgW / 2 + TAB_THICKNESS} y1={yPos} x2={finalSvgW / 2} y2={yPos} stroke="#e0e0e0" strokeWidth={1} />);
-                }
-            }
-
-            // Lógica de Visualización de Inventario (Fichitas de color)
-            const modulePrograms = new Map<number, Set<string>>();
-
-            if (u.cajasEstanteria) {
-                Object.entries(u.cajasEstanteria).forEach(([key, caja]) => {
-                    const mMatch = key.match(/M(\d+)/);
-                    if (mMatch && caja.programa) {
-                        const mNum = parseInt(mMatch[1], 10);
-                        if (!modulePrograms.has(mNum)) {
-                            modulePrograms.set(mNum, new Set());
-                        }
-                        modulePrograms.get(mNum)!.add(caja.programa);
-                    }
-                });
-            }
-
-            const programIndicators: React.ReactNode[] = [];
-            const isReversed = ['E1', 'E2', 'E3', 'E4a', 'E4b'].includes(u.id);
-
-            for (let visualPos = 1; visualPos <= numModules; visualPos++) {
-                // En las estanterías invertidas, la posición visual 1 (izquierda)
-                // corresponde al módulo de mayor numeración.
-                const logicalModuleId = isReversed ? (numModules - visualPos + 1) : visualPos;
-
-                const programs = Array.from(modulePrograms.get(logicalModuleId) || []);
-                if (programs.length > 0) {
-                    // Tamaño de la "cajita" representativa del palet
-                    const rectSize = 10; // Ancho y alto de la cajita (px)
-                    const rectGap = 3;   // Espacio entre cajitas (px)
-                    const totalWidth = (programs.length * rectSize) + ((programs.length - 1) * rectGap);
-                    let startOffset = -totalWidth / 2; // Offset inicial para centrar todas las cajitas
-
-                    let centerX, centerY;
-                    if (rotationMode === 'vertical-ccw') {
-                        // Centrado considerando la pestaña superior
-                        centerX = -finalSvgW / 2 + ((visualPos - 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                        centerY = TAB_THICKNESS / 2;
-                    } else {
-                        // Centrado considerando la pestaña izquierda
-                        centerX = TAB_THICKNESS / 2;
-                        centerY = -finalSvgH / 2 + ((visualPos - 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                    }
-
-                    programs.forEach((prog, index) => {
-                        const color = programColors[prog] || programColors['Otros'] || '#E57373';
-                        const offset = startOffset + (index * (rectSize + rectGap));
-
-                        if (rotationMode === 'vertical-ccw') {
-                            programIndicators.push(
-                                <rect
-                                    key={`ind-${visualPos}-${index}`}
-                                    x={centerX + offset}
-                                    y={centerY - rectSize / 2}
-                                    width={rectSize}
-                                    height={rectSize}
-                                    fill={color}
-                                    stroke="none"
-                                    rx={2} // Bordes ligeramente redondeados (cajita)
-                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.25))' }}
-                                />
-                            );
-                        } else {
-                            programIndicators.push(
-                                <rect
-                                    key={`ind-${visualPos}-${index}`}
-                                    x={centerX - rectSize / 2}
-                                    y={centerY + offset}
-                                    width={rectSize}
-                                    height={rectSize}
-                                    fill={color}
-                                    stroke="none"
-                                    rx={2} // Bordes ligeramente redondeados (cajita)
-                                    style={{ filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.25))' }}
-                                />
-                            );
-                        }
-                    });
-                }
-            }
-
-            const labelText = u.contenido && u.contenido.length < 10 ? u.contenido : u.id;
-
             content = (
-                <React.Fragment>
-                    <g {...bindMove()} style={{ cursor: interactionMode === 'move' ? 'grabbing' : 'grab', touchAction: 'none' }}>
-                        {/* Sombra base suave */}
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))' }} />
-
-                        {/* Halo de Selección */}
-                        {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#2E7D32" strokeWidth={2} rx={3} />}
-
-                        {/* Superficie Blanca Limpia */}
-                        <rect
-                            x={-finalSvgW / 2}
-                            y={-finalSvgH / 2}
-                            width={finalSvgW}
-                            height={finalSvgH}
-                            fill={C_BG}
-                            stroke={C_STROKE}
-                            strokeWidth={1}
-                            rx={2}
-                        />
-
-                        {/* Franja de Pestaña (Color Institucional Verde o Gris) */}
-                        {rotationMode === 'vertical-ccw' ? (
-                            <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={TAB_THICKNESS} fill={C_VERDE} />
-                        ) : (
-                            <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={TAB_THICKNESS} height={finalSvgH} fill={C_VERDE} />
-                        )}
-
-                        {/* Líneas divisorias internas */}
-                        {dividers}
-
-                        {/* Tooltip Nativo (Hover) */}
-                        <title>{u.contenido || u.id}</title>
-
-                        {/* Fichas de Color del Inventario (Centradas) */}
-                        {programIndicators}
-
-                        {/* Módulo IDs */}
-                        {Array.from({ length: numModules }).map((_, i) => {
-                            // INVERSIÓN ESPECÍFICA DE ESTANTERÍAS DEL MURO OESTE/SUR
-                            // El cliente requiere explícitamente que E1, E2, E3, E4a y E4b
-                            // inicien su módulo "1" en el origen de las mismas.
-                            const isReversed = ['E1', 'E2', 'E3', 'E4a', 'E4b'].includes(u.id);
-                            const moduleIndex = isReversed ? (numModules - i) : (i + 1);
-
-                            let textX, textY;
-
-                            if (rotationMode === 'vertical-ccw') {
-                                textX = -finalSvgW / 2 + ((i + 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                                textY = TAB_THICKNESS / 2;
-                            } else {
-                                textY = -finalSvgH / 2 + ((i + 0.5) * SHELF_MODULE_WIDTH * SCALE);
-                                textX = TAB_THICKNESS / 2;
-                            }
-
-                            return (
-                                <text key={`lbl-${moduleIndex}`} x={textX - 8} y={textY - 2} fontSize={9} fontWeight="800" fill="#cfcfcf" textAnchor="middle" dominantBaseline="middle" style={{ userSelect: 'none', pointerEvents: 'none' }}>
-                                    {moduleIndex}
-                                </text>
-                            );
-                        })}
-
-                    </g>
-
-                    {/* Nombre flotante estilo pestaña adherido a la estructura o arrastrable */}
-                    {(() => {
-                        let textX = 0;
-                        let textY = 0;
-
-                        if (u.labelX !== undefined && u.labelY !== undefined) {
-                            // Coordenadas manuales del arrastre libre
-                            textX = liveLabelPos.x;
-                            textY = liveLabelPos.y;
-                        } else {
-                            // Posición automática por defecto: flotando fuera de la esquina superior izquierda
-                            // Se añaden unos -25px para que la etiqueta nazca bien despegada y sea súper fácil de pinchar
-                            if (rotationMode === 'vertical-ccw') {
-                                textX = -finalSvgW / 2 - 25;
-                                textY = -finalSvgH / 2 - 15;
-                            } else {
-                                textX = -finalSvgW / 2 - 25;
-                                textY = -finalSvgH / 2 - 15;
-                            }
-                            // Inicializar useRef para que el primer tick de arrastre parta de aquí
-                            rawLabelPos.current = { x: textX, y: textY };
-                        }
-
-                        // Rotación individual
-                        const labelRot = u.labelRot || 0;
-
-                        // Extraemos los manejadores para poder interceptar y detener la propagación manual
-                        const labelMoveHandlers = bindLabelMove() as any;
-
-                        // Envolvemos en un grupo <g> y usamos transform translate.
-                        // Añadimos un <rect> transparente pero con fill="transparent" (no "none") para crear una zona táctil maciza enorme alrededor del texto.
-                        // pointerEvents="all" fuerza a que el recuadro invisible capture los eventos del ratón por encima de todo.
-                        return (
-                            <g
-                                {...labelMoveHandlers}
-                                onPointerDown={(e) => {
-                                    // CRÍTICO: Detener propagación para que el DraggableObject padre no intercepte nuestro arrastre como un clic en la estantería
-                                    e.stopPropagation();
-                                    if (labelMoveHandlers.onPointerDown) labelMoveHandlers.onPointerDown(e);
-                                }}
-                                onPointerUp={(e) => {
-                                    e.stopPropagation();
-                                    if (labelMoveHandlers.onPointerUp) labelMoveHandlers.onPointerUp(e);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                onDoubleClick={(e) => {
-                                    if (readOnly) return;
-                                    e.stopPropagation();
-                                    const newRot = (labelRot + 90) % 360;
-                                    onUpdate({ ...u, labelRot: newRot });
-                                }}
-                                transform={`translate(${textX}, ${textY}) rotate(${labelRot})`}
-                                style={{
-                                    userSelect: 'none',
-                                    cursor: interactionMode === 'move-label' ? 'grabbing' : 'grab',
-                                    pointerEvents: 'all',
-                                    touchAction: 'none'
-                                }}
-                            >
-                                {/* Área táctil súper grande invisible para atrapar bien el dedo/ratón (pointerEvents="all") */}
-                                <rect x={-15} y={-15} width={50} height={30} fill="transparent" />
-                                <text
-                                    x={0}
-                                    y={0}
-                                    fontSize={10}
-                                    fontWeight="900"
-                                    fill={C_VERDE}
-                                    textAnchor="start"
-                                    dominantBaseline="auto"
-                                    style={{ pointerEvents: 'none' }}
-                                >
-                                    {labelText}
-                                </text>
-                            </g>
-                        );
-                    })()}
-                </React.Fragment>
+                <ShelfGraphic
+                    u={u}
+                    finalSvgW={finalSvgW}
+                    finalSvgH={finalSvgH}
+                    rotationMode={rotationMode}
+                    SCALE={SCALE}
+                    programColors={programColors || {}}
+                    isSelected={isSelected}
+                    interactionMode={interactionMode}
+                    readOnly={readOnly || false}
+                    bindMove={bindMove}
+                    bindLabelMove={bindLabelMove}
+                    liveLabelPos={liveLabelPos}
+                    rawLabelPos={rawLabelPos}
+                    onUpdate={onUpdate}
+                    SHELF_MODULE_WIDTH={SHELF_MODULE_WIDTH}
+                    activeFilter={activeFilter}
+                />
             );
         } else if (u.tipo === 'zona_carga') {
             // FURGONETA: Diseño detallado estilo técnico
@@ -1035,172 +817,52 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 </g>
             );
         } else { // Palé
-            // PALÉ: Estilo limpio, borde de color funcional, fondo blanco
-
-            // 1. Determinar Programas en el Palé (Contrato 3: Usar Lógica Compartida)
-            const displayPrograms = getLotAttributes(u);
-
-            // Limitar a máximo 4 bandas (Contrato 1: Regla Visual)
-            const maxBands = 4;
-            const bandsToShow = displayPrograms.slice(0, maxBands);
-            const showOverflow = displayPrograms.length > maxBands;
-
-            // Lógica de Estado
-            const hasCajas = u.cajas && u.cajas.length > 0;
-            const hasMaterial = u.materiales && u.materiales.length > 0;
-            const isOccupied = hasCajas || hasMaterial;
-
-            // Geometría de Banda
-            // Bandas Verticales: Dividir Ancho
-            // Las variables no usadas se han omitido para ESLint
-
             content = (
-                <g>
-                    {isSelected && <rect x={-finalSvgW / 2 - 3} y={-finalSvgH / 2 - 3} width={finalSvgW + 6} height={finalSvgH + 6} fill="none" stroke={C_VERDE} strokeWidth={2} rx={6} />}
-
-                    {/* ClipPath para Palé Redondeado */}
-                    <clipPath id={`clip-${u.id}`}>
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} rx={4} />
-                    </clipPath>
-
-                    {/* Fondo y Borde de Estado */}
-                    <rect
-                        x={-finalSvgW / 2}
-                        y={-finalSvgH / 2}
-                        width={finalSvgW}
-                        height={finalSvgH}
-                        fill={isOccupied ? "#E0E0E0" : "white"} // Gris si ocupado, Blanco si libre
-                        stroke={isValid ? (isOccupied ? "#9e9e9e" : "#4CAF50") : "#e57373"} // Borde Verde si libre, Gris si ocupado
-                        strokeWidth={isOccupied ? 1 : 2}
-                        rx={4}
-                    />
-
-                    {/* Renderizar Franjas de Color (Solo si está ocupado) */}
-                    {isOccupied && (
-                        <g clipPath={`url(#clip-${u.id})`}>
-                            {bandsToShow.map((prog, idx) => {
-                                // IGNORAR FRANJAS 'Vacio' -> Dejar que el fondo gris se vea natural.
-                                if (!prog || prog === 'Vacio' || prog === 'vacio') return null;
-
-                                const bColor = programColors[prog] || '#e0e0e0';
-
-                                // ARREGLO CRÍTICO: Si el color es el GRIS "default" (#e0e0e0), 
-                                // tratarlo como fondo y NO DIBUJAR franja o separador.
-                                // Esto evita que aparezcan "líneas blancas divisorias" en palés sin lotes específicos.
-                                if (bColor === '#e0e0e0') return null;
-
-                                const count = maxBands;
-
-                                // Comprobación de Rotación
-                                const normRot = Math.abs(currentRot % 180);
-                                const isVerticalOnScreen = normRot > 45 && normRot < 135;
-
-                                let renderRect;
-                                let separator = null;
-
-                                if (isVerticalOnScreen) {
-                                    // MODO ROTADO: Cortar ALTURA (eje Y).
-                                    const bandH = finalSvgH / count;
-                                    const by = -finalSvgH / 2 + (idx * bandH);
-
-                                    // Línea Separadora en el FONDO de la franja (Fin de banda)
-                                    // Solo si NO es la ultimísima clase o banda
-                                    if (idx < maxBands - 1) {
-                                        separator = <line x1={-finalSvgW / 2} y1={by + bandH} x2={finalSvgW / 2} y2={by + bandH} stroke="white" strokeWidth={1} />;
-                                    }
-
-                                    if (showOverflow && idx === maxBands - 1) {
-                                        renderRect = (
-                                            <g key={idx}>
-                                                <rect x={-finalSvgW / 2} y={by} width={finalSvgW} height={bandH} fill="#f5f5f5" stroke="none" />
-                                                {/* Puntos de desbordamiento (Overflow dots) */}
-                                                <circle cx={-finalSvgW / 4} cy={by + bandH / 2} r={2} fill="#666" />
-                                                <circle cx={0} cy={by + bandH / 2} r={2} fill="#666" />
-                                                <circle cx={finalSvgW / 4} cy={by + bandH / 2} r={2} fill="#666" />
-                                            </g>
-                                        );
-                                    } else {
-                                        renderRect = (
-                                            <g key={idx}>
-                                                <rect
-                                                    x={-finalSvgW / 2}
-                                                    y={by}
-                                                    width={finalSvgW}
-                                                    height={bandH}
-                                                    fill={bColor}
-                                                    stroke="none"
-                                                />
-                                                {separator}
-                                            </g>
-                                        );
-                                    }
-
-                                } else {
-                                    // MODO NORMAL: Cortar ANCHO (eje X).
-                                    const bandW = finalSvgW / count;
-                                    const bx = -finalSvgW / 2 + (idx * bandW);
-
-                                    // Línea Separadora a la DERECHA
-                                    if (idx < maxBands - 1) {
-                                        separator = <line x1={bx + bandW} y1={-finalSvgH / 2} x2={bx + bandW} y2={finalSvgH / 2} stroke="white" strokeWidth={1} />;
-                                    }
-
-                                    if (showOverflow && idx === maxBands - 1) {
-                                        renderRect = (
-                                            <g key={idx}>
-                                                <rect x={bx} y={-finalSvgH / 2} width={bandW} height={finalSvgH} fill="#f5f5f5" stroke="none" />
-                                                <circle cx={bx + bandW / 2} cy={0} r={2} fill="#666" />
-                                                <circle cx={bx + bandW / 2} cy={-6} r={2} fill="#666" />
-                                                <circle cx={bx + bandW / 2} cy={6} r={2} fill="#666" />
-                                            </g>
-                                        );
-                                    } else {
-                                        renderRect = (
-                                            <g key={idx}>
-                                                <rect
-                                                    x={bx}
-                                                    y={-finalSvgH / 2}
-                                                    width={bandW}
-                                                    height={finalSvgH}
-                                                    fill={bColor}
-                                                    stroke="none"
-                                                />
-                                                {separator}
-                                            </g>
-                                        );
-                                    }
-                                }
-
-                                return renderRect;
-                            })}
-                        </g>
-                    )}
-
-                    {/* Superposición de Borde (para limpiar los bordes) */}
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" stroke={isValid ? (isOccupied ? "#e0e0e0" : "#4CAF50") : "#e57373"} strokeWidth={1} rx={4} />
-
-
-                    {/* ID */}
-                    {/* Indicadores (Fijos al Palé) */}
-                    {hasCajas && (
-                        <rect x={-finalSvgW / 2 + 3} y={-finalSvgH / 2 + 3} width={6} height={6} fill="white" rx={1} stroke="#ccc" strokeWidth={0.5}>
-                            <title>Contiene Cajas</title>
-                        </rect>
-                    )}
-                    {hasCajas && (
-                        <text x={-finalSvgW / 2 + 6} y={-finalSvgH / 2 + 7.5} fontSize={5} textAnchor="middle" fill="#333">📦</text>
-                    )}
-
-                    {/* ID (Flotante/Legible) */}
-                    <g transform={`rotate(${-currentRot})`}>
-                        <rect x={-12} y={-5} width={24} height={10} rx={2} fill="rgba(255,255,255,0.85)" />
-                        <text x={0} y={2.5} fontSize={8} textAnchor="middle" fill="#1F2D2B" fontWeight="600" style={{ pointerEvents: 'none' }}>{u.id}</text>
-                    </g>
-                </g>
+                <PalletGraphic
+                    u={u}
+                    finalSvgW={finalSvgW}
+                    finalSvgH={finalSvgH}
+                    programColors={programColors || {}}
+                    isSelected={isSelected}
+                    currentRot={currentRot}
+                    isValid={isValid || false}
+                    activeFilter={activeFilter}
+                />
             );
         }
         return content;
     };
+
+    // Determine if this object should be dimmed out by the legend filter
+    let isDimmedByFilter = false;
+    if (activeFilter) {
+        if (u.tipo === 'palet') {
+            const matList = (u.materiales || []).filter(m => typeof m === 'string' ? (m as any).trim().length > 0 : m.nombre && m.nombre.trim().length > 0);
+            const boxPrograms = (u.cajas || []).filter(c => c.programa && c.programa !== 'Vacio').map(c => c.programa);
+            const legacyItems = (u.items || []).filter((i: any) => typeof i === 'string' && i.trim().length > 0);
+            const pBase = u.programa && u.programa !== 'Vacio' ? [u.programa] : [];
+            const allAvailable = [...matList, ...boxPrograms, ...legacyItems, ...pBase];
+            // Since matList and legacyItems might be names, let's just use the strict activeFilter inclusion or check if activeFilter matches 'Otros'
+            if (activeFilter === 'Otros') {
+                isDimmedByFilter = !allAvailable.some(p => p === 'Otros');
+            } else {
+                isDimmedByFilter = !allAvailable.some(p => p === activeFilter);
+            }
+        } else if (u.tipo === 'estanteria_modulo') {
+            let hasMatch = false;
+            Object.values(u.cajasEstanteria || {}).forEach(cajaList => {
+                const cajas = Array.isArray(cajaList) ? cajaList : [cajaList];
+                cajas.forEach(c => {
+                    const prog = c.programa || 'Otros';
+                    if (prog === activeFilter || (activeFilter === 'Otros' && prog === 'Otros')) hasMatch = true;
+                });
+            });
+            isDimmedByFilter = !hasMatch;
+        } else {
+            // Never dim walls or load zones by legend filter
+            isDimmedByFilter = false;
+        }
+    }
 
     return (
         <g id={`obj-${u.id}`} data-id={u.id} transform={`translate(${s.x}, ${s.y}) rotate(${currentRot})`} style={{ touchAction: 'none' }}>
@@ -1210,8 +872,23 @@ const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, read
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
+                onPointerEnter={(e) => {
+                    // Solo activar tooltip si no estamos arrastrando
+                    if (interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
+                        onHover(u.id, e.clientX, e.clientY);
+                    }
+                }}
+                onPointerMove={(e) => {
+                    if (interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
+                        onHover(u.id, e.clientX, e.clientY);
+                    }
+                }}
+                onPointerLeave={() => {
+                    if (onLeave) onLeave();
+                }}
                 onClick={handleClick}
                 style={{ cursor: interactionMode === 'resize' ? 'crosshair' : 'pointer', touchAction: 'none' }}
+                className={isDimmedByFilter ? 'dimmed-location' : ''}
             >
                 {renderVisuals()}
             </g>
@@ -1252,7 +929,8 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
     programColors = {},
     isMobile = false,
     readOnly = false,
-    onVisitorError
+    onVisitorError,
+    activeFilter = null
 }, ref) => {
 
     // Verificación de Autenticación
@@ -1263,6 +941,9 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
     // Estado de Líneas de Ajuste (Snapping)
     const [snapLines, setSnapLines] = useState<SnapLine[]>([]);
+
+    // Tooltip State
+    const [tooltipData, setTooltipData] = useState<{ id: string, x: number, y: number } | null>(null);
 
     // Estado del Viewport (Desplazamiento y Zoom)
     const [view, setView] = useState({ x: 0, y: 0, k: 1 }); // Empezar limpio, el auto-ajuste se encargará de ello
@@ -1673,6 +1354,14 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                     isMobile={isMobile}
                     readOnly={isVisitor || readOnly}
                     onVisitorError={onVisitorError}
+                    activeFilter={activeFilter}
+                    onHover={(id, tx, ty) => {
+                        // Prevent flickering tooltips during dragging
+                        if (!dragState) {
+                            setTooltipData({ id, x: tx, y: ty });
+                        }
+                    }}
+                    onLeave={() => setTooltipData(null)}
                 />
             );
         });
@@ -1816,6 +1505,110 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
                 </g>
             </svg>
+
+            {/* FAST HOVER TOOLTIP HTML OVERLAY */}
+            {tooltipData && ubicaciones[tooltipData.id] && !dragState && !isMobile && (
+                <div
+                    className="map-tooltip"
+                    style={{ left: tooltipData.x, top: tooltipData.y }}
+                >
+                    {(() => {
+                        const loc = ubicaciones[tooltipData.id];
+                        if (loc.tipo === 'muro' || loc.tipo === 'puerta' || loc.tipo === 'zona_carga') return <div>{loc.contenido || loc.id}</div>;
+
+                        // Recolectar datos
+                        const lots = new Set<string>();
+                        const progs = new Set<string>();
+                        const materials = new Set<string>();
+                        let totalQty = 0;
+                        let labelHead = loc.id;
+
+                        if (loc.tipo === 'estanteria_modulo') {
+                            labelHead = `Módulo ${loc.id} ${loc.contenido ? `(${loc.contenido})` : ''}`;
+                            Object.values(loc.cajasEstanteria || {}).forEach(cajaList => {
+                                const arr = Array.isArray(cajaList) ? cajaList : [cajaList];
+                                arr.forEach(c => {
+                                    const anyC = c as any;
+                                    if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                    if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
+                                    totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                    if (c.descripcion) materials.add(c.descripcion);
+                                    if (c.contenido && Array.isArray(c.contenido)) {
+                                        c.contenido.forEach((mat: any) => {
+                                            if (mat.nombre) materials.add(mat.nombre);
+                                        });
+                                    }
+                                });
+                            });
+                        } else {
+                            // Palet
+                            if (loc['LOTE']) lots.add(String(loc['LOTE'])); // Legacy loc prop
+                            if (loc.programa && loc.programa !== 'Vacio') progs.add(loc.programa);
+                            // Cajas
+                            (loc.cajas || []).forEach(c => {
+                                const anyC = c as any;
+                                if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
+                                totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                if (c.descripcion) materials.add(c.descripcion);
+                                if (c.contenido && Array.isArray(c.contenido)) {
+                                    c.contenido.forEach((mat: any) => {
+                                        if (mat.nombre) materials.add(mat.nombre);
+                                    });
+                                }
+                            });
+                            // Materiales Sueltos
+                            (loc.materiales || []).forEach(m => {
+                                if (typeof m === 'string') materials.add(m);
+                                else if (m.nombre) materials.add(m.nombre);
+                            });
+                        }
+
+                        return (
+                            <>
+                                <h4>{labelHead}</h4>
+                                {progs.size > 0 && (
+                                    <p>
+                                        <span className="label">Programa:</span>
+                                        <span>{Array.from(progs).join(', ')}</span>
+                                    </p>
+                                )}
+                                {lots.size > 0 && (
+                                    <p>
+                                        <span className="label">Lote:</span>
+                                        <span>{Array.from(lots).join(', ')}</span>
+                                    </p>
+                                )}
+                                {totalQty > 0 && (
+                                    <p>
+                                        <span className="label">Cantidad:</span>
+                                        <span>{totalQty}</span>
+                                    </p>
+                                )}
+                                {loc.tipo === 'palet' && loc.materiales && loc.materiales.length > 0 && (
+                                    <p>
+                                        <span className="label">Suelto:</span>
+                                        <span>{loc.materiales.length} Ítems</span>
+                                    </p>
+                                )}
+                                {materials.size > 0 && (
+                                    <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                        <span className="label" style={{ display: 'block', marginBottom: '4px' }}>Contenido:</span>
+                                        <ul style={{ margin: 0, paddingLeft: '16px', color: '#e0e0e0', fontSize: '12px', whiteSpace: 'normal', maxWidth: '200px' }}>
+                                            {Array.from(materials).map((m, i) => (
+                                                <li key={i}>{m}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {lots.size === 0 && progs.size === 0 && totalQty === 0 && (!loc.materiales || loc.materiales.length === 0) && materials.size === 0 && (
+                                    <p style={{ color: '#aaa', fontStyle: 'italic', justifyContent: 'center' }}>Vacío</p>
+                                )}
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
         </div>
     );
 });

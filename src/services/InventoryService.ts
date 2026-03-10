@@ -80,14 +80,17 @@ export const InventoryService = {
         // Ayudante para normalizar nombres de Programa / Lote a Colores Gráficos estrictos
         const normalizeProgram = (raw: string | undefined): string => {
             if (!raw) return 'Vacio';
-            const s = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Eliminar acentos usando NFD
+            // Protección contra TypeErrors originados si el Google Script envía el Lote como Integer
+            const safeRaw = String(raw);
+            const s = safeRaw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Eliminar acentos usando NFD
 
             if (s.includes('ceeda')) return 'CEEDA';
             if (s.includes('senalizacion') || s.includes('senal')) return 'Señalización';
             if (s.includes('imagen') || s.includes('corporativa')) return 'Imagen Corporativa';
+            if (s.includes('comunicacion')) return 'Comunicaciones';
 
             if (s.includes('andalucia')) return 'Andalucía'; // Separado de M100
-            if (s.includes('m100') || s.includes('m 100')) return 'Liga M100';
+            if (s.includes('m100') || s.includes('m 100') || s.includes('m-100') || s.includes('m_100')) return 'Liga M100';
 
             if (s.includes('led')) return 'Liga LED';
             if (s.includes('mentor')) return 'Mentor 10';
@@ -123,16 +126,16 @@ export const InventoryService = {
 
             // INTENTO DE NORMALIZACIÓN ROBUSTA (E01 -> E1, M01 -> M1)
             // Regex para capturar E(num)-M(num)-A(num) o variaciones
-            // Acepta: E1-M1-A1, E01-M01-A01, E-1-M-1...
-            const shelfMatch = locationId.match(/^E.*?(\d+).*?M.*?(\d+).*?A.*?(\d+)/);
+            // Acepta: E1-M1-A1, E01-M01-A01, E-1-M-1..., E4A-M1-A1
+            const shelfMatch = locationId.match(/^E.*?([0-9]+[A-Z]?).*?M.*?(\d+).*?A.*?(\d+)/i);
 
             if (shelfMatch) {
                 // Caso 1: Es una estantería con formato completo
-                const shelfNum = parseInt(shelfMatch[1], 10);
+                const shelfIdStr = shelfMatch[1].replace(/^0+/, ''); // Quita ceros iniciales
                 const modNum = parseInt(shelfMatch[2], 10);
                 const levelNum = parseInt(shelfMatch[3], 10);
 
-                const shelfId = `E${shelfNum}`; // Normaliza a "E1", "E2"
+                const shelfId = `E${shelfIdStr}`; // Normaliza a "E1", "E4A"
                 const slotId = `M${modNum}-A${levelNum}`; // Normaliza a "M1-A1"
 
                 if (!shelves[shelfId]) shelves[shelfId] = {};

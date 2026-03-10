@@ -17,8 +17,9 @@ export const getLotAttributes = (
 
     // CASO 1: Ubicación (Palé/Estantería) con 'cajas'
     if (item.cajas && Array.isArray(item.cajas)) {
-        item.cajas.forEach((c: Caja) => {
-            if (c.programa) programs.add(c.programa);
+        item.cajas.forEach((c: Caja | any) => {
+            const val = c.programa || c.lote || c.LOTE;
+            if (val) programs.add(val);
         });
     }
 
@@ -26,14 +27,15 @@ export const getLotAttributes = (
     // CONTRATO ESTRICTO 1: "Los materiales sueltos siguen el programa de la ubicación"
     if (item.materiales && Array.isArray(item.materiales) && item.materiales.length > 0) {
         // Lógica de WarehouseMap.tsx: programs.add(u.programa || 'Vacio');
-        programs.add(item.programa || 'Vacio');
+        programs.add(item.programa || item.lote || item.LOTE || 'Vacio');
     }
 
     // CASO 3: Caja con 'contenido'
     // Consistencia Derivada: Si el Palé mira las Cajas, la Caja mira el Contenido.
     if (item.contenido && Array.isArray(item.contenido)) {
-        item.contenido.forEach((m: MaterialEnCaja) => {
-            if (m.programa) programs.add(m.programa);
+        item.contenido.forEach((m: MaterialEnCaja | any) => {
+            const val = m.programa || m.lote || m.LOTE;
+            if (val) programs.add(val);
         });
     }
 
@@ -41,13 +43,14 @@ export const getLotAttributes = (
     // Map<Hueco, Caja>
     if (item.cajasEstanteria) {
         Object.values(item.cajasEstanteria).forEach((c: any) => {
-            if (c.programa) programs.add(c.programa);
+            const val = c.programa || c.lote || c.LOTE;
+            if (val) programs.add(val);
         });
     }
 
     // RESPALDO (FALLBACK)
     if (programs.size === 0) {
-        programs.add(item.programa || 'Vacio');
+        programs.add(item.programa || item.lote || item.LOTE || 'Vacio');
     }
 
     // FILTRAR 'Vacio' (A menos que sea el único)

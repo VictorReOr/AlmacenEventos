@@ -5,11 +5,18 @@ from google.auth.transport import requests
 from app.services.sheets_service import sheet_service
 from app.core.config import get_settings
 
+import time
+
 settings = get_settings()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
+    def __init__(self):
+        self._users_cache = None
+        self._users_cache_time = 0
+        self.CACHE_TTL = 600  # 10 minutes cache expiration
+        
     def verify_password(self, plain_password, hashed_password):
         try:
             return pwd_context.verify(plain_password, hashed_password)
@@ -19,8 +26,21 @@ class AuthService:
     def get_password_hash(self, password):
         return pwd_context.hash(password)
 
+    def _fetch_users_with_cache(self):
+        current_time = time.time()
+        if self._users_cache is None or (current_time - self._users_cache_time) > self.CACHE_TTL:
+            try:
+                self._users_cache = sheet_service.get_users()
+                self._users_cache_time = current_time
+                print(f"AUTH CACHE: Refreshed users from Sheets. Total: {len(self._users_cache)}")
+            except Exception as e:
+                print(f"AUTH ERROR: Failed to fetch users for cache: {e}")
+                if self._users_cache is None:
+                    return [] # Fallback to empty if initial fetch fails
+        return self._users_cache
+
     def get_user_from_sheet(self, email: str) -> Optional[Dict]:
-        users = sheet_service.get_users()
+        users = self._fetch_users_with_cache()
         # Header: USER_ID, ROLE, NAME, PASSWORD
         for user in users:
             # Handle potential header variations (USER_ID vs USER ID vs ID vs EMAIL)
@@ -30,7 +50,7 @@ class AuthService:
             if user_email and str(user_email).strip() == str(email).strip():
                 # Normalize keys for the rest of the app to ensure consistency
                 user["USER_ID"] = user_email
-                return user
+                return user.copy() # Return a copy to prevent accidental cache modification
         return None
 
     def authenticate_user(self, email: str, password: str):
@@ -86,6 +106,17 @@ class AuthService:
             "role": role.upper() # Ensure role is always uppercase
         }
         sheet_service.add_user(user_data)
+        
+        # Invalidate or eagerly update cache
+        if self._users_cache is not None:
+            new_user_cache_entry = {
+                "USER_ID": email,
+                "ROLE": role.upper(),
+                "NAME": name,
+                "PASSWORD": ""
+            }
+            self._users_cache.append(new_user_cache_entry)
+            
         return user_data
 
 auth_service = AuthService()

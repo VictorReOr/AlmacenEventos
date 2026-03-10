@@ -212,3 +212,72 @@ body {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
+
+/* --- INTERACTIVE MAP STYLES --- */
+.map-tooltip {
+  position: absolute;
+  background-color: rgba(20, 25, 30, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  transition: opacity 0.15s ease-in-out;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+}
+
+.map-tooltip h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  color: #A5D6A7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+}
+
+.map-tooltip p {
+  margin: 4px 0;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.map-tooltip .label {
+  color: #90A4AE;
+  font-weight: 500;
+}
+
+.dimmed-location {
+  opacity: 0.15 !important;
+  filter: grayscale(80%) !important;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.legend-item-active {
+  box-shadow: 0 0 0 2px var(--green-main), 0 0 0 4px var(--green-soft);
+  transform: scale(1.05);
+}
+
+.legend-item-inactive {
+  opacity: 0.4;
+  filter: grayscale(80%);
+}
+
+@keyframes animeAura {
+  0% {
+    filter: drop-shadow(0 0 4px var(--aura-color, #ff9800));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 14px var(--aura-color, #ff5722));
+  }
+}
+
+.aura-highlight {
+  animation: animeAura 1s infinite alternate ease-in-out;
+}

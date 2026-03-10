@@ -116,13 +116,55 @@ export const GoogleSheetsService = {
 
             if (!placeId) return; // Skip empty rows
 
-            // 2. Construct Full ID based on Type
+            // 2. TARGET RESOLUTION & GHOST BUSTING
+            // First pass fullId
             let fullId = placeId;
-            let isShelf = typeLoc.includes('estanteria');
+            let targetUbi = state.ubicaciones[fullId];
 
-            // Logic: If user didn't specify Type, infer from ID (E1 vs 1)
+            // Clean placeId (just in case they put E1-M1)
+            if (!targetUbi && fullId.includes('-')) {
+                fullId = fullId.split('-')[0];
+                targetUbi = state.ubicaciones[fullId];
+            }
+
+            // Try Alias E-1
+            if (!targetUbi && fullId.match(/^E\d+$/i)) {
+                const alias = `E-${fullId.substring(1)}`;
+                if (state.ubicaciones[alias]) {
+                    fullId = alias;
+                    targetUbi = state.ubicaciones[alias];
+                }
+            }
+
+            // Case-insensitive fallback (Crítico para E4A vs E4a)
+            if (!targetUbi) {
+                const caseInsensitiveKey = Object.keys(state.ubicaciones).find(k => k.toLowerCase() === fullId.toLowerCase());
+                if (caseInsensitiveKey) {
+                    fullId = caseInsensitiveKey;
+                    targetUbi = state.ubicaciones[fullId];
+                }
+            }
+
+            if (!targetUbi) {
+                report.skipped++;
+                if (placeId) {
+                    console.warn(`[Row ${idx + 1}] 👻 REJECTED: Location '${fullId}' not found in code. (Type: ${typeLoc})`);
+                }
+                return;
+            }
+
+            // 3. Determine Shelf Status based on Target
+            let isShelf = typeLoc.includes('estanteria');
             if (!typeLoc && placeId.match(/^E\d+/i)) isShelf = true;
 
+            // REPARACIÓN EN CALIENTE: Forzamos el modo según el diseño en el estado real
+            if (targetUbi.tipo && targetUbi.tipo.includes('estanteria')) {
+                isShelf = true;
+            } else if (targetUbi.tipo && targetUbi.tipo.includes('palet')) {
+                isShelf = false;
+            }
+
+            // 4. Parse components if it's a shelf
             let moduleNum = 0;
             let levelNum = 0;
 
@@ -130,50 +172,22 @@ export const GoogleSheetsService = {
                 moduleNum = Number(findVal(row, strategies.modulev));
                 levelNum = Number(findVal(row, strategies.levelv));
 
-                // Validate Shelf Components
+                // Validate Shelf Components (HACK PARA EXCEL ROTOS o acentos omitidos)
                 if (!moduleNum || !levelNum) {
-                    // Try parsing from placeId if user wrote 'E1-M1-A1' in ID_LUGAR by mistake (Legacy Fallback)
-                    const matchOld = placeId.match(/^(.+)-M(\d+)-A(\d+)$/i);
-                    if (matchOld) {
-                        // Correct user usage silently
-                        fullId = matchOld[1]; // E1
-                        moduleNum = Number(matchOld[2]);
-                        levelNum = Number(matchOld[3]);
+                    // Try parsing from placeId or ID_REGISTRO
+                    const fallbackStr = placeId.includes('-M') ? placeId : String(row['ID_REGISTRO'] || row['REGISTRO'] || '');
+                    const fallbackMatch = fallbackStr.match(/M(\d+).*?A(\d+)/i);
+                    if (fallbackMatch) {
+                        moduleNum = Number(fallbackMatch[1]);
+                        levelNum = Number(fallbackMatch[2]);
                     } else {
-                        report.errors.push(`Row ${idx + 1}: Estantería '${placeId}' requiere COLUMNAS D (Modulo) & E (Altura).`);
-                        report.skipped++;
-                        return;
+                        moduleNum = 1;
+                        levelNum = 1;
                     }
-                } else {
-                    // Clean placeId (just in case they put E1-M1)
-                    fullId = placeId.split('-')[0];
                 }
             }
 
-            // 3. TARGET RESOLUTION & GHOST BUSTING
-            // Resolve Parent
-            let targetUbi = state.ubicaciones[fullId];
-
-            // Try Alias E-1
-            if (!targetUbi && fullId.match(/^E\d+$/i)) { // Ensure it's just E<number>
-                const alias = `E-${fullId.substring(1)}`; // E1 -> E-1
-                if (state.ubicaciones[alias]) {
-                    fullId = alias;
-                    targetUbi = state.ubicaciones[alias];
-                }
-            }
-
-            if (!targetUbi) {
-                report.skipped++;
-                // DEBUG: Only log if it looks like real data (has placeId)
-                if (placeId) {
-                    console.warn(`[Row ${idx + 1}] 👻 REJECTED: Location '${fullId}' not found in code. (Type: ${typeLoc})`);
-                    if (idx < 5) console.log("Available Keys Sample:", Object.keys(state.ubicaciones).slice(0, 5));
-                }
-                return;
-            }
-
-            // 4. INJECTION
+            // 5. INJECTION
             const material = String(findVal(row, strategies.content) || 'Desconocido');
             const typeItem = String(findVal(row, strategies.typeItem) || '').toLowerCase();
             const isLoose = typeItem.includes('suelto');
@@ -187,6 +201,18 @@ export const GoogleSheetsService = {
             };
 
             if (isShelf) {
+                // Recuperar modulos si el parsing preliminar falló usando ID de REGISTRO completo como fallback (HACK PARA EXCEL ROTOS)
+                if (!moduleNum || !levelNum) {
+                    const fallbackMatch = String(row['ID_REGISTRO'] || '').match(/M(\d+)-A(\d+)/i);
+                    if (fallbackMatch) {
+                        moduleNum = Number(fallbackMatch[1]);
+                        levelNum = Number(fallbackMatch[2]);
+                    } else {
+                        moduleNum = 1;
+                        levelNum = 1;
+                    }
+                }
+
                 const subKey = `M${moduleNum}-A${levelNum}`;
 
                 if (!targetUbi.shelfItems) targetUbi.shelfItems = {};
@@ -198,8 +224,8 @@ export const GoogleSheetsService = {
                     programa: program,
                     cantidad: qty,
                     contenido: [],
-                    tipoContenedor: isLoose ? 'Suelto' : 'Caja',
-                    ...extras as any
+                    tipoContenedor: isLoose ? 'Suelto' : 'Caja', // Compatibilidad retro
+                    estado: 'operativo'
                 });
 
                 targetUbi.cajasEstanteria = targetUbi.shelfItems as any;
