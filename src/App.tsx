@@ -11,6 +11,7 @@ import { AssistantCharacter } from './components/Assistant/AssistantCharacter';
 import { AssistantChat } from './components/Assistant/AssistantChat';
 import { AssistantAlert } from './components/Assistant/AssistantAlert';
 import WarehouseMap from './WarehouseMap';
+import { WarehouseMap3D } from './components/Map3D/WarehouseMap3D';
 import PropertiesPanel from './PropertiesPanel';
 import { ConfigModal } from './ConfigModal';
 import { QuickSearch } from './components/UI/QuickSearch';
@@ -143,6 +144,9 @@ function AuthenticatedApp() {
   console.log("AuthenticatedApp: useAuth() called");
   const { user, logout } = useAuth(); // Añadido cierre de sesión (logout)
   const mapRef = useRef<WarehouseMapRef>(null);
+
+  // Modo Vista 3D
+  const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D');
 
   // Posición del Asistente (Arrastrable)
   const assistantRef = useRef<HTMLDivElement>(null);
@@ -818,27 +822,38 @@ ${ubicacionesStrBuilder.join(',\n')}
           }
 
           main={
-            <WarehouseMap
-              ref={mapRef}
-              ubicaciones={state.ubicaciones}
-              onSelectLocation={handleSelectLocation}
-              onSelectMultiple={(ids) => setSelectedIds(new Set(ids))}
-              selectedIds={selectedIds}
-              onUpdate={handleUpdate}
-              geometry={state.geometry}
-              onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
-              rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
-              showGrid={showGrid}
-              showGeoPoints={editMapMode} // Pass explicit prop for map editing mode
-              isEditModeGlobal={isEditModeGlobal} // NUEVO PROP DE BLOQUEO DE MOVIMIENTO
-              onVisitorError={() => {
-                setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
-              }}
-              programColors={programColors}
-              isMobile={isMobile}
-              readOnly={(isMobile && !isSelectionMode) && !isEditModeGlobal}
-              activeFilter={activeFilter}
-            />
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+              {viewMode === '2D' ? (
+                <WarehouseMap
+                  ref={mapRef}
+                  ubicaciones={state.ubicaciones}
+                  onSelectLocation={handleSelectLocation}
+                  onSelectMultiple={(ids) => setSelectedIds(new Set(ids))}
+                  selectedIds={selectedIds}
+                  onUpdate={handleUpdate}
+                  geometry={state.geometry}
+                  onUpdateGeometry={(newGeo) => pushState({ ...state, geometry: newGeo })}
+                  rotationMode={isPortrait ? 'vertical-ccw' : 'normal'}
+                  showGrid={showGrid}
+                  showGeoPoints={editMapMode} // Pass explicit prop for map editing mode
+                  isEditModeGlobal={isEditModeGlobal} // NUEVO PROP DE BLOQUEO DE MOVIMIENTO
+                  onVisitorError={() => {
+                    setAssistantAlert("Solo puedes admirar el resultado de mi obra, si quieres usarlo tienes que pedir permiso al administrador");
+                  }}
+                  programColors={programColors}
+                  isMobile={isMobile}
+                  readOnly={(isMobile && !isSelectionMode) && !isEditModeGlobal}
+                  activeFilter={activeFilter}
+                />
+              ) : (
+                <WarehouseMap3D
+                  locations={state.ubicaciones}
+                  activeFilter={activeFilter}
+                  geometry={state.geometry}
+                  onHover={() => { }}
+                />
+              )}
+            </div>
           }
           footer={
             isMobile && (
@@ -1019,12 +1034,38 @@ ${ubicacionesStrBuilder.join(',\n')}
               </animated.div>
 
               {/* Leyenda Arrastrable (Pulido de UI) - SOLO ESCRITORIO */}
-              {!isMobile && <DraggableLegend
-                programColors={programColors}
-                activeFilter={activeFilter}
-                onFilterClick={setActiveFilter}
-              />}
+              {!isMobile && <DraggableLegend programColors={programColors} activeFilter={activeFilter} onFilterClick={setActiveFilter} />}
 
+              {/* TOGGLE 3D/2D CONTROLS */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '15px',
+                  right: '15px',
+                  zIndex: 1000,
+                  display: 'flex',
+                  gap: '10px'
+                }}
+              >
+                <button
+                  onClick={() => setViewMode(prev => prev === '2D' ? '3D' : '2D')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: viewMode === '3D' ? '#00E676' : '#2196F3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  🚀 Alternar {viewMode === '2D' ? '3D' : '2D'}
+                </button>
+              </div>
+
+              {/* TOOLTIP EMERGENTE 2D/3D COMBINADO */}
               {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
               <div style={{ position: 'absolute', bottom: 20, left: 20, display: 'flex', gap: 10 }}>
                 <button

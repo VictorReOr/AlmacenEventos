@@ -1,9 +1,12 @@
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isLocal = window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.startsWith('192.168.') ||
+                window.location.hostname.startsWith('10.');
 
 export const config = {
     // Seleccionar URL automáticamente basada en el entorno
     API_BASE_URL: isLocal
-        ? 'http://localhost:8000' // explicitly hit the python backend, avoiding proxy 404s
+        ? '' // utiliza proxy de Vite (evita problemas de CORS y permite acceso en LAN)
         : 'https://warehouse-backend-ag3evcbxeq-no.a.run.app',
 
     // URL de Google Scripts (ya en el código, pero bueno centralizarla)

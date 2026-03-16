@@ -39,6 +39,7 @@ export default defineConfig(({ command }) => ({
     })
   ],
   server: {
+    host: true,
     port: 5200,
     strictPort: true, // Force fail if 5200 is taken, to avoid confusion
     cors: true,
