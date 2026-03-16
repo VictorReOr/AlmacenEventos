@@ -1040,7 +1040,7 @@ ${ubicacionesStrBuilder.join(',\n')}
               <div
                 style={{
                   position: 'absolute',
-                  top: '15px',
+                  top: '10px', // Adjusted to perfectly align vertically with Leaflet map controls
                   right: '140px', // Shifted further left to avoid overlapping the 2D map zoom controls
                   zIndex: 1000,
                   display: 'flex',
