@@ -1041,7 +1041,7 @@ ${ubicacionesStrBuilder.join(',\n')}
                 style={{
                   position: 'absolute',
                   top: '15px',
-                  right: '15px',
+                  right: '140px', // Shifted further left to avoid overlapping the 2D map zoom controls
                   zIndex: 1000,
                   display: 'flex',
                   gap: '10px'
@@ -1061,7 +1061,7 @@ ${ubicacionesStrBuilder.join(',\n')}
                     transition: 'all 0.3s ease'
                   }}
                 >
-                  🚀 Alternar {viewMode === '2D' ? '3D' : '2D'}
+                  {viewMode === '2D' ? 'Modo 3D' : 'Modo 2D'}
                 </button>
               </div>
 
