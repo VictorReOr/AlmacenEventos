@@ -91,7 +91,7 @@ function AuthenticatedApp() {
 
   const getInitialState = () => {
     try {
-      const saved = localStorage.getItem('warehouse_V73.1_SHELVES_FIX');
+      const saved = localStorage.getItem('warehouse_V74.0_LAYOUT_UPDATE');
 
       console.log("App: Generating fresh code state...");
       const codeState = generateInitialState();
@@ -234,7 +234,7 @@ function AuthenticatedApp() {
 
   // Efectos
   useEffect(() => { localStorage.setItem('google_script_url', scriptUrl); }, [scriptUrl]);
-  useEffect(() => { localStorage.setItem('warehouse_V73.1_SHELVES_FIX', JSON.stringify(state)); }, [state]);
+  useEffect(() => { localStorage.setItem('warehouse_V74.0_LAYOUT_UPDATE', JSON.stringify(state)); }, [state]);
   useEffect(() => { localStorage.setItem('program_colors_config', JSON.stringify(programColors)); }, [programColors]);
 
   // --- MANEJADORES (Igual que antes) ---
@@ -715,7 +715,7 @@ ${ubicacionesStrBuilder.join(',\n')}
         <AppShell
           header={
             <Header
-              title="SGA Eventos v1.5.4"
+              title="SGA Eventos v1.5.5"
               subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
               leftAction={
                 <div style={{ display: 'flex', gap: '8px' }}>
