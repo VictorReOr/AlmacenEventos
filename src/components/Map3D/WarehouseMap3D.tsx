@@ -1,0 +1,538 @@
+import React, { Suspense, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Environment, useTexture, SoftShadows, ContactShadows } from '@react-three/drei';
+import type { Ubicacion } from '../../types';
+import { Pallet3D } from './Pallet3D';
+import { Shelf3D } from './Shelf3D';
+import { Van3D } from './Van3D';
+import { FPSControls } from './FPSControls';
+import * as THREE from 'three';
+
+interface WarehouseMap3DProps {
+    locations: Record<string, Ubicacion>;
+    activeFilter: string | null;
+    geometry: { x: number; y: number }[];
+    onHover: (id: string | null, pos?: { x: number, y: number }, locationData?: any) => void;
+}
+
+const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any) => {
+    const floorTexture = useTexture('/textures/texture_concrete_floor_1773221698115.png');
+    floorTexture.wrapS = THREE.RepeatWrapping;
+    floorTexture.wrapT = THREE.RepeatWrapping;
+    floorTexture.repeat.set(15, 15);
+
+    const wallTexture = useTexture('/textures/texture_light_stucco.png');
+    wallTexture.wrapS = THREE.RepeatWrapping;
+    wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(4, 1);
+
+    // The A logo of Junta de Andalucia
+    const juntaLogo = useTexture('/junta_a.svg');
+
+    // Calculate bounding box for the floor
+    let minX = 0, maxX = 10;
+    let minZ = 0, maxZ = 10;
+
+    if (geometry && geometry.length > 0) {
+        minX = Math.min(...geometry.map((p: any) => p.x));
+        maxX = Math.max(...geometry.map((p: any) => p.x));
+        minZ = Math.min(...geometry.map((p: any) => -p.y)); // Note: Z is inverted Y
+        maxZ = Math.max(...geometry.map((p: any) => -p.y));
+    }
+
+    const margin = 4; // 2 meters on each side
+    const floorWidth = (maxX - minX) + margin;
+    const floorDepth = (maxZ - minZ) + margin;
+    const centerX = (minX + maxX) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+
+    floorTexture.repeat.set(floorWidth / 4, floorDepth / 4); // Scale texture tiling with floor size
+
+    return (
+        <group ref={solidsRef}>
+            {/* Infinity Outer Floor to prevent dark void */}
+            <mesh
+                receiveShadow
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[centerX, -0.02, centerZ]}
+                onClick={(e) => {
+                    // Prevenir que clics fuera del almacén hagan cosas raras
+                    e.stopPropagation();
+                }}
+            >
+                <planeGeometry args={[1000, 1000]} />
+                {/* Lighter color for the "outside" world */}
+                <meshStandardMaterial color="#c8d6e5" roughness={1} metalness={0} />
+            </mesh>
+
+            {/* Ground Plane: Catch double clicks to walk */}
+            <mesh
+                receiveShadow
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[centerX, -0.01, centerZ]}
+                onDoubleClick={(e) => {
+                    if (cameraMode === 'fps') {
+                        e.stopPropagation();
+                        setClickTarget(e.point);
+                    }
+                }}
+                onContextMenu={(e) => {
+                    if (cameraMode === 'fps') {
+                        e.stopPropagation();
+                        setClickTarget(e.point);
+                    }
+                }}
+            >
+                <planeGeometry args={[floorWidth, floorDepth]} />
+                <meshStandardMaterial map={floorTexture} roughness={0.8} metalness={0.1} />
+            </mesh>
+
+            {/* Junta de Andalucia Brand Logo on the floor */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[centerX, -0.005, centerZ]}>
+                <planeGeometry args={[6, 6]} />
+                <meshBasicMaterial map={juntaLogo} transparent opacity={0.6} depthWrite={false} color="#ffffff" />
+            </mesh>
+
+            {/* Perimeter Walls mapped from data.ts geometryFinal */}
+            {geometry && geometry.length > 0 && (
+                <group>
+                    {geometry.map((pt: any, i: number) => {
+                        const nextPt = geometry[(i + 1) % geometry.length];
+                        const ptX = pt.x; const ptZ = -pt.y;
+                        const nextPtX = nextPt.x; const nextPtZ = -nextPt.y;
+                        const dx = nextPtX - ptX; const dz = nextPtZ - ptZ;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        const angle = Math.atan2(dz, dx);
+                        let textAngle = -angle;
+                        if (i === 0 || i === 1 || i === 2) textAngle += Math.PI;
+
+                        const cx = ptX + dx / 2;
+                        const cz = ptZ + dz / 2;
+                        const wallHeight = 4;
+                        const wallThickness = 0.2;
+
+                        return (
+                            <group key={`wall-${i}`}>
+                                <mesh position={[cx, wallHeight / 2, cz]} rotation={[0, -angle, 0]} receiveShadow castShadow>
+                                    <boxGeometry args={[dist, wallHeight, wallThickness]} />
+                                    {/* Light stucco texture for walls */}
+                                    <meshStandardMaterial map={wallTexture} color="#E8E8E8" roughness={0.9} />
+                                </mesh>
+                            </group>
+                        );
+                    })}
+                </group>
+            )}
+        </group>
+    );
+};
+
+export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
+    locations,
+    activeFilter,
+    geometry,
+    onHover
+}) => {
+    const [tooltipData, setTooltipData] = useState<{ id: string, x: number, y: number, payload?: any } | null>(null);
+
+    const handleHover = (id: string | null, pos?: { x: number, y: number }, payload?: any) => {
+        // Call parent
+        if (onHover) onHover(id, pos, payload);
+
+        // Update local tooltip state
+        if (id && pos) {
+            setTooltipData({ id, x: pos.x, y: pos.y, payload });
+        } else {
+            setTooltipData(null);
+        }
+    };
+
+    const [cameraMode, setCameraMode] = useState<'orbit' | 'fps'>('fps');
+    const [clickTarget, setClickTarget] = useState<THREE.Vector3 | null>(null);
+
+    // Ref to all physical solid geometries in the scene for collisions
+    const solidsRef = React.useRef<THREE.Group>(null);
+
+    // Calculate a safe spawn point in the mathematical center of the warehouse walls
+    const fpsSpawnPosition = React.useMemo(() => {
+        if (!geometry || geometry.length === 0) return new THREE.Vector3(10, 1.7, 10);
+        let sumX = 0;
+        let sumY = 0;
+        geometry.forEach(p => {
+            sumX += p.x;
+            sumY += -p.y; // Invert Z-axis (2D Y) to match physical warehouse chirality
+        });
+        return new THREE.Vector3(sumX / geometry.length, 1.7, sumY / geometry.length);
+    }, [geometry]);
+
+    return (
+        <div style={{ width: '100%', height: '100%', background: '#1a1a1a', display: 'flex', position: 'relative' }} id="canvas-container">
+            {/* Camera Mode UI Overlay */}
+            <div style={{
+                position: 'absolute',
+                top: 20,
+                left: 20,
+                zIndex: 10,
+                display: 'flex',
+                gap: '10px'
+            }}>
+                <button
+                    onClick={() => {
+                        setCameraMode('orbit');
+                        setClickTarget(null);
+                    }}
+                    style={{
+                        padding: '8px 16px',
+                        background: cameraMode === 'orbit' ? '#4CAF50' : '#333',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                    }}
+                >
+                    🚁 Modo Órbita
+                </button>
+                <button
+                    onClick={() => setCameraMode('fps')}
+                    style={{
+                        padding: '8px 16px',
+                        background: cameraMode === 'fps' ? '#4CAF50' : '#333',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                    }}
+                >
+                    🚶 Modo Explorador
+                </button>
+            </div>
+
+            {cameraMode === 'fps' && (
+                <div style={{
+                    position: 'absolute',
+                    top: 80,
+                    left: 20,
+                    zIndex: 10,
+                    background: 'rgba(0,0,0,0.7)',
+                    color: '#ddd',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    pointerEvents: 'none'
+                }}>
+                    <strong>Controles:</strong><br />
+                    • Haz Click en el lienzo para girar la cabeza.<br />
+                    • Usa W, A, S, D para caminar.<br />
+                    • Doble Click / Click Derecho en el suelo para caminar allá automáticamente.<br />
+                    • Pulsa ESC para liberar el ratón.
+                </div>
+            )}
+
+            <Canvas shadows camera={{ position: [20, 20, 20], fov: 45 }}>
+                <SoftShadows size={10} samples={16} focus={0.5} />
+                {/* Environment & Lighting */}
+                {/* Match the background color to the infinity floor to blend the horizon */}
+                <color attach="background" args={['#c8d6e5']} />
+                <ambientLight intensity={0.8} />
+                <directionalLight
+                    castShadow
+                    position={[10, 25, 15]}
+                    intensity={2.0}
+                    shadow-mapSize={[2048, 2048]}
+                    shadow-camera-left={-50}
+                    shadow-camera-right={50}
+                    shadow-camera-top={50}
+                    shadow-camera-bottom={-50}
+                />
+                <Environment preset="city" />
+
+                {/* Controls */}
+                {cameraMode === 'orbit' ? (
+                    <OrbitControls
+                        makeDefault
+                        minPolarAngle={0}
+                        maxPolarAngle={Math.PI / 2 - 0.05} // Prevent going below ground
+                        enableDamping
+                        dampingFactor={0.05}
+                    />
+                ) : (
+                    <FPSControls
+                        initialPosition={fpsSpawnPosition}
+                        targetPosition={clickTarget}
+                        onTargetReached={() => setClickTarget(null)}
+                        collidablesRef={solidsRef}
+                    />
+                )}
+                <Suspense fallback={null}>
+                    {/* Scene Content */}
+                    <FloorAndWalls geometry={geometry} solidsRef={solidsRef} cameraMode={cameraMode} setClickTarget={setClickTarget} />
+
+                    <group>
+                        {Object.entries(locations).map(([id, loc]) => {
+                            if (loc.tipo === 'estanteria_modulo') {
+                                return <Shelf3D key={id} location={loc} activeFilter={activeFilter} onHover={handleHover} />;
+                            } else if (id.includes('van') || loc.contenido === 'van_v3') {
+                                return <Van3D key={id} location={loc} onHover={handleHover} />;
+                            } else if (loc.tipo === 'palet' || loc.tipo === 'zona_carga') {
+                                return <Pallet3D key={id} location={loc} activeFilter={activeFilter} onHover={handleHover} />;
+                            } else if (loc.tipo === 'puerta') {
+                                // Snap door to nearest wall to prevent z-fighting / wall clipping
+                                let finalX = loc.x;
+                                let finalZ = -loc.y;
+                                let finalRot = -loc.rotation * (Math.PI / 180);
+
+                                if (geometry && geometry.length > 0) {
+                                    let closestDist = Infinity;
+                                    for (let i = 0; i < geometry.length; i++) {
+                                        const p1 = geometry[i];
+                                        const p2 = geometry[(i + 1) % geometry.length];
+                                        const x1 = p1.x, z1 = -p1.y;
+                                        const x2 = p2.x, z2 = -p2.y;
+                                        
+                                        const l2 = (x2 - x1) ** 2 + (z2 - z1) ** 2;
+                                        if (l2 === 0) continue;
+                                        
+                                        let t = ((loc.x - x1) * (x2 - x1) + (-loc.y - z1) * (z2 - z1)) / l2;
+                                        t = Math.max(0, Math.min(1, t));
+                                        
+                                        const projX = x1 + t * (x2 - x1);
+                                        const projZ = z1 + t * (z2 - z1);
+                                        const dist = Math.sqrt((loc.x - projX) ** 2 + (-loc.y - projZ) ** 2);
+                                        
+                                        if (dist < closestDist && dist < 2.0) { // Only snap if within 2 meters
+                                            closestDist = dist;
+                                            finalX = projX;
+                                            finalZ = projZ;
+                                            finalRot = Math.atan2(z2 - z1, x2 - x1);
+                                        }
+                                    }
+                                }
+
+                                const w = loc.width || 3.3; // Default 3.3m wide like in data.ts
+                                const d = 0.4; // frame depth (thicker than 0.2 wall)
+                                const frameH = 3;
+                                const frameT = 0.15; // frame thickness
+
+                                const leafW = w / 2 - frameT;
+                                const leafH = frameH - frameT;
+                                const leafD = 0.35; // Thicker than the 0.2 wall to hide it completely
+
+                                return (
+                                    <group key={id} position={[finalX, 0, finalZ]} rotation={[0, -finalRot, 0]}>
+                                        <group>
+                                            {/* Left Frame */}
+                                            <mesh position={[-w / 2 + frameT / 2, frameH / 2, 0]} castShadow receiveShadow>
+                                                <boxGeometry args={[frameT, frameH, d]} />
+                                                <meshStandardMaterial color="#263238" metalness={0.8} roughness={0.4} /> {/* Very dark metallic grey */}
+                                            </mesh>
+                                            {/* Right Frame */}
+                                            <mesh position={[w / 2 - frameT / 2, frameH / 2, 0]} castShadow receiveShadow>
+                                                <boxGeometry args={[frameT, frameH, d]} />
+                                                <meshStandardMaterial color="#263238" metalness={0.8} roughness={0.4} />
+                                            </mesh>
+                                            {/* Top Frame */}
+                                            <mesh position={[0, frameH - frameT / 2, 0]} castShadow receiveShadow>
+                                                <boxGeometry args={[w, frameT, d]} />
+                                                <meshStandardMaterial color="#263238" metalness={0.8} roughness={0.4} />
+                                            </mesh>
+
+                                            {/* Left Solid Metal Door Leaf */}
+                                            <mesh position={[-w / 4 + frameT / 2 - 0.01, leafH / 2, 0]} castShadow> {/* shifted slightly left for gap */}
+                                                <boxGeometry args={[leafW - 0.02, leafH, leafD]} />
+                                                <meshStandardMaterial color="#90a4ae" metalness={0.7} roughness={0.4} /> {/* Steel grey */}
+                                            </mesh>
+
+                                            {/* Right Solid Metal Door Leaf */}
+                                            <mesh position={[w / 4 - frameT / 2 + 0.01, leafH / 2, 0]} castShadow> {/* shifted slightly right for gap */}
+                                                <boxGeometry args={[leafW - 0.02, leafH, leafD]} />
+                                                <meshStandardMaterial color="#90a4ae" metalness={0.7} roughness={0.4} />
+                                            </mesh>
+                                            
+                                            {/* Center separating line / gap shadow */}
+                                            <mesh position={[0, leafH / 2, 0]} castShadow>
+                                                <boxGeometry args={[0.02, leafH, leafD + 0.01]} />
+                                                <meshStandardMaterial color="#1a252c" roughness={1} />
+                                            </mesh>
+                                            
+                                            {/* Handles (Front) */}
+                                            <mesh position={[-0.1, frameH / 2, leafD / 2 + 0.02]} castShadow>
+                                                <boxGeometry args={[0.04, 0.4, 0.04]} />
+                                                <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
+                                            </mesh>
+                                            <mesh position={[0.1, frameH / 2, leafD / 2 + 0.02]} castShadow>
+                                                <boxGeometry args={[0.04, 0.4, 0.04]} />
+                                                <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
+                                            </mesh>
+                                            
+                                            {/* Handles (Back) */}
+                                            <mesh position={[-0.1, frameH / 2, -leafD / 2 - 0.02]} castShadow>
+                                                <boxGeometry args={[0.04, 0.4, 0.04]} />
+                                                <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
+                                            </mesh>
+                                            <mesh position={[0.1, frameH / 2, -leafD / 2 - 0.02]} castShadow>
+                                                <boxGeometry args={[0.04, 0.4, 0.04]} />
+                                                <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
+                                            </mesh>
+                                        </group>
+                                    </group>
+                                );
+                            }
+                            return null;
+                        })}
+                    </group>
+
+                    {/* Contact Shadows to anchor objects visually, acting as a lightweight SSAO alternative */}
+                    <ContactShadows position={[0, 0.01, 0]} opacity={0.6} scale={100} blur={2} far={2} />
+                </Suspense>
+            </Canvas>
+
+            {/* FPS Sniper Crosshair Overlay */}
+            {cameraMode === 'fps' && (
+                <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255, 255, 255, 0.7)',
+                    borderRadius: '50%',
+                    pointerEvents: 'none',
+                    zIndex: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 0 2px rgba(0,0,0,0.5)'
+                }}>
+                    <div style={{
+                        width: '4px',
+                        height: '4px',
+                        backgroundColor: '#ff3333',
+                        borderRadius: '50%',
+                        boxShadow: '0 0 2px rgba(0,0,0,0.8)'
+                    }} />
+                </div>
+            )}
+
+            {/* HTML Tooltip Overlay directly ported from 2D map */}
+            {tooltipData && tooltipData.payload && (
+                <div
+                    className="map-tooltip"
+                    style={{ left: tooltipData.x, top: tooltipData.y }}
+                >
+                    {(() => {
+                        const loc = tooltipData.payload;
+                        if (loc.tipo === 'muro' || loc.tipo === 'puerta' || loc.tipo === 'zona_carga') return <div>{loc.contenido || loc.id}</div>;
+
+                        // Recolectar datos
+                        const lots = new Set<string>();
+                        const progs = new Set<string>();
+                        const materials = new Set<string>();
+                        let totalQty = 0;
+                        let labelHead = loc.id;
+
+                        // Handle Shelves vs Pallets
+                        if (loc.tipo === 'estanteria_modulo') {
+                            // If the hover is a specific slot (e.g. 'E1-M1 - M1-A1'), the id has the slot info
+                            labelHead = tooltipData.id;
+
+                            // Extract the slot ID from the string, e.g., "M1-A1"
+                            const parts = tooltipData.id.split(' - ');
+                            const slotId = parts.length > 1 ? parts[1] : null;
+
+                            const processCajasList = (cajaList: any) => {
+                                const arr = Array.isArray(cajaList) ? cajaList : [(cajaList as any)];
+                                arr.forEach((c: any) => {
+                                    const anyC = c as any;
+                                    if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                    if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
+                                    totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                    if (c.descripcion) materials.add(c.descripcion);
+                                    if (c.contenido && Array.isArray(c.contenido)) {
+                                        c.contenido.forEach((mat: any) => {
+                                            if (mat.nombre) materials.add(mat.nombre);
+                                        });
+                                    }
+                                });
+                            };
+
+                            if (slotId && loc.cajasEstanteria && loc.cajasEstanteria[slotId]) {
+                                // EXACT ISOLATED SLOT DATA
+                                processCajasList(loc.cajasEstanteria[slotId]);
+                            } else {
+                                // FALLBACK: FULL AGGREGATION
+                                Object.values(loc.cajasEstanteria || {}).forEach(processCajasList);
+                            }
+                        } else {
+                            // Palet
+                            if (loc['LOTE']) lots.add(String(loc['LOTE']));
+                            if (loc.programa && loc.programa !== 'Vacio') progs.add(loc.programa);
+                            (loc.cajas || []).forEach((c: any) => {
+                                const anyC = c as any;
+                                if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
+                                totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                if (c.descripcion) materials.add(c.descripcion);
+                                if (c.contenido && Array.isArray(c.contenido)) {
+                                    c.contenido.forEach((mat: any) => {
+                                        if (mat.nombre) materials.add(mat.nombre);
+                                    });
+                                }
+                            });
+
+                            // For loose materials
+                            if (loc.materiales && Array.isArray(loc.materiales)) {
+                                loc.materiales.forEach((mat: any) => {
+                                    if (mat.nombre) materials.add(mat.nombre);
+                                    totalQty += (mat.cantidad || 0);
+                                });
+                            }
+                        }
+
+                        const lotArray = Array.from(lots);
+                        const progArray = Array.from(progs);
+                        const matArray = Array.from(materials);
+
+                        return (
+                            <>
+                                <div style={{ fontWeight: 'bold', borderBottom: '1px solid #ffffff40', paddingBottom: '4px', marginBottom: '8px' }}>
+                                    {labelHead}
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 8px', fontSize: '13px' }}>
+                                    <span className="label">Programas:</span>
+                                    <span>{progArray.length > 0 ? (progArray.length > 2 ? `${progArray.length} prog.` : progArray.join(', ')) : '-'}</span>
+
+                                    {lotArray.length > 0 && lotArray[0] !== '-' && lotArray[0] !== '' && (
+                                        <>
+                                            <span className="label">Lotes:</span>
+                                            <span style={{ fontSize: lotArray.length > 2 ? '11px' : '13px' }}>
+                                                {lotArray.length > 3 ? `${lotArray.length} lotes` : lotArray.join(', ')}
+                                            </span>
+                                        </>
+                                    )}
+
+                                    <span className="label">Total uds:</span>
+                                    <span style={{ fontWeight: 'bold', color: '#4CAF50' }}>{totalQty > 0 ? totalQty : '-'}</span>
+                                </div>
+
+                                {matArray.length > 0 && (
+                                    <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px dotted #ffffff40', fontSize: '12px', color: '#ddd' }}>
+                                        <span className="label">Contenido:</span>
+                                        <div style={{ marginTop: '2px', lineHeight: 1.2 }}>
+                                            {matArray.length > 3 ? `${matArray.slice(0, 3).join(', ')}... (+${matArray.length - 3})` : matArray.join(', ')}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
+        </div>
+    );
+};
