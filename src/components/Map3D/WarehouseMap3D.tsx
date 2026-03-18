@@ -16,18 +16,18 @@ interface WarehouseMap3DProps {
 }
 
 const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any) => {
-    const floorTexture = useTexture('/textures/texture_concrete_floor_1773221698115.png');
+    const floorTexture = useTexture(`${import.meta.env.BASE_URL}textures/texture_concrete_floor_1773221698115.png`);
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
     floorTexture.repeat.set(15, 15);
 
-    const wallTexture = useTexture('/textures/texture_light_stucco.png');
+    const wallTexture = useTexture(`${import.meta.env.BASE_URL}textures/texture_light_stucco.png`);
     wallTexture.wrapS = THREE.RepeatWrapping;
     wallTexture.wrapT = THREE.RepeatWrapping;
     wallTexture.repeat.set(4, 1);
 
     // The A logo of Junta de Andalucia
-    const juntaLogo = useTexture('/junta_a.svg');
+    const juntaLogo = useTexture(`${import.meta.env.BASE_URL}junta_a.svg`);
 
     // Calculate bounding box for the floor
     let minX = 0, maxX = 10;
