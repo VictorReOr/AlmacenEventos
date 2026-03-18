@@ -6,7 +6,7 @@ const isLocal = window.location.hostname === 'localhost' ||
 export const config = {
     // Seleccionar URL automáticamente basada en el entorno
     API_BASE_URL: isLocal
-        ? '' // utiliza proxy de Vite (evita problemas de CORS y permite acceso en LAN)
+        ? 'https://warehouse-backend-ag3evcbxeq-no.a.run.app' // Usar backend real para evitar el error sin backend local
         : 'https://warehouse-backend-ag3evcbxeq-no.a.run.app',
 
     // URL de Google Scripts (ya en el código, pero bueno centralizarla)
