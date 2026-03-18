@@ -14,8 +14,8 @@ export const Shelf3D: React.FC<Shelf3DProps> = ({ location, activeFilter, onHove
     const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
     const [metalTex, boxTex] = useTexture([
-        '/textures/texture_brushed_metal_1773221723747.png',
-        '/textures/texture_corrugated_cardboard.bmp'
+        `${import.meta.env.BASE_URL}textures/texture_brushed_metal_1773221723747.png`,
+        `${import.meta.env.BASE_URL}textures/texture_corrugated_cardboard.bmp`
     ]);
 
     useMemo(() => {

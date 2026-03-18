@@ -16,8 +16,8 @@ export const Pallet3D: React.FC<Pallet3DProps> = ({ location, activeFilter, onHo
     const [hovered, setHovered] = useState(false);
 
     const [woodTex, boxTex] = useTexture([
-        '/textures/texture_wood_pallet_1773221682858.png',
-        '/textures/texture_corrugated_cardboard.bmp'
+        `${import.meta.env.BASE_URL}textures/texture_wood_pallet_1773221682858.png`,
+        `${import.meta.env.BASE_URL}textures/texture_corrugated_cardboard.bmp`
     ]);
 
     useMemo(() => {
