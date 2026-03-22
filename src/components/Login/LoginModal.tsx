@@ -226,12 +226,12 @@ export const LoginModal: React.FC = () => {
 
                             <form onSubmit={handleManualLogin}>
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', color: '#444', fontWeight: 600, fontSize: '0.9rem' }}>Usuario Institucional / Email</label>
+                                    <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', color: '#444', fontWeight: 600, fontSize: '0.9rem' }}>Usuario</label>
                                     <input
                                         id="email"
                                         name="email"
                                         type="text"
-                                        placeholder="ej. victor @ andalucia"
+                                        placeholder="Tu nombre de usuario"
                                         value={email}
                                         onChange={e => setEmail(e.target.value)}
                                         style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', transition: 'border-color 0.2s' }}
