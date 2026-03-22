@@ -1,7 +1,7 @@
 /* ===== FIXED ROOT — mueve todo el conjunto a la esquina superior izquierda ===== */
 .floatingRoot {
     position: fixed;
-    top: 8px;
+    top: -8px;
     left: 16px;
     z-index: 1000;
     display: flex;
