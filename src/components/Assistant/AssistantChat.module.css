@@ -1,9 +1,9 @@
 /* ===== FIXED ROOT — mueve todo el conjunto a la esquina superior izquierda ===== */
 .floatingRoot {
     position: fixed;
-    top: 52px;
+    top: calc(var(--header-height, 56px) + 4px);
     left: 16px;
-    z-index: 500;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -44,10 +44,10 @@
 
 .charLabel {
     pointer-events: none;
-    background: var(--color-primary); /* Green base */
-    color: white;
+    background: white;
+    color: var(--color-primary, #007A33);
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 700;
     padding: 6px 16px;
     border-radius: 20px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.25);
@@ -55,11 +55,11 @@
     opacity: 0;
     transform: translateY(-5px);
     animation: labelFadeIn 0.3s 0.2s forwards;
-    margin-top: -22px; /* Pull it up to overlap the character's shadow/feet */
-    z-index: -1; /* Keep it strictly behind the character */
+    margin-top: -22px;
+    z-index: -1;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border: 2px solid white; /* Adds contrasting edge */
+    border: 2px solid var(--color-primary, #007A33);
 }
 
 @keyframes labelFadeIn {
