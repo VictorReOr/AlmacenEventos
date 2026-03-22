@@ -5,6 +5,22 @@ import { AuthService } from '../../services/AuthService';
 import { jwtDecode } from "jwt-decode";
 import { useIsMobile } from '../../hooks/useIsMobile';
 
+// ── Eye / EyeOff SVG icons ──────────────────────────────────
+const EyeIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+    </svg>
+);
+
+const EyeOffIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+);
+
 export const LoginModal: React.FC = () => {
     const { login } = useAuth();
     const isMobile = useIsMobile();
@@ -12,6 +28,7 @@ export const LoginModal: React.FC = () => {
     // Login State
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     // Register State
     const [isRegistering, setIsRegistering] = useState(false);
@@ -130,7 +147,7 @@ export const LoginModal: React.FC = () => {
 
             {/* Lado Derecho: Formulario de Login */}
             <div style={{
-                flex: isMobile ? "1" : "0 0 450px", /* Estirar en móvil, fijo en desktop */
+                flex: isMobile ? "1" : "0 0 450px",
                 backgroundColor: 'white',
                 display: 'flex',
                 alignItems: isMobile ? 'flex-start' : 'center',
@@ -251,16 +268,39 @@ export const LoginModal: React.FC = () => {
                                             ¿Olvidaste tu clave?
                                         </button>
                                     </div>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={e => setPassword(e.target.value)}
-                                        style={{ width: '100%', boxSizing: 'border-box', padding: '12px 16px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', letterSpacing: '2px', transition: 'border-color 0.2s' }}
-                                        required
-                                    />
+                                    {/* Password field with show/hide toggle */}
+                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                        <input
+                                            id="password"
+                                            name="password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={e => setPassword(e.target.value)}
+                                            style={{
+                                                width: '100%', boxSizing: 'border-box', padding: '12px 48px 12px 16px',
+                                                borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem',
+                                                letterSpacing: showPassword ? 'normal' : '2px', transition: 'border-color 0.2s'
+                                            }}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(v => !v)}
+                                            title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                            style={{
+                                                position: 'absolute', right: '12px',
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                color: '#aaa', padding: '4px', display: 'flex', alignItems: 'center',
+                                                transition: 'color 0.15s'
+                                            }}
+                                            onMouseOver={e => (e.currentTarget.style.color = '#007A33')}
+                                            onMouseOut={e => (e.currentTarget.style.color = '#aaa')}
+                                        >
+                                            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {error && (
@@ -276,12 +316,23 @@ export const LoginModal: React.FC = () => {
                                         width: '100%', padding: '14px', backgroundColor: '#007A33', color: 'white',
                                         border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '1.05rem', fontWeight: 600,
                                         boxShadow: '0 4px 12px rgba(0, 122, 51, 0.2)', transition: 'transform 0.1s, background-color 0.2s',
-                                        marginTop: '0.5rem'
+                                        marginTop: '0.5rem',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
                                     }}
                                     onMouseOver={e => !loading && (e.currentTarget.style.backgroundColor = '#00652a')}
                                     onMouseOut={e => !loading && (e.currentTarget.style.backgroundColor = '#007A33')}
                                 >
-                                    {loading ? 'Verificando Sistema...' : 'Acceder al Almacén'}
+                                    {loading ? (
+                                        <>
+                                            {/* Spinner inline */}
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'spin 0.8s linear infinite' }}>
+                                                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                                                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white"/>
+                                            </svg>
+                                            Verificando...
+                                        </>
+                                    ) : 'Acceder al Almacén'}
                                 </button>
                             </form>
                         </>

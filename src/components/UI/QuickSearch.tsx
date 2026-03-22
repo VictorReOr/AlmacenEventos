@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Fuse from 'fuse.js';
 import type { Ubicacion } from '../../types';
 import styles from './QuickSearch.module.css';
@@ -130,6 +130,19 @@ export const QuickSearch: React.FC<QuickSearchProps> = ({ ubicaciones, onSelectL
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // Ctrl+K global shortcut
+    const handleKeyboardShortcut = useCallback((e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            setIsOpen(prev => !prev);
+        }
+    }, []);
+
+    useEffect(() => {
+        document.addEventListener('keydown', handleKeyboardShortcut);
+        return () => document.removeEventListener('keydown', handleKeyboardShortcut);
+    }, [handleKeyboardShortcut]);
 
 
     return (

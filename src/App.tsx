@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginModal } from './components/Login/LoginModal';
 import { AssistantService } from './services/AssistantService';
-// import { useSpring, animated } from '@react-spring/web'; // Ya no se usa para el Asistente fijo
+import { useToast } from './context/ToastContext';
 
 // Componentes
 import { AppShell } from './components/Layout/AppShell';
@@ -89,6 +89,7 @@ function AuthenticatedApp() {
     showPrintModal, setShowPrintModal, printData, setPrintData, handlePrint, handlePrintSingle,
     mapRef
   } = useWarehouseState();
+  const { showToast } = useToast();
   const [pendingAssistantAction, setPendingAssistantAction] = useState<{ type: string, payload: any } | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
@@ -150,7 +151,9 @@ function AuthenticatedApp() {
           header={
             <Header
               title="SGA Eventos v1.5.5"
-              subtitle={isSyncing ? "Sincronizando..." : "Gestión de Almacén"}
+              subtitle="Gestión de Almacén"
+              userRole={user?.role as any}
+              isSyncing={isSyncing}
               leftAction={
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {/* Menú / Configuración (Lado Izquierdo) - Vacío por ahora */}
@@ -320,10 +323,10 @@ function AuthenticatedApp() {
                           try {
                               const authToken = localStorage.getItem('auth_token') || '';
                               await AssistantService.submitAction('PROPOSE_MOVE', proposalPayload, authToken);
-                              setAssistantAlert('✅ Propuesta enviada. Queda a la espera de aprobación del administrador.');
+                              showToast('Propuesta enviada. Queda a la espera de aprobación del administrador.', 'success');
                           } catch (err) {
                               console.error('Error al enviar propuesta:', err);
-                              setAssistantAlert('⚠️ No se pudo enviar la propuesta al servidor. Inténtalo de nuevo.');
+                              showToast('No se pudo enviar la propuesta al servidor. Inténtalo de nuevo.', 'error');
                           }
 
                           // Guardar en estado local por si se quiere mostrar en el chat
@@ -431,14 +434,13 @@ function AuthenticatedApp() {
                   onSave={(newColors, newUrl) => {
                     console.log("💾 Almacenando Configuración:", newColors);
                     setProgramColors(newColors);
-                    // Forzar guardado inmediato para asegurar que persista incluso si useEffect es lento
                     localStorage.setItem('program_colors_config', JSON.stringify(newColors));
 
                     setScriptUrl(newUrl);
                     localStorage.setItem('google_script_url', newUrl);
 
                     setShowConfig(false);
-                    alert("✅ Configuración guardada correctamente.");
+                    showToast('Configuración guardada correctamente.', 'success');
                   }}
                   onClose={() => setShowConfig(false)}
                 />
@@ -611,7 +613,38 @@ function App() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Cargando...</div>;
+    return (
+      <div style={{
+        height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1a4a1f 0%, #2E7D32 50%, #1B5E20 100%)',
+        fontFamily: "'Inter', system-ui, sans-serif",
+        gap: '24px'
+      }}>
+        {/* Animated warehouse SVG */}
+        <svg width="64" height="64" viewBox="0 0 32 32" fill="none" style={{ filter: 'drop-shadow(0 0 18px rgba(129,199,132,0.6))' }}>
+          <path d="M2 14L16 4L30 14V30H20V20H12V30H2V14Z" fill="url(#loadGrad)" stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeLinejoin="round"/>
+          <rect x="13" y="21" width="6" height="9" rx="1" fill="rgba(255,255,255,0.15)"/>
+          <defs>
+            <linearGradient id="loadGrad" x1="2" y1="4" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#6ee7b7"/>
+              <stop offset="100%" stopColor="#10b981"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        {/* Spinner */}
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(165,214,167,0.9)" strokeWidth="2.5"
+          style={{ animation: 'spin 0.85s linear infinite' }}>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <circle cx="12" cy="12" r="10" strokeOpacity="0.2"/>
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="#69F0AE"/>
+        </svg>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#f1f8e9', fontSize: '1.3rem', fontWeight: 700, letterSpacing: '-0.3px' }}>SGA Eventos</div>
+          <div style={{ color: 'rgba(200,230,201,0.7)', fontSize: '0.75rem', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Cargando sistema...</div>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

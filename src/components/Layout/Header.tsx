@@ -1,19 +1,33 @@
 import React from 'react';
 import styles from './Header.module.css';
 
+type UserRole = 'ADMIN' | 'USER' | 'VISITOR';
+
 interface HeaderProps {
     title?: string;
     subtitle?: string;
     leftAction?: React.ReactNode;
     rightAction?: React.ReactNode;
+    userRole?: UserRole;
+    isSyncing?: boolean;
 }
+
+const ROLE_CFG: Record<UserRole, { label: string; class: string }> = {
+    ADMIN:   { label: 'Admin',   class: styles.roleAdmin },
+    USER:    { label: 'Usuario', class: styles.roleUser },
+    VISITOR: { label: 'Visitor', class: styles.roleVisitor },
+};
 
 export const Header: React.FC<HeaderProps> = ({
     title = "Gestión Almacén",
     subtitle,
     leftAction,
-    rightAction
+    rightAction,
+    userRole,
+    isSyncing = false,
 }) => {
+    const roleCfg = userRole ? ROLE_CFG[userRole] : null;
+
     return (
         <div className={styles.header}>
             {/* Animated background layers */}
@@ -54,11 +68,27 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className={styles.titleGroup}>
                         <h1 className={styles.title}>{title}
                             <span className={styles.versionBadge}>v1.1</span>
+                            {/* Role badge */}
+                            {roleCfg && (
+                                <span className={`${styles.roleBadge} ${roleCfg.class}`}>
+                                    {roleCfg.label}
+                                </span>
+                            )}
                         </h1>
-                        {subtitle
-                            ? <div className={styles.subtitle}>{subtitle}</div>
-                            : <div className={styles.subtitle}>Sistema de control de inventario</div>
-                        }
+                        <div className={styles.subtitle}>
+                            {isSyncing ? (
+                                <span className={styles.syncingRow}>
+                                    {/* Mini spinner */}
+                                    <svg className={styles.syncSpinner} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <circle cx="12" cy="12" r="10" strokeOpacity="0.3"/>
+                                        <path d="M12 2a10 10 0 0 1 10 10"/>
+                                    </svg>
+                                    Sincronizando...
+                                </span>
+                            ) : (
+                                subtitle ?? 'Sistema de control de inventario'
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

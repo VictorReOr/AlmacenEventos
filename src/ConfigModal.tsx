@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styles from './ConfigModal.module.css';
+import { useToast } from './context/ToastContext';
 
 interface ConfigModalProps {
     initialColors: Record<string, string>;
@@ -11,6 +12,7 @@ interface ConfigModalProps {
 export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptUrl, onSave, onClose }) => {
     const [colors, setColors] = useState<Record<string, string>>({ ...initialColors });
     const [url, setUrl] = useState(scriptUrl);
+    const { showToast } = useToast();
 
     const [newProgName, setNewProgName] = useState('');
     const [newProgColor, setNewProgColor] = useState('#123456');
@@ -18,7 +20,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
     const handleAddProgram = () => {
         if (!newProgName) return;
         if (colors[newProgName]) {
-            alert('Este programa ya existe.');
+            showToast('Este programa ya existe.', 'warning');
             return;
         }
         setColors(prev => ({ ...prev, [newProgName]: newProgColor }));
@@ -28,13 +30,14 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
 
     const handleDeleteProgram = (prog: string) => {
         if (prog === 'Vacio') {
-            alert("No se puede borrar 'Vacio'");
+            showToast("No se puede borrar 'Vacio'", 'warning');
             return;
         }
-        if (confirm(`¿Borrar "${prog}"?`)) {
+        if (window.confirm(`¿Borrar "${prog}"?`)) {
             const next = { ...colors };
             delete next[prog];
             setColors(next);
+            showToast(`Programa "${prog}" eliminado.`, 'info');
         }
     };
 
@@ -111,7 +114,7 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({ initialColors, scriptU
                     <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: 10 }}>Zona de Peligro</p>
                     <button
                         onClick={() => {
-                            if (confirm("⚠️ ¿Estás seguro? \n\nEsto BORRARÁ todo el mapa local y restaurará la configuración inicial. \n\nÚsalo solo si el mapa ha desaparecido o está corrupto.")) {
+                            if (window.confirm("Esto BORRARÁ todo el mapa local y restaurará la configuración inicial. ¿Estás seguro?")) {
                                 localStorage.clear();
                                 window.location.reload();
                             }

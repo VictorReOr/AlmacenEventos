@@ -164,6 +164,58 @@
     text-overflow: ellipsis;
 }
 
+/* ── Syncing row ── */
+.syncingRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: rgba(200, 230, 201, 0.95);
+}
+
+.syncSpinner {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    animation: spinHeader 0.75s linear infinite;
+}
+
+@keyframes spinHeader {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Role badge ── */
+.roleBadge {
+    font-size: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-left: 4px;
+    line-height: 1.6;
+    border: 1px solid;
+    transition: opacity 0.2s;
+}
+
+.roleAdmin {
+    background: rgba(27, 94, 32, 0.85);
+    border-color: rgba(129, 199, 132, 0.6);
+    color: #c8e6c9;
+}
+
+.roleUser {
+    background: rgba(13, 71, 161, 0.75);
+    border-color: rgba(100, 181, 246, 0.5);
+    color: #bbdefb;
+}
+
+.roleVisitor {
+    background: rgba(80, 80, 80, 0.6);
+    border-color: rgba(200, 200, 200, 0.35);
+    color: #e0e0e0;
+}
+
 /* ======================================================
    Mobile Responsiveness
    ====================================================== */
