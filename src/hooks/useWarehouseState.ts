@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useHistory } from './useHistory';
 import { GoogleSheetsService } from '../services/GoogleSheetsService';
-import { AssistantService } from '../services/AssistantService';
 import { InventoryService } from '../services/InventoryService';
 import { validateInventory } from '../utils/inventoryValidation';
 import { sanitizeState } from '../utils/cleanup';
@@ -12,7 +11,7 @@ import type { PrintOptions } from '../components/UI/PrintModal';
 import type { InventoryError } from '../utils/inventoryValidation';
 import type { WarehouseMapRef } from '../WarehouseMap';
 
-export function useWarehouseState(user: any) {
+export function useWarehouseState() {
   const mapRef = useRef<WarehouseMapRef>(null);
   const getInitialState = () => {
     try {

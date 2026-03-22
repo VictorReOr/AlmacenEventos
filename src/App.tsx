@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginModal } from './components/Login/LoginModal';
 import { AssistantService } from './services/AssistantService';
@@ -28,7 +28,6 @@ import {
   IconGrid,
   IconMove,
   IconWallEdit,
-  IconFitView,
   IconCloudDown,
   IconSave,
   IconUndo,
@@ -39,7 +38,6 @@ import {
 import './App.css';
 
 import './styles/print.css';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { useIsMobile } from './hooks/useIsMobile';
 
 // --- HOOK DE HISTORIAL ---
@@ -90,7 +88,7 @@ function AuthenticatedApp() {
     showLegendModal, setShowLegendModal, showConfig, setShowConfig,
     showPrintModal, setShowPrintModal, printData, setPrintData, handlePrint, handlePrintSingle,
     mapRef
-  } = useWarehouseState(user);
+  } = useWarehouseState();
   const [pendingAssistantAction, setPendingAssistantAction] = useState<{ type: string, payload: any } | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
@@ -98,7 +96,6 @@ function AuthenticatedApp() {
   const [viewMode, setViewMode] = useState<'2D' | '3D'>('2D');
 
   // Posición del Asistente (Arrastrable)
-  const assistantRef = useRef<HTMLDivElement>(null);
   
   // DEBUG: Mostrar Alerta con URL de API al montar para verificar ruta de conexión
   useEffect(() => {
