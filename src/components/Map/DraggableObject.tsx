@@ -6,6 +6,7 @@ import type { SnapLine } from '../../geometry';
 import { ShelfGraphic } from './ShelfGraphic';
 import { PalletGraphic } from './PalletGraphic';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const SCALE = 35; // px por metro
 const SHELF_MODULE_WIDTH = 1.0; 
@@ -40,7 +41,8 @@ interface DraggablePalletProps {
 
 export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError, activeFilter, onHover, onLeave, onProposeMove }) => {
     const dragGroupRef = useRef<SVGGElement>(null);
-    const { user } = useAuth(); // <- Añadido para restringir estructurales a rol USER
+    const { user } = useAuth();
+    const { showToast } = useToast();
 
     // USER role puede arrastrar palets aunque isEditModeGlobal esté off (para el flujo de propuestas)
     const canUserDragPallet = user?.role === 'USER' && u.tipo === 'palet' && !!onProposeMove;
@@ -345,7 +347,10 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
             if (readOnly) return;
             event.stopPropagation();
             setInteractionMode(null);
+            const lx = parseFloat(rawLabelPos.current.x.toFixed(2));
+            const ly = parseFloat(rawLabelPos.current.y.toFixed(2));
             onUpdate({ ...u, labelX: rawLabelPos.current.x, labelY: rawLabelPos.current.y });
+            showToast(`📌 ${u.id} — labelX: ${lx} | labelY: ${ly}`, 'info');
         }
     }, {
         drag: { filterTaps: true, threshold: 3 },
