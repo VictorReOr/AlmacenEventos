@@ -3,9 +3,11 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../../context/AuthContext';
 import { AuthService } from '../../services/AuthService';
 import { jwtDecode } from "jwt-decode";
+import { useIsMobile } from '../../hooks/useIsMobile';
 
 export const LoginModal: React.FC = () => {
     const { login } = useAuth();
+    const isMobile = useIsMobile();
 
     // Login State
     const [email, setEmail] = useState('');
@@ -83,17 +85,18 @@ export const LoginModal: React.FC = () => {
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
             backgroundColor: '#f8f9fa',
             zIndex: 99999,
             fontFamily: "'Inter', 'Segoe UI', Roboto, sans-serif"
         }}>
             {/* Lado Izquierdo: Imagen e Identidad Corporativa */}
             <div style={{
-                flex: 1,
+                flex: isMobile ? "0 0 30%" : 1,
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '4rem',
+                justifyContent: isMobile ? 'center' : 'space-between',
+                padding: isMobile ? '2rem' : '4rem',
                 color: 'white',
                 position: 'relative',
                 overflow: 'hidden'
@@ -114,28 +117,31 @@ export const LoginModal: React.FC = () => {
 
                 {/* Contenido Izquierdo */}
                 <div style={{ position: 'relative', zIndex: 2 }}>
-                    <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.1, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+                    <h1 style={{ fontSize: isMobile ? '2rem' : '3.5rem', fontWeight: 800, marginBottom: isMobile ? '0.5rem' : '1.5rem', lineHeight: 1.1, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
                         Sistema de Gestión <br/>Digital de Almacén
                     </h1>
-                    <p style={{ fontSize: '1.2rem', opacity: 0.9, maxWidth: '400px', lineHeight: 1.6 }}>
-                        Plataforma centralizada para el control de inventario, gestión de ubicaciones y trazabilidad en tiempo real, del Servicio de eventos deportivos y programas.
-                    </p>
+                    {!isMobile && (
+                        <p style={{ fontSize: '1.2rem', opacity: 0.9, maxWidth: '400px', lineHeight: 1.6 }}>
+                            Plataforma centralizada para el control de inventario, gestión de ubicaciones y trazabilidad en tiempo real, del Servicio de eventos deportivos y programas.
+                        </p>
+                    )}
                 </div>
             </div>
 
             {/* Lado Derecho: Formulario de Login */}
             <div style={{
-                flex: "0 0 450px", /* Ancho fijo para el panel de login */
+                flex: isMobile ? "1" : "0 0 450px", /* Estirar en móvil, fijo en desktop */
                 backgroundColor: 'white',
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: isMobile ? 'flex-start' : 'center',
                 justifyContent: 'center',
-                padding: '3rem',
-                boxShadow: '-10px 0 30px rgba(0,0,0,0.08)',
-                zIndex: 10
+                padding: isMobile ? '2rem' : '3rem',
+                boxShadow: isMobile ? '0 -10px 30px rgba(0,0,0,0.08)' : '-10px 0 30px rgba(0,0,0,0.08)',
+                zIndex: 10,
+                overflowY: 'auto'
             }}>
                 <div style={{ width: '100%', maxWidth: '340px' }}>
-                    <h2 style={{ fontSize: '2rem', color: '#111', marginBottom: '0.5rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+                    <h2 style={{ fontSize: isMobile ? '1.75rem' : '2rem', color: '#111', marginBottom: '0.5rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
                         {isRegistering ? 'Crear Cuenta' : 'Bienvenido'}
                     </h2>
                     <p style={{ color: '#666', marginBottom: '2.5rem', fontSize: '1rem' }}>
