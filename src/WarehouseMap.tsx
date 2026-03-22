@@ -181,7 +181,8 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
         // 3. Lógica de centrado
         const newX = (cw / 2) - (svgCX * newK);
-        const newY = (ch / 2) - (svgCY * newK);
+        // Desplazar el mapa hacia arriba 80px en escritorio para que esté más cerca del header
+        const newY = (ch / 2) - (svgCY * newK) - (isMobile ? 0 : 80);
 
         // Solo actualizar si los valores son válidos
         if (Number.isFinite(newX) && Number.isFinite(newY) && Number.isFinite(newK)) {

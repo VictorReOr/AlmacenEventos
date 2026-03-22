@@ -76,7 +76,7 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
         <div
             style={{
                 position: 'fixed',
-                bottom: '80px',
+                bottom: '20px',
                 left: '50%',
                 transform: 'translateX(-50%)', 
                 backgroundColor: 'white',
