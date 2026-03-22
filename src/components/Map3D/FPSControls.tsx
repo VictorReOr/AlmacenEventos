@@ -9,6 +9,7 @@ interface FPSControlsProps {
     movementSpeed?: number;
     initialPosition?: THREE.Vector3; // Safe spawn point inside
     collidablesRef?: React.RefObject<THREE.Group>; // Reference to solids for collision
+    cameraPoseRef?: React.MutableRefObject<{ x: number; z: number; angle: number }>; // Live camera pose for minimap
 }
 
 export const FPSControls: React.FC<FPSControlsProps> = ({
@@ -16,7 +17,8 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
     onTargetReached,
     movementSpeed = 8,
     initialPosition,
-    collidablesRef
+    collidablesRef,
+    cameraPoseRef,
 }) => {
     const { camera } = useThree();
     const controlsRef = useRef<any>(null);
@@ -164,6 +166,17 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
 
         // Always enforce eye level (keep us grounded)
         camera.position.y = EYE_LEVEL;
+
+        // Update minimap pose ref every frame
+        if (cameraPoseRef) {
+            // Extract yaw from camera quaternion
+            const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+            cameraPoseRef.current = {
+                x: camera.position.x,
+                z: camera.position.z,
+                angle: euler.y + Math.PI, // Convert THREE yaw to canvas angle (north = up)
+            };
+        }
     });
 
     return (

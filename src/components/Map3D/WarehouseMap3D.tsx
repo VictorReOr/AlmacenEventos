@@ -6,6 +6,7 @@ import { Pallet3D } from './Pallet3D';
 import { Shelf3D } from './Shelf3D';
 import { Van3D } from './Van3D';
 import { FPSControls } from './FPSControls';
+import { Minimap3D } from './Minimap3D';
 import * as THREE from 'three';
 
 interface WarehouseMap3DProps {
@@ -153,6 +154,14 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
     // Ref to all physical solid geometries in the scene for collisions
     const solidsRef = React.useRef<THREE.Group>(null);
 
+    // Shared camera pose for minimap — updated every frame from inside the Canvas (FPSControls)
+    // Initialized with zeros; FPSControls writes the real position on the very first frame.
+    const cameraPoseRef = React.useRef<{ x: number; z: number; angle: number }>({
+        x: 0,
+        z: 0,
+        angle: 0,
+    });
+
     // Calculate a safe spawn point in the mathematical center of the warehouse walls
     const fpsSpawnPosition = React.useMemo(() => {
         if (!geometry || geometry.length === 0) return new THREE.Vector3(10, 1.7, 10);
@@ -265,6 +274,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                         targetPosition={clickTarget}
                         onTargetReached={() => setClickTarget(null)}
                         collidablesRef={solidsRef}
+                        cameraPoseRef={cameraPoseRef}
                     />
                 )}
                 <Suspense fallback={null}>
@@ -389,6 +399,15 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                     <ContactShadows position={[0, 0.01, 0]} opacity={0.6} scale={100} blur={2} far={2} />
                 </Suspense>
             </Canvas>
+
+            {/* Minimap overlay — only in FPS mode */}
+            {cameraMode === 'fps' && (
+                <Minimap3D
+                    geometry={geometry}
+                    locations={locations}
+                    cameraPoseRef={cameraPoseRef}
+                />
+            )}
 
             {/* FPS Sniper Crosshair Overlay */}
             {cameraMode === 'fps' && (
