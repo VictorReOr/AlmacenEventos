@@ -111,7 +111,7 @@ export const LoginModal: React.FC = () => {
                 }}/>
                 <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'linear-gradient(135deg, rgba(0, 122, 51, 0.25) 0%, rgba(27, 94, 32, 0.35) 100%)',
+                    background: 'linear-gradient(135deg, rgba(0, 122, 51, 0.75) 0%, rgba(27, 94, 32, 0.85) 100%)',
                     zIndex: 1
                 }}/>
 
