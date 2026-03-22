@@ -7,6 +7,7 @@ import styles from './WarehouseMap.module.css';
 import { getCorners, polygonsIntersect, generateWallsFromFloor, projectPointOnSegment } from './geometry';
 import type { SnapLine } from './geometry';
 import { getLotAttributes } from './utils/lotVisualizer';
+import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 
 // Comprobación de Reconstrucción Forzada
 
@@ -643,27 +644,43 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                 }
             }}
         >
-            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 5, display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                zIndex: 5,
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(8px)',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                border: '1px solid rgba(0,0,0,0.05)',
+                overflow: 'hidden'
+            }}>
                 <button
                     onClick={() => setView(v => ({ ...v, k: Math.min(5, v.k * 1.2) }))}
-                    style={{ padding: '5px 10px', cursor: 'pointer' }}
+                    className={styles.mapToolBtn}
+                    style={{ padding: '10px', cursor: 'pointer', border: 'none', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
                     title="Acercar Zoom"
                 >
-                    +
+                    <ZoomIn size={20} />
                 </button>
                 <button
                     onClick={() => setView(v => ({ ...v, k: Math.max(0.1, v.k / 1.2) }))}
-                    style={{ padding: '5px 10px', cursor: 'pointer' }}
+                    className={styles.mapToolBtn}
+                    style={{ padding: '10px', cursor: 'pointer', border: 'none', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
                     title="Alejar Zoom"
                 >
-                    -
+                    <ZoomOut size={20} />
                 </button>
                 <button
                     onClick={fitToScreen}
-                    style={{ padding: '5px 10px', cursor: 'pointer' }}
+                    className={styles.mapToolBtn}
+                    style={{ padding: '10px', cursor: 'pointer', border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
                     title="Centrar Mapa"
                 >
-                    🎯
+                    <Maximize size={20} />
                 </button>
             </div>
 

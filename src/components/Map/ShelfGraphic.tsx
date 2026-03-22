@@ -288,10 +288,11 @@ export const ShelfGraphic: React.FC<ShelfGraphicProps> = ({
             >
                 {/* ── SVG DEFS ── */}
                 <defs>
-                    {/* Cool slate-blue gradient body */}
-                    <linearGradient id={bodyGradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%"   stopColor="#E8EEF5" />
-                        <stop offset="100%" stopColor="#C8D6E4" />
+                    {/* Metallic steel gradient body */}
+                    <linearGradient id={bodyGradId} x1="0" y1="0" x2={rotationMode === 'vertical-ccw' ? '0' : '1'} y2={rotationMode === 'vertical-ccw' ? '1' : '0'}>
+                        <stop offset="0%"   stopColor="#F5F7FA" />
+                        <stop offset="50%"  stopColor="#E4E8EB" />
+                        <stop offset="100%" stopColor="#CFD8DC" />
                     </linearGradient>
                     {/* Metallic green tab gradient */}
                     <linearGradient id={tabGradId} x1="0" y1="0" x2={rotationMode === 'vertical-ccw' ? '1' : '0'} y2={rotationMode === 'vertical-ccw' ? '0' : '1'}>

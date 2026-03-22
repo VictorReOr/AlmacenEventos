@@ -152,7 +152,7 @@ export const PalletGraphic: React.FC<PalletGraphicProps> = ({
             </defs>
 
             <g
-                className={isHighlighted ? 'aura-highlight' : ''}
+                className={`${isHighlighted ? 'aura-highlight' : ''} pallet-hover`}
                 style={{
                     '--aura-color': activeColor,
                     opacity: isDimmed ? 0.15 : (Number(u.depth) === 0.3 ? 0.6 : 1),
