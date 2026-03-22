@@ -111,13 +111,13 @@ export const LoginModal: React.FC = () => {
                 }}/>
                 <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'linear-gradient(135deg, rgba(0, 122, 51, 0.94) 0%, rgba(27, 94, 32, 0.98) 100%)',
+                    background: 'linear-gradient(135deg, rgba(0, 122, 51, 0.55) 0%, rgba(27, 94, 32, 0.75) 100%)',
                     zIndex: 1
                 }}/>
 
                 {/* Contenido Izquierdo */}
                 <div style={{ position: 'relative', zIndex: 2 }}>
-                    <h1 style={{ fontSize: isMobile ? '2rem' : '3.5rem', fontWeight: 800, marginBottom: isMobile ? '0.5rem' : '1.5rem', lineHeight: 1.1, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+                    <h1 style={{ fontSize: isMobile ? '2rem' : '3.5rem', fontWeight: 800, marginBottom: isMobile ? '0.5rem' : '1.5rem', lineHeight: 1.1, color: 'white', textShadow: '0 2px 15px rgba(0,0,0,0.5)' }}>
                         Sistema de Gestión <br/>Digital de Almacén
                     </h1>
                     {!isMobile && (

@@ -1,14 +1,13 @@
 /* ===== FIXED ROOT — mueve todo el conjunto a la esquina superior izquierda ===== */
 .floatingRoot {
     position: fixed;
-    top: 70px;
+    top: 52px;
     left: 16px;
     z-index: 500;
-    /* No width/height — contenido dicta el tamaño */
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center to align the pill under his feet */
-    gap: 0px; /* Remove gap so the pill touches the character */
+    align-items: center;
+    gap: 0px;
 }
 
 /* ===== PERSONAJE DRAGGABLE ===== */
@@ -56,7 +55,7 @@
     opacity: 0;
     transform: translateY(-5px);
     animation: labelFadeIn 0.3s 0.2s forwards;
-    margin-top: -15px; /* Pull it up to overlap the character's shadow/feet */
+    margin-top: -22px; /* Pull it up to overlap the character's shadow/feet */
     z-index: -1; /* Keep it strictly behind the character */
     text-transform: uppercase;
     letter-spacing: 0.5px;
