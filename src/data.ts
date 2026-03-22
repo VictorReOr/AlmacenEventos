@@ -893,8 +893,8 @@ export const generateInitialState = (): { ubicaciones: Record<string, Ubicacion>
                         depth: 0.45,
                         estanteriaId: 0,
                         mensaje: "Estantería 4b (7 Módulos)",
-                        labelX: 2.748301155516231,
-                        labelY: 127.13938513670307,
+                        labelX: 5.49,
+                        labelY: 151.93,
                         labelRot: 270,
                         labelXV: 117.96474760592724,
                         labelYV: 6.930480520362396
