@@ -348,7 +348,7 @@ function AuthenticatedApp() {
             </div>
           }
           footer={
-            isMobile ? (
+            isMobile && (
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -422,12 +422,13 @@ function AuthenticatedApp() {
                   </button>
                 </div>
               </div>
-            ) : (
-              <DraggableLegend programColors={programColors} activeFilter={activeFilter} onFilterClick={setActiveFilter} />
             )
           }
           overlay={
             <>
+              {/* Leyenda Arrastrable (Pulido de UI) - SOLO ESCRITORIO */}
+              {!isMobile && <DraggableLegend programColors={programColors} activeFilter={activeFilter} onFilterClick={setActiveFilter} />}
+
               {/* Modal de Configuración */}
               {showConfig && (
                 <ConfigModal

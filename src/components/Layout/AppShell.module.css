@@ -24,8 +24,6 @@
     overflow: hidden;
     /* El mapa maneja su propio scroll/pan */
     z-index: var(--z-map);
-    /* Clearance for the floating legend bar (44px height + 24px bottom + 8px gap) */
-    padding-bottom: 76px;
 }
 
 .overlayArea {
@@ -80,11 +78,4 @@
         position: static !important;
         display: block !important;
     }
-}
-
-/* Mobile: legend is in the footer, no extra padding needed */
-@media (max-width: 768px) {
-    .mainArea {
-        padding-bottom: 0;
-    }
-}
+}

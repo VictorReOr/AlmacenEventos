@@ -71,24 +71,24 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
         );
     }
 
-    // Estilo de Escritorio/Flotante
+    // Estilo de Escritorio/Flotante — Elevado a 80px según petición del usuario
     return (
         <div
             style={{
                 position: 'fixed',
-                bottom: '24px',
+                bottom: '80px',
                 left: '50%',
-                transform: 'translateX(-50%)', // Acceder al Centro
+                transform: 'translateX(-50%)', 
                 backgroundColor: 'white',
                 padding: '10px 20px',
                 borderRadius: '8px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)', // Sombra ligeramente más fuerte para elemento flotante
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)', 
                 zIndex: 900,
                 border: '1px solid #e0e0e0',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
-                whiteSpace: 'nowrap' // Prevenir salto de línea si es posible
+                whiteSpace: 'nowrap'
             }}
         >
             {/* Sección de Estado */}
@@ -134,3 +134,4 @@ export const DraggableLegend: React.FC<DraggableLegendProps> = ({ programColors,
         </div>
     );
 };
+
