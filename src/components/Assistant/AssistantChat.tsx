@@ -44,11 +44,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     const [isThinking, setIsThinking] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-
-    // Character drag state
-    const [charPos, setCharPos] = useState({ x: 0, y: 0 });
-    const dragDistance = useRef(0);
-
     // Chat window drag state
     const [chatPos, setChatPos] = useState({ x: 0, y: 0 });
 
@@ -92,30 +87,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     }, [charImgLoaded]);
 
-    const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        const canvas = canvasRef.current;
-        if (!canvas) { handleCharClick(); return; }
-        // Utilizar offsetX / offsetY que el navegador calcula tomando en cuenta los CSS transforms (como el rotate/scale del hover)
-        const x = Math.floor(e.nativeEvent.offsetX * (canvas.width / canvas.offsetWidth));
-        const y = Math.floor(e.nativeEvent.offsetY * (canvas.height / canvas.offsetHeight));
-
-        try {
-            const ctx = canvas.getContext('2d');
-            if (!ctx) { handleCharClick(); return; }
-            const pixel = ctx.getImageData(x, y, 1, 1).data;
-            const alpha = pixel[3];
-            
-            if (alpha > 128) {
-                handleCharClick();
-            } else {
-                // Ignore click on transparent or semi-transparent shadow area
-            }
-        } catch (err) {
-            console.error("Canvas hit testing error:", err);
-            // DO NOT fallback to accepting the click. If it fails, ignore the click.
-        }
-    };
-
     const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -141,25 +112,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             setTimeout(() => inputRef.current?.focus(), 100);
         }
     }, [messages, isOpen]);
-
-    // --- CHARACTER DRAG ---
-    const bindCharDrag = useDrag((params) => {
-        // Track total drag distance to distinguish click vs drag
-        dragDistance.current = Math.abs(params.movement[0]) + Math.abs(params.movement[1]);
-        setCharPos({
-            x: params.offset[0],
-            y: params.offset[1]
-        });
-    }, {
-        from: () => [charPos.x, charPos.y],
-    });
-
     const handleCharClick = () => {
-        // Only toggle open if it was a real click, not end of a drag
-        if (dragDistance.current < 6) {
-            setIsOpen(prev => !prev);
-        }
-        dragDistance.current = 0;
+        setIsOpen(prev => !prev);
     };
 
     // --- CHAT WINDOW DRAG ---
@@ -424,29 +378,24 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     };
 
     return (
-        // Outer wrapper: absolutely positioned, moves with the character drag
-        <div
-            className={styles.floatingRoot}
-            style={{ transform: `translate(${charPos.x}px, ${charPos.y}px)` }}
-        >
-            {/* Character — draggable, clickable only on the image itself */}
+        <div className={styles.floatingRoot}>
+            {/* Character — static, clickable */}
             <div
                 className={styles.character}
-                {...bindCharDrag()}
-                style={{ touchAction: 'none', cursor: 'grab' }}
+                style={{ touchAction: 'none', cursor: 'pointer' }}
+                onClick={handleCharClick}
             >
                 <canvas
                     ref={canvasRef}
                     className={`${styles.characterImg} ${isHovered ? styles.characterImgHovered : ''}`}
-                    onClick={handleCanvasClick}
                     onPointerMove={handleCanvasPointerMove}
                     onPointerLeave={handleCanvasPointerLeave}
                     title="Palessito"
-                    style={{ userSelect: 'none', cursor: isHovered ? 'pointer' : 'default', display: 'block' }}
+                    style={{ userSelect: 'none', display: 'block' }}
                 />
-                {/* Tooltip with name */}
+                {/* Tooltip floor pill */}
                 {!isOpen && (
-                    <span className={styles.charLabel}>Palessito</span>
+                    <span className={styles.charLabel}>Abrir chat</span>
                 )}
             </div>
 

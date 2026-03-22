@@ -1,14 +1,14 @@
-/* ===== FLOATING ROOT — mueve todo el conjunto (character + chat) ===== */
+/* ===== FIXED ROOT — mueve todo el conjunto a la esquina superior izquierda ===== */
 .floatingRoot {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    top: 70px;
+    left: 16px;
     z-index: 500;
     /* No width/height — contenido dicta el tamaño */
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
+    align-items: center; /* Center to align the pill under his feet */
+    gap: 0px; /* Remove gap so the pill touches the character */
 }
 
 /* ===== PERSONAJE DRAGGABLE ===== */
@@ -45,17 +45,22 @@
 
 .charLabel {
     pointer-events: none;
-    background: white;
-    color: var(--color-primary-dark, #1a5c38);
-    font-size: 0.75rem;
+    background: var(--color-primary); /* Green base */
+    color: white;
+    font-size: 0.8rem;
     font-weight: 600;
-    padding: 2px 10px;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    padding: 6px 16px;
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
     white-space: nowrap;
     opacity: 0;
-    transform: translateY(4px);
-    animation: labelFadeIn 0.3s 0.4s forwards;
+    transform: translateY(-5px);
+    animation: labelFadeIn 0.3s 0.2s forwards;
+    margin-top: -15px; /* Pull it up to overlap the character's shadow/feet */
+    z-index: -1; /* Keep it strictly behind the character */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid white; /* Adds contrasting edge */
 }
 
 @keyframes labelFadeIn {
@@ -65,15 +70,15 @@
 /* ===== VENTANA DE CHAT ===== */
 .window {
     position: absolute;
-    /* Se posiciona encima del personaje (bottom referenciado al floatingRoot) */
-    bottom: 80px;
-    right: 0;
+    /* Se posiciona de tal forma que no se salga de la pantalla desde la esquina superior izquierda */
+    top: 130px; /* Bellow the character */
+    left: 0;
     width: 360px;
     min-width: 300px;
     max-width: 90vw;
     height: 500px;
     min-height: 400px;
-    max-height: 80vh;
+    max-height: calc(100vh - 150px);
     background-color: var(--color-bg-card);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
