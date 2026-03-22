@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useDrag } from '@use-gesture/react';
 import type { Ubicacion } from '../../types';
 import styles from './AssistantChat.module.css';
 import { AssistantService } from '../../services/AssistantService';
 import type { AssistantResponse } from '../../services/AssistantService';
 import { ChatConfirmationBubble } from './ChatConfirmationBubble';
 import { AssistantActionHandler } from '../../services/AssistantActionHandler';
+import almacenitoIcon from '../../assets/almacenito_v2.png';
 
 interface AssistantChatProps {
     ubicaciones: Record<string, Ubicacion>;
     selectedId?: string;
     onSelectLocation: (id: string) => void;
     onUpdate: (u: Ubicacion | Ubicacion[]) => void;
-    isOpen: boolean;
-    onClose: () => void;
     initialAction?: { type: string, payload: any } | null;
     onClearAction?: () => void;
 }
@@ -29,8 +29,6 @@ interface Message {
 export const AssistantChat: React.FC<AssistantChatProps> = ({
     ubicaciones,
     onUpdate,
-    isOpen,
-    onClose,
     initialAction,
     onClearAction
 }) => {
@@ -44,12 +42,96 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         }
     ]);
     const [isThinking, setIsThinking] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
-    const [size, setSize] = useState({ w: 360, h: 500 });
+    // Character drag state
+    const [charPos, setCharPos] = useState({ x: 0, y: 0 });
+    const dragDistance = useRef(0);
+
+    // Chat window drag state
+    const [chatPos, setChatPos] = useState({ x: 0, y: 0 });
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Canvas-based pixel-perfect hit test for the character
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [charImgLoaded, setCharImgLoaded] = useState(false);
+    const charImgEl = useRef<HTMLImageElement>(new window.Image());
+
+    useEffect(() => {
+        const img = charImgEl.current;
+        img.crossOrigin = 'anonymous';
+        img.onload = () => setCharImgLoaded(true);
+        img.src = almacenitoIcon;
+        if (img.complete && img.naturalHeight !== 0) {
+            setCharImgLoaded(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!charImgLoaded || !canvasRef.current) return;
+        const img = charImgEl.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx || img.naturalWidth === 0 || img.naturalHeight === 0) return;
+        
+        // Mantener proporciones naturales, escalando al lado mayor = 320px
+        const MAX = 320;
+        const ratio = img.naturalWidth / img.naturalHeight;
+        if (ratio >= 1) {
+            canvas.width = MAX;
+            canvas.height = Math.round(MAX / ratio);
+        } else {
+            canvas.height = MAX;
+            canvas.width = Math.round(MAX * ratio);
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }, [charImgLoaded]);
+
+    const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current;
+        if (!canvas) { handleCharClick(); return; }
+        // Utilizar offsetX / offsetY que el navegador calcula tomando en cuenta los CSS transforms (como el rotate/scale del hover)
+        const x = Math.floor(e.nativeEvent.offsetX * (canvas.width / canvas.offsetWidth));
+        const y = Math.floor(e.nativeEvent.offsetY * (canvas.height / canvas.offsetHeight));
+
+        try {
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { handleCharClick(); return; }
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const alpha = pixel[3];
+            
+            if (alpha > 128) {
+                handleCharClick();
+            } else {
+                // Ignore click on transparent or semi-transparent shadow area
+            }
+        } catch (err) {
+            console.error("Canvas hit testing error:", err);
+            // DO NOT fallback to accepting the click. If it fails, ignore the click.
+        }
+    };
+
+    const handleCanvasPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const x = Math.floor(e.nativeEvent.offsetX * (canvas.width / canvas.offsetWidth));
+        const y = Math.floor(e.nativeEvent.offsetY * (canvas.height / canvas.offsetHeight));
+        try {
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            const alpha = ctx.getImageData(x, y, 1, 1).data[3];
+            setIsHovered(alpha > 128);
+        } catch {
+            setIsHovered(false);
+        }
+    };
+
+    const handleCanvasPointerLeave = () => setIsHovered(false);
 
     const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -60,7 +142,39 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         }
     }, [messages, isOpen]);
 
+    // --- CHARACTER DRAG ---
+    const bindCharDrag = useDrag((params) => {
+        // Track total drag distance to distinguish click vs drag
+        dragDistance.current = Math.abs(params.movement[0]) + Math.abs(params.movement[1]);
+        setCharPos({
+            x: params.offset[0],
+            y: params.offset[1]
+        });
+    }, {
+        from: () => [charPos.x, charPos.y],
+    });
+
+    const handleCharClick = () => {
+        // Only toggle open if it was a real click, not end of a drag
+        if (dragDistance.current < 6) {
+            setIsOpen(prev => !prev);
+        }
+        dragDistance.current = 0;
+    };
+
+    // --- CHAT WINDOW DRAG ---
+    const bindWindowPosition = useDrag((params) => {
+        setChatPos({
+            x: params.offset[0],
+            y: params.offset[1]
+        });
+    }, {
+        from: () => [chatPos.x, chatPos.y],
+    });
+
     // MANEJADORES DE REDIMENSIÓN MANUAL SUPERIOR IZQUIERDA
+    const [size, setSize] = useState({ w: 360, h: 500 });
+
     const handleResizeStart = (e: React.PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -72,13 +186,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
         const onPointerMove = (eMove: PointerEvent) => {
             eMove.preventDefault();
-            // Al arrastrar Top-Left hacia arriba/izquierda, la X/Y decrece, así que el delta positivo es (Start - Move)
             const deltaX = startX - eMove.clientX;
             const deltaY = startY - eMove.clientY;
-
             const newW = Math.max(300, startW + deltaX);
             const newH = Math.max(400, Math.min(window.innerHeight * 0.8, startH + deltaY));
-
             setSize({ w: newW, h: newH });
         };
 
@@ -96,18 +207,17 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     // HANDLE INITIAL ACTION (Manual Entry from UI)
     useEffect(() => {
         const processInitialAction = async () => {
-            if (isOpen && initialAction) {
+            if (initialAction) {
+                // Auto-open when receiving an action
+                setIsOpen(true);
+
                 console.log("Processing Initial Action:", initialAction);
                 setIsThinking(true);
                 try {
-                    // Directly submit specific actions
                     if (initialAction.type === 'MANUAL_ENTRY' || initialAction.type === 'MOVE_PALLET') {
-                        // For MOVE_PALLET, we might want to just pre-fill text or ask question?
-                        // But MANUAL_ENTRY is fully defined.
-
                         if (initialAction.type === 'MANUAL_ENTRY') {
                             const response = await AssistantService.submitAction(
-                                'MOVEMENT', // The backend expects 'MOVEMENT' as the top-level action_type for all inventory actions (ENTRADA, SALIDA, MOVIMIENTO)
+                                'MOVEMENT',
                                 initialAction.payload,
                                 token || ''
                             );
@@ -119,16 +229,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                                     sender: 'bot'
                                 }]);
 
-                                // --- OPTIMISTIC UPDATE ---
                                 try {
-                                    // Map payload to AssistantActionHandler entities
                                     const entities = [
                                         { label: 'DEST_LOC', text: initialAction.payload.destination },
                                         { label: 'ITEM', text: initialAction.payload.item },
                                         { label: 'QUANTITY', text: String(initialAction.payload.qty || 1) }
                                     ];
 
-                                    // Map Action Type
                                     let intent = 'UNKNOWN';
                                     if (initialAction.payload.type === 'ENTRADA') intent = 'ADD';
 
@@ -159,13 +266,11 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                         }
 
                         if (initialAction.type === 'MOVE_PALLET') {
-                            // Pre-fill text for user
                             setMessages(prev => [...prev, {
                                 id: Date.now().toString(),
                                 text: `🚚 Moviendo contenido de ${initialAction.payload.sourceId}. ¿A dónde lo llevamos?`,
                                 sender: 'bot'
                             }]);
-                            // We don't submit yet, we wait for destination.
                         }
                     }
                 } catch (e: any) {
@@ -181,7 +286,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             }
         };
         processInitialAction();
-    }, [isOpen, initialAction]); // Depend on isOpen to trigger when opened
+    }, [initialAction]);
 
 
     // --- HANDLERS ---
@@ -191,21 +296,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         const text = input;
         setInput('');
 
-        // Add User Message
         setMessages(prev => [...prev, { id: Date.now().toString(), text, sender: 'user' }]);
 
         setIsThinking(true);
         try {
-            // Call Backend
             const response = await AssistantService.parseText(text);
-
-            // Add Bot Response (Structured)
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 sender: 'bot',
                 structuredData: response
             }]);
-
         } catch (err) {
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
@@ -221,7 +321,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Add User Message (File)
         setMessages(prev => [...prev, { id: Date.now().toString(), text: `📎 Archivo: ${file.name}`, sender: 'user' }]);
         setIsThinking(true);
 
@@ -232,10 +331,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                 text: `👁️ OCR Completado:\n"${ocrResult.ocr_text}"\n\n¿Es correcto?`,
                 sender: 'bot'
             }]);
-
-            // Auto-fill input with OCR text to allow easy edit/send
             setInput(ocrResult.ocr_text.replace('[MOCK OCR] ', ''));
-
         } catch (err) {
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
@@ -244,7 +340,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             }]);
         } finally {
             setIsThinking(false);
-            // Reset file input
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -258,14 +353,12 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
         setIsThinking(true);
         try {
-            // Updated to call Backend
             const result = await AssistantService.confirmRequest(
                 data.interpretation,
-                data.token, // This is the action token from parse response
-                token || '' // This is the User Auth token
+                data.token,
+                token || ''
             );
 
-            // 1. Handle Response Status
             if (result.status === "PENDING_APPROVAL") {
                 setMessages(prev => [...prev, {
                     id: Date.now().toString(),
@@ -273,19 +366,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                     sender: 'bot'
                 }]);
             } else if (result.status === "SUCCESS") {
-                // If success, we should refresh the map. 
-                // Since backend is source of truth, we might need to reload state or apply local updates if we trust them.
-                // For now, let's assume we need to reload or apply local logic.
-                // Applying local logic for immediate feedback:
-
                 try {
-                    // We re-use logic from AssistantActionHandler just to get updates 
-                    // BUT verify if backend returned updated balance? Backends usually don't return full map updates.
-                    // Let's rely on AssistantActionHandler for the optimistic UI update
-                    // Or Fetch latest map? Fetching latest map is safer.
-                    // Triggering onUpdate with specific changes is key for React state.
-
-                    // Optimistic update:
                     const legacyEntities = data.interpretation.movements.map(mov => ({
                         text: `${mov.item} ${mov.qty} ${mov.origin} ${mov.destination}`,
                         label: mov.type
@@ -311,11 +392,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                         sender: 'bot'
                     }]);
                 }
-
             } else {
                 throw new Error("Estado desconocido: " + result.status);
             }
-
         } catch (e: any) {
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
@@ -335,82 +414,122 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         if (e.key === 'Enter') handleSend();
     };
 
-    if (!isOpen) return null;
-
-    // Helper to render bold text from "**" markers
     const renderMessage = (text: string) => {
         if (!text) return null;
-        // Split by "**" -> ["Hola ", "bold", " world"]
         const parts = text.split(/\*\*(.*?)\*\*/g);
         return parts.map((part, i) => {
-            // Even indices are normal text, Odd are bold
             if (i % 2 === 1) return <strong key={i}>{part}</strong>;
             return <span key={i}>{part}</span>;
         });
     };
 
     return (
-        <div className={styles.window} style={{ width: size.w, height: size.h }}>
-            {/* Tirador visual para redimensionar (arrastrar) */}
+        // Outer wrapper: absolutely positioned, moves with the character drag
+        <div
+            className={styles.floatingRoot}
+            style={{ transform: `translate(${charPos.x}px, ${charPos.y}px)` }}
+        >
+            {/* Character — draggable, clickable only on the image itself */}
             <div
-                className={styles.resizeHandleTopLeft}
-                onPointerDown={handleResizeStart}
-                title="Redimensionar Chat"
-            ></div>
-
-            <div className={styles.header}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>🧠 Palessito</span>
-                </div>
-                <button className={styles.closeBtn} onClick={onClose}>×</button>
+                className={styles.character}
+                {...bindCharDrag()}
+                style={{ touchAction: 'none', cursor: 'grab' }}
+            >
+                <canvas
+                    ref={canvasRef}
+                    className={`${styles.characterImg} ${isHovered ? styles.characterImgHovered : ''}`}
+                    onClick={handleCanvasClick}
+                    onPointerMove={handleCanvasPointerMove}
+                    onPointerLeave={handleCanvasPointerLeave}
+                    title="Palessito"
+                    style={{ userSelect: 'none', cursor: isHovered ? 'pointer' : 'default', display: 'block' }}
+                />
+                {/* Tooltip with name */}
+                {!isOpen && (
+                    <span className={styles.charLabel}>Palessito</span>
+                )}
             </div>
 
-            <div className={styles.messages}>
-                {messages.map(msg => (
-                    <div key={msg.id} className={`${styles.message} ${styles[msg.sender]}`}>
-                        {msg.text && <div style={{ whiteSpace: 'pre-wrap' }}>{renderMessage(msg.text)}</div>}
-
-                        {msg.structuredData && (
-                            <ChatConfirmationBubble
-                                data={msg.structuredData}
-                                onConfirm={() => handleConfirmAction(msg.id)}
-                                onCancel={handleCancelAction}
-                            />
-                        )}
-                    </div>
-                ))}
-                {isThinking && <div className={styles.message} style={{ color: '#888', fontStyle: 'italic' }}>Pensando... 🤔</div>}
-                <div ref={messagesEndRef} />
-            </div>
-
-            <div className={styles.inputArea}>
-                <button
-                    className={styles.attachBtn}
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Adjuntar Foto/PDF"
+            {/* Chat window — shown only when open, positioned above the character */}
+            {isOpen && (
+                <div
+                    className={styles.window}
+                    style={{
+                        width: size.w,
+                        height: size.h,
+                        transform: `translate(${chatPos.x}px, ${chatPos.y}px)`,
+                        touchAction: 'none'
+                    }}
                 >
-                    📎
-                </button>
-                <input
-                    type="file"
-                    hidden
-                    ref={fileInputRef}
-                    accept="image/*,.pdf"
-                    onChange={handleFileUpload}
-                />
+                    {/* Resize handle top-left */}
+                    <div
+                        className={styles.resizeHandleTopLeft}
+                        onPointerDown={handleResizeStart}
+                        title="Redimensionar Chat"
+                    />
 
-                <input
-                    ref={inputRef}
-                    type="text"
-                    className={styles.input}
-                    placeholder="Escribe lo que has hecho..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    disabled={isThinking}
-                />
-                <button className={styles.sendBtn} onClick={handleSend} disabled={isThinking}>➤</button>
-            </div>
+                    {/* Header — draggable */}
+                    <div className={styles.header} {...bindWindowPosition()} style={{ cursor: 'grab' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <img src={almacenitoIcon} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+                            <span>Palessito</span>
+                        </div>
+                        <button
+                            className={styles.closeBtn}
+                            onClick={() => setIsOpen(false)}
+                            title="Cerrar"
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <div className={styles.messages}>
+                        {messages.map(msg => (
+                            <div key={msg.id} className={`${styles.message} ${styles[msg.sender]}`}>
+                                {msg.text && <div style={{ whiteSpace: 'pre-wrap' }}>{renderMessage(msg.text)}</div>}
+                                {msg.structuredData && (
+                                    <ChatConfirmationBubble
+                                        data={msg.structuredData}
+                                        onConfirm={() => handleConfirmAction(msg.id)}
+                                        onCancel={handleCancelAction}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                        {isThinking && <div className={styles.message} style={{ color: '#888', fontStyle: 'italic' }}>Pensando... 🤔</div>}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    <div className={styles.inputArea}>
+                        <button
+                            className={styles.attachBtn}
+                            onClick={() => fileInputRef.current?.click()}
+                            title="Adjuntar Foto/PDF"
+                        >
+                            📎
+                        </button>
+                        <input
+                            type="file"
+                            hidden
+                            ref={fileInputRef}
+                            accept="image/*,.pdf"
+                            onChange={handleFileUpload}
+                        />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className={styles.input}
+                            placeholder="Escribe lo que has hecho..."
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={isThinking}
+                        />
+                        <button className={styles.sendBtn} onClick={handleSend} disabled={isThinking}>➤</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

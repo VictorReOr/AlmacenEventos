@@ -1,103 +1,197 @@
+/* =========================================================
+   Header – Premium Design · Corporate Green Edition
+   ========================================================= */
+
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 100%;
-    padding: 0 var(--space-md);
+    padding: 0 var(--space-md, 16px);
 
-    /* Nuevo estilo: Sólido Verde Branding */
-    background-color: #2E7D32;
-    /* Hardcoded green main for safety */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-bottom: none;
+    /* Corporate green gradient – dark rich forest tones */
+    background: linear-gradient(
+        135deg,
+        #1a4a1f 0%,
+        #2E7D32 40%,
+        #256428 75%,
+        #1B5E20 100%
+    );
+
+    /* Glowing emerald accent line at the bottom */
+    border-bottom: 1.5px solid rgba(129, 199, 132, 0.4);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.35),
+        0 1px 0 rgba(165, 214, 167, 0.15) inset;
 
     color: white;
     position: relative;
-    z-index: var(--z-ui);
+    z-index: var(--z-ui, 100);
+    overflow: hidden;
 }
 
+/* ── Animated radial glow – left side brand warmth ── */
+.bgGlow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse 55% 90% at -5% 50%,
+        rgba(165, 214, 167, 0.18) 0%,
+        transparent 65%
+    );
+    pointer-events: none;
+    z-index: 0;
+    animation: glowPulse 7s ease-in-out infinite alternate;
+}
+
+@keyframes glowPulse {
+    from { opacity: 0.6; transform: scale(1); }
+    to   { opacity: 1;   transform: scale(1.08); }
+}
+
+/* ── Subtle diagonal light streak ── */
+.bgGrid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+    mask-image: linear-gradient(90deg, transparent 0%, black 25%, black 75%, transparent 100%);
+}
+
+/* ── Layout zones ── */
 .left,
 .right {
     display: flex;
     align-items: center;
     min-width: 48px;
     height: 100%;
-    gap: 8px;
-    /* Espaciado entre iconos */
+    gap: 6px;
+    position: relative;
+    z-index: 1;
 }
 
 .center {
     flex: 1;
-    text-align: right;
-    /* Changed from center to right */
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 12px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Brand mark: icon + text ── */
+.brandMark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Warehouse SVG icon ── */
+.warehouseIcon {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 5px rgba(129, 199, 132, 0.6));
+    transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.header:hover .warehouseIcon {
+    filter: drop-shadow(0 0 10px rgba(165, 214, 167, 0.9));
+    transform: scale(1.08) rotate(-2deg);
+}
+
+/* ── Title group ── */
+.titleGroup {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: flex-end;
-    /* Align items to the right */
-    padding-right: 4px;
-    /* Reduced from 16px to 4px to bring it closer */
-    /* Add some spacing from the right action */
     overflow: hidden;
 }
 
 .title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: white;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f1f8e9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.3);
 }
 
-.subtitle {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.85);
-    font-weight: 500;
-    margin-top: 0px;
+/* ── Version badge ── */
+.versionBadge {
+    font-size: 0.57rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #c8e6c9;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(200,230,201,0.4);
+    border-radius: 4px;
+    padding: 1px 5px;
+    vertical-align: middle;
+    line-height: 1.6;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-/* Mobile Responsiveness */
+/* ── Subtitle ── */
+.subtitle {
+    font-size: 0.64rem;
+    color: rgba(200, 230, 201, 0.8);
+    font-weight: 500;
+    margin-top: 1px;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ======================================================
+   Mobile Responsiveness
+   ====================================================== */
 @media (max-width: 600px) {
     .header {
-        padding: 0 4px;
-        /* Minimal padding */
+        padding: 0 6px;
     }
 
-    /* Hide Title on Mobile to prioritize Tools */
     .center {
         display: none;
     }
 
-    /* Allow horizontal scrolling for tools if needed, but hide scrollbar */
     .right {
         min-width: 0;
-        /* Allow shrinking */
         flex: 1;
-        /* Take all space */
         justify-content: flex-end;
-        /* Keep aligned to right */
         overflow-x: auto;
         padding-left: 8px;
-        /* Separation from left config */
-        /* Hide Scrollbar */
         scrollbar-width: none;
-        /* Firefox */
         -ms-overflow-style: none;
-        /* IE 10+ */
     }
 
     .right::-webkit-scrollbar {
         display: none;
-        /* Chrome/Safari */
     }
 
     .left {
         min-width: auto;
-        /* Ensure left doesn't shrink to zero but takes up minimal space */
         flex-shrink: 0;
     }
 }

@@ -39,25 +39,21 @@ export const ShelfGraphic: React.FC<ShelfGraphicProps> = ({
 }) => {
     // Colores Institucionales
     const C_VERDE = "#007A33";
-    const C_STROKE = "#90A4AE";
-    const TAB_THICKNESS = 8;
-
-    // SVG def IDs
-    const bodyGradId = `shelf-body-${u.id}`;
-    const tabGradId  = `shelf-tab-${u.id}`;
-    const clipId     = `shelf-clip-${u.id}`;
+    const C_BG = "#FFFFFF";
+    const C_STROKE = "#CFD8DC";
+    const TAB_THICKNESS = 6;
 
     const numModules = Math.round(u.width / SHELF_MODULE_WIDTH);
 
-    // Separadores con sombra interior definida
+    // Separadores finos completos
     const dividers = [];
     for (let i = 1; i < numModules; i++) {
         if (rotationMode === 'vertical-ccw') {
             const xPos = -finalSvgW / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-            dividers.push(<line key={`d-${i}`} x1={xPos} y1={-finalSvgH / 2 + TAB_THICKNESS} x2={xPos} y2={finalSvgH / 2} stroke="rgba(100,130,160,0.45)" strokeWidth={1.5} />);
+            dividers.push(<line key={`d-${i}`} x1={xPos} y1={-finalSvgH / 2 + TAB_THICKNESS} x2={xPos} y2={finalSvgH / 2} stroke="#e0e0e0" strokeWidth={1} />);
         } else {
             const yPos = -finalSvgH / 2 + (i * SHELF_MODULE_WIDTH * SCALE);
-            dividers.push(<line key={`d-${i}`} x1={-finalSvgW / 2 + TAB_THICKNESS} y1={yPos} x2={finalSvgW / 2} y2={yPos} stroke="rgba(100,130,160,0.45)" strokeWidth={1.5} />);
+            dividers.push(<line key={`d-${i}`} x1={-finalSvgW / 2 + TAB_THICKNESS} y1={yPos} x2={finalSvgW / 2} y2={yPos} stroke="#e0e0e0" strokeWidth={1} />);
         }
     }
 
@@ -286,43 +282,19 @@ export const ShelfGraphic: React.FC<ShelfGraphicProps> = ({
                     transition: 'opacity 0.2s, filter 0.2s'
                 } as React.CSSProperties}
             >
-                {/* ── SVG DEFS ── */}
-                <defs>
-                    {/* Cool slate-blue gradient body */}
-                    <linearGradient id={bodyGradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%"   stopColor="#E8EEF5" />
-                        <stop offset="100%" stopColor="#C8D6E4" />
-                    </linearGradient>
-                    {/* Metallic green tab gradient */}
-                    <linearGradient id={tabGradId} x1="0" y1="0" x2={rotationMode === 'vertical-ccw' ? '1' : '0'} y2={rotationMode === 'vertical-ccw' ? '0' : '1'}>
-                        <stop offset="0%"   stopColor="#1B5E20" />
-                        <stop offset="40%"  stopColor="#43A047" />
-                        <stop offset="70%"  stopColor="#2E7D32" />
-                        <stop offset="100%" stopColor="#1B5E20" />
-                    </linearGradient>
-                    <clipPath id={clipId}>
-                        <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} rx={3} />
-                    </clipPath>
-                </defs>
+                <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))' }} />
+                {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#2E7D32" strokeWidth={2} rx={3} />}
 
-                {/* ── DROP SHADOW ── */}
-                <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill="none" style={{ filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.16))' }} />
+                <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill={C_BG} stroke={C_STROKE} strokeWidth={1} rx={2} />
 
-                {/* ── SELECTION GLOW ── */}
-                {isSelected && <rect x={-finalSvgW / 2 - 4} y={-finalSvgH / 2 - 4} width={finalSvgW + 8} height={finalSvgH + 8} fill="none" stroke="#2E7D32" strokeWidth={2.5} rx={4} style={{ filter: 'drop-shadow(0 0 4px #4CAF50)', animation: 'selPulse 1.4s ease-in-out infinite alternate' }} />}
-
-                {/* ── BODY: slate-blue gradient ── */}
-                <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={finalSvgH} fill={`url(#${bodyGradId})`} stroke={C_STROKE} strokeWidth={1.5} rx={3} />
-
-                {/* ── METALLIC GREEN TAB ── */}
                 {rotationMode === 'vertical-ccw' ? (
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={TAB_THICKNESS} fill={`url(#${tabGradId})`} clipPath={`url(#${clipId})`} rx={2} />
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={finalSvgW} height={TAB_THICKNESS} fill={C_VERDE} />
                 ) : (
-                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={TAB_THICKNESS} height={finalSvgH} fill={`url(#${tabGradId})`} clipPath={`url(#${clipId})`} rx={2} />
+                    <rect x={-finalSvgW / 2} y={-finalSvgH / 2} width={TAB_THICKNESS} height={finalSvgH} fill={C_VERDE} />
                 )}
 
                 {dividers}
-                
+                <title>{u.contenido || u.id}</title>
                 {programIndicators}
 
                 {Array.from({ length: numModules }).map((_, i) => {
@@ -340,41 +312,11 @@ export const ShelfGraphic: React.FC<ShelfGraphicProps> = ({
                     }
 
                     return (
-                        <g key={`lbl-${moduleIndex}`} data-module={moduleIndex} data-shelf={u.id}>
-                            {/* Hit area invisible para el módulo */}
-                            <rect 
-                                x={rotationMode === 'vertical-ccw' ? textX - (SHELF_MODULE_WIDTH * SCALE / 2) : -finalSvgW / 2}
-                                y={rotationMode === 'vertical-ccw' ? -finalSvgH / 2 : textY - (SHELF_MODULE_WIDTH * SCALE / 2)}
-                                width={rotationMode === 'vertical-ccw' ? SHELF_MODULE_WIDTH * SCALE : finalSvgW}
-                                height={rotationMode === 'vertical-ccw' ? finalSvgH : SHELF_MODULE_WIDTH * SCALE}
-                                fill="black"
-                                fillOpacity={0.01}
-                                style={{ pointerEvents: 'all', cursor: 'pointer' }}
-                            />
-                            {/* Module number pill */}
-                            <rect
-                                x={(rotationMode === 'vertical-ccw' ? textX - 11 : textX - 15)}
-                                y={(rotationMode === 'vertical-ccw' ? textY - 6   : textY - 6)}
-                                width={rotationMode === 'vertical-ccw' ? 22 : 14}
-                                height={12}
-                                rx={3} ry={3}
-                                fill="rgba(255,255,255,0.70)"
-                                stroke="rgba(70,100,140,0.20)"
-                                strokeWidth={0.5}
-                                style={{ pointerEvents: 'none' }}
-                            />
-                            <text
-                                x={textX - (rotationMode === 'vertical-ccw' ? 0 : 8)}
-                                y={textY + 1}
-                                fontSize={8.5}
-                                fontWeight="800"
-                                fill="#2E5080"
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                                style={{ userSelect: 'none', pointerEvents: 'none' }}
-                            >
+                        <g key={`lbl-${moduleIndex}`}>
+                            <text x={textX - 8} y={textY - 2} fontSize={9} fontWeight="800" fill="#cfcfcf" textAnchor="middle" dominantBaseline="middle" style={{ userSelect: 'none', pointerEvents: 'none' }}>
                                 {moduleIndex}
                             </text>
+                            {/* DEBUG VISUAL TEMP */}
                         </g>
                     );
                 })}

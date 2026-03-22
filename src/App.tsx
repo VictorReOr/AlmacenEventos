@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginModal } from './components/Login/LoginModal';
-import { useDrag } from '@use-gesture/react';
-import { useSpring, animated } from '@react-spring/web';
+import { AssistantService } from './services/AssistantService';
+// import { useSpring, animated } from '@react-spring/web'; // Ya no se usa para el Asistente fijo
 
 // Componentes
 import { AppShell } from './components/Layout/AppShell';
 import { Header } from './components/Layout/Header';
-import { AssistantCharacter } from './components/Assistant/AssistantCharacter';
 import { AssistantChat } from './components/Assistant/AssistantChat';
 import { AssistantAlert } from './components/Assistant/AssistantAlert';
 import WarehouseMap from './WarehouseMap';
@@ -27,6 +26,9 @@ import {
   IconSelection,
   IconPrinter,
   IconGrid,
+  IconMove,
+  IconWallEdit,
+  IconFitView,
   IconCloudDown,
   IconSave,
   IconUndo,
@@ -89,7 +91,6 @@ function AuthenticatedApp() {
     showPrintModal, setShowPrintModal, printData, setPrintData, handlePrint, handlePrintSingle,
     mapRef
   } = useWarehouseState(user);
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [pendingAssistantAction, setPendingAssistantAction] = useState<{ type: string, payload: any } | null>(null);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
@@ -98,29 +99,7 @@ function AuthenticatedApp() {
 
   // Posición del Asistente (Arrastrable)
   const assistantRef = useRef<HTMLDivElement>(null);
-  // Posición Persistente
-  const [assistantPos, setAssistantPos] = useLocalStorage<{ x: number, y: number }>('assistant_pos_v5', { x: 0, y: 0 });
-
-  // Inicializar spring desde el almacenamiento
-  const [{ x, y }, api] = useSpring(() => ({ x: assistantPos.x, y: assistantPos.y }));
-
-  const bindAssistantDrag = useDrag(({ offset: [ox, oy], tap, down, last }) => {
-    if (tap) {
-      if (!down) setIsChatbotOpen(prev => !prev);
-    } else {
-      // Mapeo directo de offset a x/y.
-      api.start({ x: ox, y: oy, immediate: down });
-      if (last) {
-        setAssistantPos({ x: ox, y: oy });
-      }
-    }
-  }, {
-    // Empezar desde los valores actuales
-    from: () => [x.get(), y.get()],
-    filterTaps: true,
-    rubberband: true
-  });
-
+  
   // DEBUG: Mostrar Alerta con URL de API al montar para verificar ruta de conexión
   useEffect(() => {
     // console.log("🔌 Conectando a:", config.API_BASE_URL);
@@ -153,7 +132,10 @@ function AuthenticatedApp() {
           <span style={{ fontWeight: 'bold' }}>SGA Eventos - Admin</span>
         </div>
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <AdminDashboard />
+          <AdminDashboard
+            mapGeometry={state.geometry}
+            mapUbicaciones={state.ubicaciones}
+          />
         </div>
       </div>
     );
@@ -180,14 +162,19 @@ function AuthenticatedApp() {
               rightAction={
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
-                  {/* Controles de la Nube */}
+                  {/* Controles de la Nube y Deshacer */}
+                  {user?.role !== 'VISITOR' && (
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
-                      <IconCloudDown size={20} />
-                    </button>
-                    <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
-                      <IconSave size={20} />
-                    </button>
+                    {user?.role === 'ADMIN' && (
+                      <>
+                        <button onClick={() => handleLoadFromCloud(false)} disabled={isSyncing} className="icon-btn" title="Cargar">
+                          <IconCloudDown size={20} />
+                        </button>
+                        <button onClick={handleSaveToCloud} disabled={isSyncing} className="icon-btn" title="Guardar">
+                          <IconSave size={20} />
+                        </button>
+                      </>
+                    )}
                     <button onClick={undo} disabled={!canUndo} className="icon-btn" title="Deshacer">
                       <IconUndo size={20} />
                     </button>
@@ -195,6 +182,7 @@ function AuthenticatedApp() {
                       <IconRedo size={20} />
                     </button>
                   </div>
+                  )}
 
                   <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
@@ -205,28 +193,27 @@ function AuthenticatedApp() {
 
                   <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
-                  {/* Grupo de Controles del Mapa */}
+                  {/* Grupo de Controles del Mapa (Exclusivo Admin y User, no Visitor) */}
+                  {user?.role !== 'VISITOR' && (
                   <div style={{ display: 'flex', gap: 4 }}>
-                    {user?.role === 'ADMIN' && (
-                      <button
-                        onClick={() => setIsEditModeGlobal(!isEditModeGlobal)}
-                        className={`icon-btn ${isEditModeGlobal ? 'active' : ''}`}
-                        title={isEditModeGlobal ? "Bloquear Movimiento" : "Modo Edición (Mover Objetos)"}
-                        style={isEditModeGlobal ? { backgroundColor: '#4CAF50', color: 'white' } : {}}
-                      >
-                        ✋
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setIsEditModeGlobal(!isEditModeGlobal)}
+                      className={`icon-btn ${isEditModeGlobal ? 'active' : ''}`}
+                      title={isEditModeGlobal ? "Bloquear Movimiento" : "Modo Mover Palets"}
+                      style={isEditModeGlobal ? { backgroundColor: '#4CAF50', color: 'white' } : {}}
+                    >
+                      <IconMove active={isEditModeGlobal} size={20} />
+                    </button>
 
                     {user?.role === 'ADMIN' && (
-                      <button
-                        onClick={() => setEditMapMode(!editMapMode)}
-                        className={`icon-btn ${editMapMode ? 'active' : ''}`}
-                        title={editMapMode ? "Cerrar Modo Mapeado" : "Editar Muros del Almacén"}
-                        style={editMapMode ? { backgroundColor: '#F44336', color: 'white' } : {}}
-                      >
-                        📐
-                      </button>
+                    <button
+                      onClick={() => setEditMapMode(!editMapMode)}
+                      className={`icon-btn ${editMapMode ? 'active' : ''}`}
+                      title={editMapMode ? "Cerrar Modo Mapeado" : "Editar Muros del Almacén"}
+                      style={editMapMode ? { backgroundColor: '#F44336', color: 'white' } : {}}
+                    >
+                      <IconWallEdit active={editMapMode} size={20} color={editMapMode ? 'white' : 'currentColor'} />
+                    </button>
                     )}
 
                     <button
@@ -245,6 +232,16 @@ function AuthenticatedApp() {
                       <IconGrid active={showGrid} size={20} />
                     </button>
                   </div>
+                  )}
+
+                  {/* Si es Visitor, al menos ve Print y Grid */}
+                  {user?.role === 'VISITOR' && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setShowGrid(!showGrid)} className="icon-btn" title="Rejilla">
+                      <IconGrid active={showGrid} size={20} />
+                    </button>
+                  </div>
+                  )}
 
                   {/* BOTÓN DE ADMINISTRADOR (Movido Aquí) */}
                   {user?.role === 'ADMIN' && (
@@ -270,7 +267,7 @@ function AuthenticatedApp() {
                   <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px' }} />
 
                   {/* Menú de Usuario (Avatar) */}
-                  <UserMenu user={user} onLogout={logout} onExportDataTS={handleExportDataTS} />
+                  <UserMenu user={user} onLogout={logout} onExportDataTS={user?.role === 'ADMIN' ? handleExportDataTS : undefined} />
                 </div>
               }
             />
@@ -299,6 +296,46 @@ function AuthenticatedApp() {
                   isMobile={isMobile}
                   readOnly={(isMobile && !isSelectionMode) && !isEditModeGlobal}
                   activeFilter={activeFilter}
+                  onProposeMove={async (updates) => {
+                      if (updates.length > 0) {
+                          const leader = updates[0];
+                          const original = state.ubicaciones[leader.id];
+
+                          // Versión ligera de ubicaciones (solo datos geométricos para mini-mapa)
+                          const slimLocations: Record<string, any> = {};
+                          Object.values(state.ubicaciones).forEach(u => {
+                              slimLocations[u.id] = { id: u.id, tipo: u.tipo, x: u.x, y: u.y, width: u.width, depth: u.depth, rotation: u.rotation };
+                          });
+
+                          const proposalPayload = {
+                              locationId: leader.id,
+                              originalX: original?.x ?? leader.x,
+                              originalY: original?.y ?? leader.y,
+                              originalRot: original?.rotation ?? 0,
+                              newX: leader.x,
+                              newY: leader.y,
+                              newRot: leader.rotation,
+                              geometry: state.geometry,
+                              allLocations: slimLocations
+                          };
+
+                          // Persistir en BD
+                          try {
+                              const authToken = localStorage.getItem('auth_token') || '';
+                              await AssistantService.submitAction('PROPOSE_MOVE', proposalPayload, authToken);
+                              setAssistantAlert('✅ Propuesta enviada. Queda a la espera de aprobación del administrador.');
+                          } catch (err) {
+                              console.error('Error al enviar propuesta:', err);
+                              setAssistantAlert('⚠️ No se pudo enviar la propuesta al servidor. Inténtalo de nuevo.');
+                          }
+
+                          // Guardar en estado local por si se quiere mostrar en el chat
+                          setPendingAssistantAction({
+                              type: 'PROPOSE_MOVE',
+                              payload: proposalPayload
+                          });
+                      }
+                  }}
                 />
               ) : (
                 <WarehouseMap3D
@@ -440,14 +477,12 @@ function AuthenticatedApp() {
                 selectedId={selectedLocation?.id}
                 onSelectLocation={(id) => handleSelectLocation(id)}
                 onUpdate={handleUpdate}
-                isOpen={isChatbotOpen}
-                onClose={() => setIsChatbotOpen(false)}
                 initialAction={pendingAssistantAction}
                 onClearAction={() => setPendingAssistantAction(null)}
               />
 
               {/* Panel de Propiedades (Legado) */}
-              {selectedLocation && !isSelectionMode && selectedLocation.id !== 'van_v3' && (
+              {selectedLocation && !isSelectionMode && !isEditModeGlobal && selectedLocation.id !== 'van_v3' && (
                 <div style={{ position: 'absolute', bottom: 80, left: 20, right: 20, zIndex: 100 }}>
                   <PropertiesPanel
                     location={selectedLocation}
@@ -456,37 +491,11 @@ function AuthenticatedApp() {
                     programColors={programColors}
                     onAssistantAction={(action) => {
                       setPendingAssistantAction(action);
-                      setIsChatbotOpen(true);
                     }}
                     onPrint={handlePrintSingle}
                   />
                 </div>
               )}
-
-              {/* Asistente Flotante (Arrastrable) */}
-              <animated.div
-                ref={assistantRef}
-                {...bindAssistantDrag()}
-                style={{
-                  position: 'fixed', // Usar FIXED (Fijo) para mantenerse encima del scroll
-                  top: -35, // Movido hacia ARRIBA aún más (-35)
-                  left: 90, // Movido a la IZQUIERDA para situarse entre el engranaje y el título
-                  zIndex: 9999,
-                  // Usar transform para rendimiento, pero mapeado desde valores simples de Spring
-                  x,
-                  y,
-                  touchAction: 'none',
-                  cursor: 'grab',
-                  pointerEvents: 'auto' // CRÍTICO para los hijos de la superposición (overlay)
-                }}
-              >
-                <AssistantCharacter
-                  size="lg"
-                  state={isChatbotOpen ? 'listening' : 'idle'}
-                  // Eliminar onClick aquí, manejado por bindAssistantDrag
-                  hasNotification={false}
-                />
-              </animated.div>
 
               {/* Leyenda Arrastrable (Pulido de UI) - SOLO ESCRITORIO */}
               {!isMobile && <DraggableLegend programColors={programColors} activeFilter={activeFilter} onFilterClick={setActiveFilter} />}

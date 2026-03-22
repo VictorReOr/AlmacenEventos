@@ -213,31 +213,44 @@ body {
   print-color-adjust: exact;
 }
 
-/* --- INTERACTIVE MAP STYLES --- */
+/* --- INTERACTIVE MAP TOOLTIP --- */
 .map-tooltip {
   position: absolute;
-  background-color: rgba(20, 25, 30, 0.95);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  background: linear-gradient(145deg, rgba(13, 31, 15, 0.97), rgba(8, 22, 10, 0.97));
+  color: #E8F5E9;
+  padding: 12px 15px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
   pointer-events: none;
-  z-index: 9999;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  white-space: nowrap;
-  transition: opacity 0.15s ease-in-out;
-  transform: translate(-50%, -100%);
-  margin-top: -10px;
+  z-index: 99999;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.40),
+    0 0 0 1px rgba(46, 125, 50, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  white-space: normal;
+  word-wrap: break-word;
+  animation: tooltipIn 0.13s ease-out;
+  transform-origin: top left;
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: scale(0.92) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0px); }
 }
 
 .map-tooltip h4 {
-  margin: 0 0 6px 0;
-  font-size: 14px;
-  color: #A5D6A7;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 4px;
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #69F0AE;
+  letter-spacing: 0.02em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .map-tooltip p {
@@ -245,11 +258,16 @@ body {
   display: flex;
   gap: 8px;
   justify-content: space-between;
+  align-items: baseline;
 }
 
 .map-tooltip .label {
-  color: #90A4AE;
+  color: #78909C;
   font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .dimmed-location {

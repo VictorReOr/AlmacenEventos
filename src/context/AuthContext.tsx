@@ -59,6 +59,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
+    // --- INACTIVITY AUTO-LOGOUT (60 min) ---
+    useEffect(() => {
+        if (!user) return; // Only track inactivity when logged in
+
+        const INACTIVITY_LIMIT = 60 * 60 * 1000; // 60 minutes in ms
+        let inactivityTimer: ReturnType<typeof setTimeout>;
+
+        const resetTimer = () => {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                logout();
+                alert('Tu sesión ha expirado por inactividad (60 min). Por favor, vuelve a iniciar sesión.');
+            }, INACTIVITY_LIMIT);
+        };
+
+        const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+        events.forEach(ev => window.addEventListener(ev, resetTimer, { passive: true }));
+        resetTimer(); // Start the timer immediately
+
+        return () => {
+            clearTimeout(inactivityTimer);
+            events.forEach(ev => window.removeEventListener(ev, resetTimer));
+        };
+    }, [user]); // Re-register whenever user state changes
+
     return (
         <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
             {children}

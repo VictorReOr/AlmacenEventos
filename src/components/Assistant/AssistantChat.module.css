@@ -1,7 +1,73 @@
+/* ===== FLOATING ROOT — mueve todo el conjunto (character + chat) ===== */
+.floatingRoot {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 500;
+    /* No width/height — contenido dicta el tamaño */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+/* ===== PERSONAJE DRAGGABLE ===== */
+.character {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    /* pointer-events solo en el img, NO en el contenedor */
+    pointer-events: none;
+    user-select: none;
+}
+
+.characterImg {
+    width: 24vmin;
+    height: auto;
+    /* width/height are set dynamically via canvas attributes to match image aspect ratio */
+    /* Solo el propio píxel visible del PNG es clickable */
+    pointer-events: auto;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
+    -webkit-user-drag: none;
+}
+
+.characterImgHovered {
+    transform: scale(1.12) rotate(-4deg);
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+}
+
+.characterImg:active {
+    transform: scale(0.95);
+}
+
+.charLabel {
+    pointer-events: none;
+    background: white;
+    color: var(--color-primary-dark, #1a5c38);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(4px);
+    animation: labelFadeIn 0.3s 0.4s forwards;
+}
+
+@keyframes labelFadeIn {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== VENTANA DE CHAT ===== */
 .window {
     position: absolute;
+    /* Se posiciona encima del personaje (bottom referenciado al floatingRoot) */
     bottom: 80px;
-    right: 20px;
+    right: 0;
     width: 360px;
     min-width: 300px;
     max-width: 90vw;
@@ -10,15 +76,24 @@
     max-height: 80vh;
     background-color: var(--color-bg-card);
     border-radius: var(--radius-md);
-    /* Menos redondeado, más técnico */
     box-shadow: var(--shadow-lg);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* Prevent native scrollbars from overlapping our components where not needed, messages has auto */
     border: 1px solid var(--color-border);
-    z-index: 500;
-    transition: opacity 0.3s ease;
+    /* Animación de entrada */
+    animation: chatSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes chatSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 /* Área de arrastre personalizada (Esquina superior izquierda) */
@@ -31,7 +106,6 @@
     cursor: nwse-resize;
     z-index: 10;
     border-top-left-radius: var(--radius-md);
-    /* Indicador visual minimalista para el tirador */
     background-image:
         radial-gradient(circle at 8px 8px, rgba(255, 255, 255, 0.6) 1.5px, transparent 1.5px),
         radial-gradient(circle at 14px 8px, rgba(255, 255, 255, 0.6) 1.5px, transparent 1.5px),
@@ -45,9 +119,8 @@
 
 .header {
     background-color: var(--color-primary);
-    /* Verde Institucional */
     color: white;
-    padding: 16px;
+    padding: 12px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -61,10 +134,12 @@
     background: none;
     border: none;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    line-height: 1;
     cursor: pointer;
-    line-height: 0.8;
     opacity: 0.8;
+    padding: 0 2px;
+    transition: opacity 0.15s;
 }
 
 .closeBtn:hover {
@@ -79,10 +154,8 @@
     flex-direction: column;
     gap: 16px;
     background-color: var(--color-bg-app);
-    /* Gris Fondo APP */
 }
 
-/* Transformar Mensajes de Burbujas a "Tarjetas de Instrucción" */
 .message {
     padding: 0;
     border-radius: var(--radius-sm);
@@ -94,7 +167,6 @@
 }
 
 .bot {
-    /* Estilo "Instrucción del Sistema" */
     background-color: white;
     padding: 16px;
     border: 1px solid var(--color-border);
@@ -103,7 +175,6 @@
 }
 
 .user {
-    /* Estilo "Entrada de Usuario" (Log) */
     background-color: transparent;
     color: var(--color-text-dim);
     font-style: italic;
@@ -112,7 +183,6 @@
     padding: 4px 12px;
     border: 1px dashed var(--color-border);
     margin-top: -8px;
-    /* Pegado al anterior */
 }
 
 .resultsList {
@@ -146,11 +216,9 @@
     transform: translateX(4px);
 }
 
-/* Botones de Acción - Grandes y Rectangulares (Mobile First) */
 .actionsList {
     display: flex;
     flex-direction: column;
-    /* Vertical list for better hit targeting */
     gap: 8px;
     margin-top: 16px;
 }
@@ -224,7 +292,6 @@
     transition: border-color 0.2s;
     background-color: var(--color-bg-app);
     height: 48px;
-    /* Match buttons height */
 }
 
 .input:focus {
@@ -256,7 +323,6 @@
     transform: scale(0.95);
 }
 
-
 .badge {
     font-size: 0.7rem;
     background: rgba(0, 0, 0, 0.2);
@@ -267,16 +333,16 @@
     margin-left: 8px;
 }
 
-/* Mobile Tweaks */
+/* Mobile */
 @media (max-width: 480px) {
     .window {
-        width: 100%;
-        height: 60vh;
-        top: 40vh;
-        /* Instead of bottom: 0 to maintain top-left anchoring but simulate bottom placing */
-        left: 0px;
+        width: calc(100vw - 32px);
+        right: 0;
         max-width: 100%;
-        border-radius: 16px 16px 0 0;
-        border-bottom: none;
+    }
+
+    .characterImg {
+        width: 18vmin;
+        height: auto;
     }
 }

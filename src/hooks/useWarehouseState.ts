@@ -265,17 +265,16 @@ ${ubicacionesStrBuilder.join(',\n')}
 
   // Dentro de AuthenticatedApp:
 
-  // Auto-Carga al inicio -> DESACTIVADO para evitar sobrescribir datos locales con datos de nube vacíos
-  // Auto-Load on mount
-  // Auto-Carga al inicio -> DESACTIVADO (Usamos loadLiveInventory más abajo)
-  /*
+  // Auto-Carga al inicio SI NO HAY mapa local (vital para USER/VISITOR que no tienen botón de descarga manual)
   useEffect(() => {
     if (scriptUrl) {
-      console.log("Auto-loading from cloud...");
-      handleLoadFromCloud(true);
+      const hasLocalMap = localStorage.getItem('warehouse_V74.0_LAYOUT_UPDATE');
+      if (!hasLocalMap) {
+        console.log("Auto-loading map from database (First run or cleared cache)...");
+        handleLoadFromCloud(true);
+      }
     }
   }, []);
-  */
 
   // --- AUDITOR DE ESTADO: CAZADOR DE FANTASMAS ---
   useEffect(() => {
@@ -423,39 +422,6 @@ ${ubicacionesStrBuilder.join(',\n')}
   }, []); // Ejecutar una vez al montar
 
   const handleUpdate = async (updated: Ubicacion | Ubicacion[]) => {
-    // Interceptar para el rol USER (Propuestas)
-    if (user?.role === 'USER') {
-      const updates = Array.isArray(updated) ? updated : [updated];
-      if (updates.length === 0) return;
-
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        alert("Error de sesión. Por favor, recarga.");
-        return;
-      }
-
-      try {
-        for (const u of updates) {
-          await AssistantService.submitAction("ACTUALIZAR_UBICACION", {
-            id: u.id, x: u.x, y: u.y, rotation: u.rotation,
-            width: u.width, depth: u.depth
-          }, token);
-        }
-        // Notificar al usuario
-        // Idealmente usar un "toast", pero la alerta está bien por ahora / El usuario solicitó la notificación
-        const msg = document.createElement('div');
-        msg.textContent = "⏳ Propuesta enviada a Admin";
-        msg.style.cssText = "position:fixed;top:80px;right:20px;background:#ff9800;color:white;padding:10px 20px;border-radius:4px;z-index:9999;box-shadow:0 2px 5px rgba(0,0,0,0.2);animation:fadeout 3s forwards;";
-        document.body.appendChild(msg);
-        setTimeout(() => msg.remove(), 3000);
-
-      } catch (e: any) {
-        console.error(e);
-        alert("Error al enviar propuesta: " + e.message);
-      }
-      return;
-    }
-
     // Comportamiento por Defecto (Admin / Local)
     const updates = Array.isArray(updated) ? updated : [updated];
     if (updates.length === 0) return;

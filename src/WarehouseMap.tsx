@@ -1,10 +1,12 @@
 import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from './context/AuthContext';
 import { useGesture } from '@use-gesture/react';
 import type { Ubicacion } from './types';
 import styles from './WarehouseMap.module.css';
 import { getCorners, polygonsIntersect, generateWallsFromFloor, projectPointOnSegment } from './geometry';
 import type { SnapLine } from './geometry';
+import { getLotAttributes } from './utils/lotVisualizer';
 
 // Comprobación de Reconstrucción Forzada
 
@@ -32,6 +34,7 @@ interface WarehouseMapProps {
     isEditModeGlobal?: boolean; // NUEVO PROP PARA BLOQUEAR ARRASTRE
     onVisitorError?: () => void;
     activeFilter?: string | null;
+    onProposeMove?: (updates: Ubicacion[]) => void;
 }
 
 export interface WarehouseMapRef {
@@ -62,8 +65,10 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
     programColors = {},
     isMobile = false,
     readOnly = false,
+    isEditModeGlobal = false,
     onVisitorError,
-    activeFilter = null
+    activeFilter = null,
+    onProposeMove
 }, ref) => {
 
     // Verificación de Autenticación
@@ -90,7 +95,42 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
         return { x: uY * SCALE, y: uX * SCALE };
     }, [rotationMode]); // Añadido rotationMode a las dependencias
 
-    // --- LÓGICA DE AUTO-AJUSTE ---
+    // --- LÓGICA DE AUTO-AJUSTE Y LIMITES ---
+    // 1. Limitar el paneo y zoom
+    const clampView = React.useCallback((vx: number, vy: number, vk: number) => {
+        // 1.1 Limitar zoom (0.3 mínimo para no ver un punto, 3.5 máximo)
+        const k = Math.max(0.3, Math.min(3.5, vk));
+        
+        let minX = 0, minY = 0, maxX = 1000, maxY = 1000;
+        if (geometry && geometry.length > 2) {
+            const pts = geometry.map(p => toSVG(p.x, p.y));
+            minX = Math.min(...pts.map(p => p.x));
+            minY = Math.min(...pts.map(p => p.y));
+            maxX = Math.max(...pts.map(p => p.x));
+            maxY = Math.max(...pts.map(p => p.y));
+        }
+
+        const ww = window.innerWidth;
+        const wh = window.innerHeight;
+        const padding = 100; // Al menos 100px del mapa deben ser visibles
+
+        // 1.2 Calcular límites de paneo
+        const limit1X = ww - padding - maxX * k;
+        const limit2X = padding - minX * k;
+        const safeLowerX = Math.min(limit1X, limit2X);
+        const safeUpperX = Math.max(limit1X, limit2X);
+
+        const limit1Y = wh - padding - maxY * k;
+        const limit2Y = padding - minY * k;
+        const safeLowerY = Math.min(limit1Y, limit2Y);
+        const safeUpperY = Math.max(limit1Y, limit2Y);
+
+        const x = Math.max(safeLowerX, Math.min(safeUpperX, vx));
+        const y = Math.max(safeLowerY, Math.min(safeUpperY, vy));
+
+        return { x, y, k };
+    }, [geometry, toSVG]);
+
     const fitToScreen = React.useCallback(() => {
         if (!containerRef.current || !geometry || geometry.length === 0) return;
 
@@ -129,15 +169,15 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
         const svgCX = (minX + maxX) / 2;
         const svgCY = (minY + maxY) / 2;
 
-        // 2. Calcular Escala
-        const PADDING = 40;
+        // 2. Calcular Escala base
+        const PADDING = isMobile ? 20 : 60;
         const availableW = Math.max(10, cw - PADDING * 2);
         const availableH = Math.max(10, ch - PADDING * 2);
 
         const scaleX = availableW / svgW;
         const scaleY = availableH / svgH;
-        // Limitar el zoom a valores razonables para evitar pantallas en blanco
-        const newK = Math.min(Math.max(Math.min(scaleX, scaleY), 0.1), 3);
+        // Limitar el zoom inicial
+        const newK = Math.min(Math.max(Math.min(scaleX, scaleY), 0.3), 2.5);
 
         // 3. Lógica de centrado
         const newX = (cw / 2) - (svgCX * newK);
@@ -145,9 +185,9 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
         // Solo actualizar si los valores son válidos
         if (Number.isFinite(newX) && Number.isFinite(newY) && Number.isFinite(newK)) {
-            setView({ x: newX, y: newY, k: newK });
+            setView(clampView(newX, newY, newK));
         }
-    }, [geometry, toSVG]);
+    }, [geometry, toSVG, isMobile, clampView]);
 
     // Activar Ajuste
     React.useLayoutEffect(() => {
@@ -176,11 +216,17 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
     // --- GESTOS DEL VIEWPORT Y SELECCIÓN ---
     const bindView = useGesture({
-        onDragStart: ({ event }) => {
+        onDragStart: ({ event, cancel }) => {
+            if (isEditModeGlobal && (window as any).__IS_PALLET_DRAGGING__) {
+                return cancel();
+            }
             // Prevenir los comportamientos de arrastre predeterminados del navegador
             if (event.cancelable) event.preventDefault();
         },
-        onDrag: ({ event, first, last, xy: [x, y], memo, offset: [ox, oy] }) => {
+        onDrag: ({ event, first, last, xy: [x, y], memo, offset: [ox, oy], cancel }) => {
+            if (isEditModeGlobal && (window as any).__IS_PALLET_DRAGGING__) {
+                return cancel();
+            }
             const isShift = event.shiftKey;
 
             if (isShift) {
@@ -261,16 +307,16 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
 
                 // Uso correcto con 'from':
                 // Usar 'offset', que rastrea el valor empezando desde 'from'.
-                setView(v => ({ ...v, x: ox, y: oy }));
+                setView(v => clampView(ox, oy, v.k));
             }
         },
         onPinch: ({ offset: [k], memo }) => {
-            setView(v => ({ ...v, k }));
+            setView(v => clampView(v.x, v.y, k));
             return memo;
         }
     }, {
         drag: { from: () => [view.x, view.y], filterTaps: true },
-        pinch: { scaleBounds: { min: 0.1, max: 5 }, rubberband: true, from: () => [view.k, 0] }
+        pinch: { scaleBounds: { min: 0.3, max: 3.5 }, rubberband: true, from: () => [view.k, 0] }
     });
 
     // Mejor Lógica de Zoom (Rueda del Ratón)
@@ -279,9 +325,9 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
             if (ctrlKey || event.metaKey) {
                 event.preventDefault();
                 const s = Math.exp(-dy * 0.001);
-                setView(v => ({ ...v, k: Math.max(0.1, Math.min(5, v.k * s)) }));
+                setView(v => clampView(v.x, v.y, v.k * s));
             } else {
-                setView(v => ({ ...v, x: v.x - event.deltaX, y: v.y - event.deltaY }));
+                setView(v => clampView(v.x - event.deltaX, v.y - event.deltaY, v.k));
             }
         }
     }, {
@@ -488,13 +534,18 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                     readOnly={isVisitor || readOnly}
                     onVisitorError={onVisitorError}
                     activeFilter={activeFilter}
+                    onProposeMove={onProposeMove}
                     onHover={(id, tx, ty) => {
+                        console.log(`[Hover Debug] onHover triggered with id: ${id}`);
                         // Prevent flickering tooltips during dragging
                         if (!dragState) {
                             setTooltipData({ id, x: tx, y: ty });
                         }
                     }}
-                    onLeave={() => setTooltipData(null)}
+                    onLeave={() => {
+                        console.log(`[Hover Debug] onLeave triggered!`);
+                        setTooltipData(null);
+                    }}
                 />
             );
         });
@@ -515,6 +566,55 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
             console.warn("WarehouseMap: No geometry to fit!");
         }
     }, [geometry, fitToScreen]);
+
+    // --- GLOBAL TOOLTIP HOVER LISTENER ---
+    // A native DOM listener guarantees hit-testing is never swallowed by React synthetic events or
+    // use-gesture bindings when navigating deeply nested SVG groups.
+    React.useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const handlePointerMove = (e: PointerEvent) => {
+            if (dragState) return;
+            const target = e.target as Element;
+            
+            // Use .closest to guarantee we find the group even if the pointer hits the text or pill directly
+            const moduleNode = target?.closest ? target.closest('[data-module]') : null;
+            
+            // --- CHIVATO DE CONSOLA PUNTUAL PARA ESTANTERÍAS ---
+            // Solo logueamos si el ratón está tocando una etiqueta SVG (como <g>, <rect>, <text>, <title>) o si detecta el módulo
+            // y limitamos por tiempo o spam visual si es necesario (mejor logueamos cuando esté encima de estanterias).
+            // Si target es un Elemento común del fondo (id='bg-rect'), lo ignoramos para no saturar.
+            if (target.id !== 'bg-rect' && target.tagName !== 'svg' && target.tagName !== 'DIV') {
+                const isModuleGroup = moduleNode !== null;
+                const parentGroup = target.closest('g');
+                // Intentar leer atributo de un <g> superior que pudiera identificar si estamos en la zona de una estantería
+                if (isModuleGroup || (parentGroup && parentGroup.getAttribute('data-id')?.startsWith('E'))) {
+                     console.log(`[Ratón] Elemento tocado: <${target.tagName}>`, 
+                                 (target as any).className?.baseVal || '', 
+                                 target.id ? `id=${target.id}` : '',
+                                 `moduleNode encontrado: ${isModuleGroup ? 'SÍ' : 'NO'}`,
+                                 isModuleGroup ? `Módulo: ${moduleNode?.getAttribute('data-module')}` : '');
+                }
+            }
+            
+            if (moduleNode) {
+                const dataModule = moduleNode.getAttribute('data-module');
+                const dataShelf = moduleNode.getAttribute('data-shelf');
+                if (dataModule && dataShelf) {
+                    setTooltipData({ id: `${dataShelf}::${dataModule}`, x: e.clientX, y: e.clientY });
+                }
+            } else {
+                setTooltipData(prev => {
+                    if (prev && prev.id.includes('::')) return null;
+                    return prev;
+                });
+            }
+        };
+
+        container.addEventListener('pointermove', handlePointerMove);
+        return () => container.removeEventListener('pointermove', handlePointerMove);
+    }, [dragState]);
 
     const viewHandlers = bindView();
 
@@ -640,13 +740,40 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
             </svg>
 
             {/* FAST HOVER TOOLTIP HTML OVERLAY */}
-            {tooltipData && ubicaciones[tooltipData.id] && !dragState && !isMobile && (
-                <div
-                    className="map-tooltip"
-                    style={{ left: tooltipData.x, top: tooltipData.y }}
-                >
+            {tooltipData && ubicaciones[tooltipData.id.split('::')[0]] && !dragState && !isMobile && (() => {
+                const TOOLTIP_W = 240;
+                const TOOLTIP_H = 180;
+                const OFFSET    = 18;
+                const HEADER_H  = 52;
+                const mx = tooltipData.x;
+                const my = tooltipData.y;
+                const goLeft  = mx + OFFSET + TOOLTIP_W > window.innerWidth  - 10;
+                const goAbove = my + OFFSET + TOOLTIP_H > window.innerHeight - 10;
+                const tipLeft = goLeft  ? mx - OFFSET - TOOLTIP_W : mx + OFFSET;
+                const tipTop  = goAbove ? my - OFFSET - TOOLTIP_H : my + OFFSET;
+                const left = Math.max(10, Math.min(window.innerWidth  - TOOLTIP_W - 10, tipLeft));
+                const top  = Math.max(HEADER_H, Math.min(window.innerHeight - TOOLTIP_H - 10, tipTop));
+                return createPortal(
+                    <div
+                        className="map-tooltip"
+                        style={{ left, top, width: TOOLTIP_W, pointerEvents: 'none', zIndex: 999999 }}
+                    >
+
                     {(() => {
-                        const loc = ubicaciones[tooltipData.id];
+                        const tooltipIdStr = tooltipData.id || '';
+                        const isModule = tooltipIdStr.includes('::');
+                        let baseId = tooltipIdStr;
+                        let moduleNum = '';
+                        
+                        if (isModule) {
+                            const parts = tooltipIdStr.split('::');
+                            baseId = parts[0];
+                            moduleNum = parts[1];
+                        }
+
+                        const loc = ubicaciones[baseId];
+                        if (!loc) return null;
+                        
                         if (loc.tipo === 'muro' || loc.tipo === 'puerta' || loc.tipo === 'zona_carga') return <div>{loc.contenido || loc.id}</div>;
 
                         // Recolectar datos
@@ -657,31 +784,70 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                         let labelHead = loc.id;
 
                         if (loc.tipo === 'estanteria_modulo') {
-                            labelHead = `Módulo ${loc.id} ${loc.contenido ? `(${loc.contenido})` : ''}`;
-                            Object.values(loc.cajasEstanteria || {}).forEach(cajaList => {
-                                const arr = Array.isArray(cajaList) ? cajaList : [cajaList];
-                                arr.forEach(c => {
-                                    const anyC = c as any;
-                                    if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
-                                    if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
-                                    totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
-                                    if (c.descripcion) materials.add(c.descripcion);
-                                    if (c.contenido && Array.isArray(c.contenido)) {
-                                        c.contenido.forEach((mat: any) => {
-                                            if (mat.nombre) materials.add(mat.nombre);
+                            if (isModule) {
+                                labelHead = `Módulo ${moduleNum} - Est. ${baseId} ${loc.contenido ? `(${loc.contenido})` : ''}`;
+                                if (loc.cajasEstanteria) {
+                                    Object.entries(loc.cajasEstanteria).forEach(([key, cajaVal]) => {
+                                        const mMatch = key.match(/M(\d+)/i);
+                                        if (mMatch && parseInt(mMatch[1], 10) === parseInt(moduleNum, 10)) {
+                                            const arr = Array.isArray(cajaVal) ? cajaVal : [cajaVal];
+                                            arr.forEach(c => {
+                                                const anyC = c as any;
+                                                if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                                
+                                                const parsedProgs = getLotAttributes(c);
+                                                parsedProgs.forEach(p => {
+                                                    if (p !== 'Vacio') progs.add(p);
+                                                });
+
+                                                totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                                if (c.descripcion) materials.add(c.descripcion);
+                                                if (c.contenido && Array.isArray(c.contenido)) {
+                                                    c.contenido.forEach((mat: any) => {
+                                                        if (mat.nombre) materials.add(mat.nombre);
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            } else {
+                                // Fallback por si acaso
+                                labelHead = `Estantería ${loc.id} ${loc.contenido ? `(${loc.contenido})` : ''}`;
+                                Object.values(loc.cajasEstanteria || {}).forEach(cajaList => {
+                                    const arr = Array.isArray(cajaList) ? cajaList : [cajaList];
+                                    arr.forEach(c => {
+                                        const anyC = c as any;
+                                        if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
+                                        
+                                        const parsedProgs = getLotAttributes(c);
+                                        parsedProgs.forEach(p => {
+                                            if (p !== 'Vacio') progs.add(p);
                                         });
-                                    }
+
+                                        totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
+                                        if (c.descripcion) materials.add(c.descripcion);
+                                        if (c.contenido && Array.isArray(c.contenido)) {
+                                            c.contenido.forEach((mat: any) => {
+                                                if (mat.nombre) materials.add(mat.nombre);
+                                            });
+                                        }
+                                    });
                                 });
-                            });
+                            }
                         } else {
-                            // Palet
-                            if (loc['LOTE']) lots.add(String(loc['LOTE'])); // Legacy loc prop
+                            // Palet u otros
+                            if (loc['LOTE']) lots.add(String(loc['LOTE']));
                             if (loc.programa && loc.programa !== 'Vacio') progs.add(loc.programa);
-                            // Cajas
                             (loc.cajas || []).forEach(c => {
                                 const anyC = c as any;
                                 if (anyC['LOTE'] || anyC['lote']) lots.add(String(anyC['LOTE'] || anyC['lote']));
-                                if (c.programa && c.programa !== 'Vacio') progs.add(c.programa);
+                                
+                                const parsedProgs = getLotAttributes(c);
+                                parsedProgs.forEach(p => {
+                                    if (p !== 'Vacio') progs.add(p);
+                                });
+
                                 totalQty += (c.cantidad || anyC['CANTIDAD'] || 0);
                                 if (c.descripcion) materials.add(c.descripcion);
                                 if (c.contenido && Array.isArray(c.contenido)) {
@@ -690,7 +856,6 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                                     });
                                 }
                             });
-                            // Materiales Sueltos
                             (loc.materiales || []).forEach(m => {
                                 if (typeof m === 'string') materials.add(m);
                                 else if (m.nombre) materials.add(m.nombre);
@@ -740,8 +905,10 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                             </>
                         );
                     })()}
-                </div>
-            )}
+                </div>,
+                document.body
+                );
+            })()}
         </div>
     );
 });

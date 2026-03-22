@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useGesture } from '@use-gesture/react';
 import type { Ubicacion } from '../../types';
 import { getCorners, polygonsIntersect, calculateSnap, projectPointOnSegment } from '../../geometry';
 import type { SnapLine } from '../../geometry';
 import { ShelfGraphic } from './ShelfGraphic';
 import { PalletGraphic } from './PalletGraphic';
+import { useAuth } from '../../context/AuthContext';
 
 const SCALE = 35; // px por metro
 const SHELF_MODULE_WIDTH = 1.0; 
@@ -34,10 +35,15 @@ interface DraggablePalletProps {
     activeFilter?: string | null;
     onHover?: (id: string, x: number, y: number) => void;
     onLeave?: () => void;
+    onProposeMove?: (updates: Ubicacion[]) => void;
 }
 
-export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError, activeFilter, onHover, onLeave }) => {
+export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolean, readOnly?: boolean }> = ({ u, isSelected, dragState, setDragState, onSelectLocation, onUpdate, toSVG, otherObstacles, allObjects, setSnapLines, walls, selectedIds, geometry, zoomScale, rotationMode = 'normal', programColors, isMobile, readOnly, isEditModeGlobal, onVisitorError, activeFilter, onHover, onLeave, onProposeMove }) => {
+    const dragGroupRef = useRef<SVGGElement>(null);
+    const { user } = useAuth(); // <- Añadido para restringir estructurales a rol USER
 
+    // USER role puede arrastrar palets aunque isEditModeGlobal esté off (para el flujo de propuestas)
+    const canUserDragPallet = user?.role === 'USER' && u.tipo === 'palet' && !!onProposeMove;
 
     const isLeaderDragging = dragState?.id === u.id;
     const isGroupDragging = dragState?.groupIds?.includes(u.id);
@@ -75,11 +81,18 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
     const dragMeta = useRef({ groupIds: [] as string[] }); // Almacenamiento síncrono para la sesión de arrastre
     const selectionHandled = useRef(false); // Corrección para el error de disparo doble (double-fire)
 
-    const bindMove = useGesture({
+    useGesture({
         onDragStart: ({ event, cancel }) => {
-            // RESTRICCIÓN: LA FURGONETA SOLO PUEDE SER MOVIDA POR ADMIN
             // RESTRICCIÓN: LA FURGONETA ES INAMOVIBLE
             if (u.id === 'van_v3' || u.tipo === 'zona_carga') {
+                cancel();
+                return;
+            }
+
+            // RESTRICCIÓN: USER SOLO PUEDE MOVER PALETS, NUNCA ESTRUCTURAS
+            if (user?.role === 'USER' && u.tipo !== 'palet') {
+                // Notificación silenciosa a consola o alerta rápida (el cliente ya tiene UI feedback)
+                console.warn(`[Security] Rol USER no autorizado a mover objeto estructural: ${u.tipo}`);
                 cancel();
                 return;
             }
@@ -96,9 +109,8 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
             }
 
             // NUEVO PROP: Bloqueo Global de Edición para Administradores
-            if (readOnly || !isEditModeGlobal) {
-                // RETORNO SILENCIOSO: El usuario podría estar tocando sin mucha precisión o el mapa está bloqueado para arraste.
-                // Ya hemos seleccionado el artículo arriba para el panel derecho. Simplemente detenemos el arrastre.
+            if (readOnly || (!isEditModeGlobal && !canUserDragPallet)) {
+                // Sólo detener el arrastre, ya hemos seleccionado el artículo.
                 cancel();
                 return;
             }
@@ -123,16 +135,10 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
                 groupIds, deltaX: 0, deltaY: 0
             });
         },
-        onDrag: ({ pinching, cancel, event, last, delta: [dx, dy] }) => {
-            // Bloquear Estanterías (Prevenir arrastre) -> DESHABILITADO: El usuario quiere mover estanterías
-            /*
-            if (u.tipo === 'estanteria_modulo') {
-                return cancel();
-            }
-            */
-
+        onDrag: ({ pinching, cancel, event, last, movement: [mx, my] }) => {
+            console.log(`[DRAG_TELEMETRY] ID=${u.id} last=${last} movement=[${mx}, ${my}] dragState=`, dragState);
             if (u.id === 'van_v3' || u.tipo === 'zona_carga') return cancel();
-            if (readOnly || !isEditModeGlobal) return cancel();
+            if (readOnly || (!isEditModeGlobal && !canUserDragPallet)) return cancel();
             if (pinching) return cancel();
             event.stopPropagation();
             hasDragged.current = true;
@@ -140,31 +146,17 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
             let uDx = 0;
             let uDy = 0;
 
+            // 'mx' and 'my' represent absolute offset distance in pixels since pointerdown.
             if (rotationMode === 'vertical-ccw') {
-                // Modo Vertical:
-                // Pantalla X (dx) -> Usuario X (Ancho)
-                // Pantalla Y (dy) -> Usuario Y (Largo) ESTÁ INVERTIDO
-                // toSVG: yScreen = (29 - uY) * S.
-                // dy = S * -duY => duY = -dy / S.
-                // dx = S * duX => duX = dx / S.
-
-                uDx = dx / SCALE / zoomScale;
-                uDy = -dy / SCALE / zoomScale;
+                uDx = mx / SCALE / zoomScale;
+                uDy = -my / SCALE / zoomScale;
             } else {
-                // Modo Horizontal (Original):
-                // Usuario X (Altura del SVG) -> Pantalla Y
-                // Usuario Y (Ancho del SVG) -> Pantalla X
-                uDx = dy / SCALE / zoomScale;
-                uDy = dx / SCALE / zoomScale;
+                uDx = my / SCALE / zoomScale;
+                uDy = mx / SCALE / zoomScale;
             }
 
-            // console.log('Dragging', u.id, dx, dy, uDx, uDy);
-
-            rawPos.current.x += uDx;
-            rawPos.current.y += uDy;
-
-            let newX = rawPos.current.x;
-            let newY = rawPos.current.y;
+            let newX = u.x + uDx;
+            let newY = u.y + uDy;
 
             // Usamos ref síncrona en vez del estado para asegurar que tenemos los groupIds
             const groupIds = dragMeta.current.groupIds;
@@ -253,8 +245,18 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
                 }
             }
 
-            // Usamos ref síncrono en vez del estado para asegurar que tenemos los groupIds
-            // const groupIds = dragMeta.current.groupIds;
+            // Direct DOM Mutation Bypass for instant unthrottled 60fps performance without React bottlenecks
+            const s = toSVG(newX, newY);
+            const domEl = document.getElementById(`obj-${u.id}`);
+            if (domEl) {
+                domEl.setAttribute('transform', `translate(${s.x}, ${s.y}) rotate(${currentRot})`);
+                
+                const polyEl = domEl.querySelector('polygon, rect, path');
+                if (polyEl) {
+                    if (!valid) polyEl.setAttribute('stroke', 'red');
+                    else polyEl.removeAttribute('stroke');
+                }
+            }
 
             setDragState({
                 id: u.id, x: newX, y: newY, rot: currentRot, valid, w: currentW, d: currentD,
@@ -265,24 +267,29 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
 
             if (last) {
                 setSnapLines([]);
-                // Permitir guardar incluso si es inválido (Imposición del usuario)
-                // if (valid) {
-                // Actualizar Líder
+                
                 const updates = [{ ...u, x: newX, y: newY }];
-                // Actualizar Seguidores
+                
                 groupIds.forEach(gid => {
                     if (gid !== u.id && allObjects[gid] && allObjects[gid].id !== 'van_v3' && allObjects[gid].tipo !== 'zona_carga') {
                         updates.push({ ...allObjects[gid], x: allObjects[gid].x + finalDeltaX, y: allObjects[gid].y + finalDeltaY });
                     }
                 });
-                onUpdate(updates);
-                // }
+
+                if (user?.role === 'USER' && onProposeMove) {
+                    onProposeMove(updates);
+                    alert("Se ha registrado una propuesta de cambio de ubicación. A la espera de aprobación por el administrador.");
+                } else {
+                    onUpdate(updates);
+                }
+                
                 setDragState(null);
                 setInteractionMode(null);
                 setTimeout(() => { hasDragged.current = false; }, 0);
             }
         }
     }, {
+        target: dragGroupRef,
         drag: { filterTaps: true, threshold: isMobile ? 20 : 8 },
         eventOptions: { passive: false }
     });
@@ -345,7 +352,6 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
         eventOptions: { passive: false }
     });
 
-    // --- LÓGICA DE REDIMENSIONAMIENTO ---
     // --- LÓGICA DE REDIMENSIONAMIENTO ---
     const bindResize = useGesture({
         onDragStart: ({ event, cancel }) => {
@@ -506,24 +512,28 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
                 setDragState(null);
                 setInteractionMode(null);
             }
-
             return center;
         }
     });
 
-    // --- MANEJADORES DE CLIC Y PULSACIÓN LARGA ---
-    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Refs para control de animaciones y performance
     const isLongPressed = useRef(false);
-    const startClickPos = useRef({ x: 0, y: 0 }); // Rastrear para la detección de clic manual
+    const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Prevención de Bloqueo de Arrastre Global (Auto-Cleanup)
+    useEffect(() => {
+        const cleanupLock = () => { (window as any).__IS_PALLET_DRAGGING__ = false; };
+        window.addEventListener('pointerup', cleanupLock);
+        return () => window.removeEventListener('pointerup', cleanupLock);
+    }, []);
     const hasDragged = useRef(false); // Restaurar para prevenir ReferenceError en bindMove
 
-    // Capturar explícitamente los manejadores de bindMove
-    const moveHandlers = bindMove();
+    // --- MANEJADORES DE CLIC Y PULSACIÓN LARGA ---
+    const startClickPos = useRef({ x: 0, y: 0 }); // Rastrear para la detección de clic manual
 
     const handlePointerDown = (e: React.PointerEvent) => {
-        // Reenviar al manejador de arrastre
-        moveHandlers.onPointerDown?.(e as any);
-        e.stopPropagation();
+        // Enlazar bandera global para silenciar el Panning del lienzo principal instantáneamente
+        (window as any).__IS_PALLET_DRAGGING__ = true;
 
         // Almacenar Posición de Inicio para la comprobación manual de clics
         startClickPos.current = { x: e.clientX, y: e.clientY };
@@ -545,7 +555,7 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
-        moveHandlers.onPointerUp?.(e as any);
+        (window as any).__IS_PALLET_DRAGGING__ = false;
         if (longPressTimer.current) {
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
@@ -611,7 +621,6 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
                     isSelected={isSelected}
                     interactionMode={interactionMode}
                     readOnly={readOnly || false}
-                    bindMove={bindMove}
                     bindLabelMove={bindLabelMove}
                     liveLabelPos={liveLabelPos}
                     rawLabelPos={rawLabelPos}
@@ -832,18 +841,17 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
         <g id={`obj-${u.id}`} data-id={u.id} transform={`translate(${s.x}, ${s.y}) rotate(${currentRot})`} style={{ touchAction: 'none' }}>
             {/* Cuerpo Principal con Gestos */}
             <g
-                {...moveHandlers}
+                ref={dragGroupRef}
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerCancel}
                 onPointerEnter={(e) => {
-                    // Solo activar tooltip si no estamos arrastrando
-                    if (interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
+                    if (u.tipo !== 'estanteria_modulo' && interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
                         onHover(u.id, e.clientX, e.clientY);
                     }
                 }}
                 onPointerMove={(e) => {
-                    if (interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
+                    if (u.tipo !== 'estanteria_modulo' && interactionMode !== 'move' && interactionMode !== 'resize' && interactionMode !== 'move-label' && onHover) {
                         onHover(u.id, e.clientX, e.clientY);
                     }
                 }}
@@ -858,7 +866,7 @@ export const DraggableObject: React.FC<DraggablePalletProps & { isMobile: boolea
             </g>
 
             {/* INTERFAZ DE TIRADORES */}
-            {isSelected && (
+            {isSelected && u.tipo !== 'estanteria_modulo' && (
                 <>
                     {/* Esquinas */}
                     <circle key="TL" {...bindResize("TL")} cx={-finalSvgW / 2} cy={-finalSvgH / 2} r={5} fill="white" stroke="#2196F3" strokeWidth={2} style={{ cursor: "nw-resize" }} />

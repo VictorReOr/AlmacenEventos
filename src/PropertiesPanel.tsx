@@ -96,6 +96,8 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
 
     const { user } = useAuth();
     const isVisitor = user?.role === 'VISITOR';
+    const isUser = user?.role === 'USER';
+    const isReadOnly = isVisitor || isUser;
 
     const handleChange = (field: keyof Ubicacion, value: any) => {
         onUpdate({ ...location, [field]: value });
@@ -166,6 +168,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
 
     // --- UPDATERS ---
     const handleUpdateItem = (itemId: string, updates: Partial<UnifiedItem>) => {
+        if (isReadOnly) return;
         let newBoxes = [...(location.cajas || [])];
         let newLoose = [...(location.materiales || [])];
         let shelfMap = { ...(location.cajasEstanteria || {}) };
@@ -202,6 +205,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
     };
 
     const handleDeleteItem = (itemId: string) => {
+        if (isReadOnly) return;
         if (!confirm("¿Eliminar este ítem?")) return;
 
         if (isShelf) {
@@ -239,6 +243,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                 item_type: data.type // 'CAJA' or 'MATERIAL'
             }
         });
+        if (isUser) {
+           alert("Se ha registrado una propuesta de cambio. Quedamos a la espera de su aprobación por el administrador.");
+        }
     };
 
     return (
@@ -303,7 +310,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                     onUpdateQty={(q) => handleUpdateItem(item.id, { qty: q })}
                                     onUpdateName={(n) => handleUpdateItem(item.id, { name: n })}
                                     onDelete={() => handleDeleteItem(item.id)}
-                                    readOnly={isVisitor}
+                                    readOnly={isReadOnly}
                                 />
                             ))
                         )}
@@ -318,14 +325,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                             onClick={() => setShowAddModal(true)}
                             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                         >
-                            <span>+</span> Añadir Stock
+                            <span>+</span> {isUser ? "Proponer Entrada Stock" : "Añadir Stock"}
                         </button>
 
                         {!isShelf && (
                             <button className={styles.secondaryAction} onClick={() => {
                                 onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
+                                if (isUser) {
+                                   alert("Iniciando propuesta de movimiento...");
+                                }
                             }}>
-                                🚚 Mover Palet
+                                🚚 {isUser ? "Proponer Mover Palet" : "Mover Palet"}
                             </button>
                         )}
                         {onPrint && (
@@ -333,6 +343,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                 🖨️
                             </button>
                         )}
+                        
+                        <button 
+                            className={styles.secondaryAction} 
+                            style={{ borderColor: '#f59e0b', color: '#d97706' }}
+                            onClick={() => {
+                                onAssistantAction({ type: 'REPORT_ERROR', payload: { locationId: location.id } });
+                                if (isUser) {
+                                   alert("Se ha registrado el error de inventario. A la espera de validación por el administrador.");
+                                }
+                            }}
+                        >
+                            ⚠️ Reportar Error
+                        </button>
                     </div>
                 )}
 
