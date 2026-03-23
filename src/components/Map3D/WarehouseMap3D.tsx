@@ -126,15 +126,50 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                 </group>
             )}
 
-            {/* Warehouse ceiling — steel-panel look */}
-            <mesh
-                position={[centerX, 4.0, centerZ]}
-                rotation={[-Math.PI / 2, 0, 0]}
-                receiveShadow
-            >
-                <planeGeometry args={[floorWidth, floorDepth]} />
-                <meshStandardMaterial color="#4a5568" roughness={0.85} metalness={0.4} side={THREE.DoubleSide} />
-            </mesh>
+            {/* === Gabled Metal Roof (techo a 2 aguas) === */}
+            {(() => {
+                const wallH = 4;           // wall height
+                const ridgeH = 2;          // ridge rises 2m above walls → peak at y=6
+                const halfW = floorWidth / 2;
+                const panelLen = Math.sqrt(halfW * halfW + ridgeH * ridgeH);
+                const slopeAngle = Math.atan2(ridgeH, halfW);
+                const panelMidY = wallH + ridgeH / 2;
+                const thickness = 0.08;
+
+                return (
+                    <>
+                        {/* Left panel */}
+                        <mesh
+                            position={[centerX - halfW / 2, panelMidY, centerZ]}
+                            rotation={[0, 0, slopeAngle]}
+                            castShadow receiveShadow
+                        >
+                            <boxGeometry args={[panelLen, thickness, floorDepth]} />
+                            <meshStandardMaterial color="#556270" roughness={0.3} metalness={0.8} />
+                        </mesh>
+
+                        {/* Right panel */}
+                        <mesh
+                            position={[centerX + halfW / 2, panelMidY, centerZ]}
+                            rotation={[0, 0, -slopeAngle]}
+                            castShadow receiveShadow
+                        >
+                            <boxGeometry args={[panelLen, thickness, floorDepth]} />
+                            <meshStandardMaterial color="#556270" roughness={0.3} metalness={0.8} />
+                        </mesh>
+
+                        {/* Ridge beam */}
+                        <mesh
+                            position={[centerX, wallH + ridgeH, centerZ]}
+                            rotation={[0, 0, 0]}
+                            castShadow
+                        >
+                            <boxGeometry args={[0.15, 0.15, floorDepth + 0.4]} />
+                            <meshStandardMaterial color="#3a4550" roughness={0.4} metalness={0.9} />
+                        </mesh>
+                    </>
+                );
+            })()}
         </group>
     );
 };
