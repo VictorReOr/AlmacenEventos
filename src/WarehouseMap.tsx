@@ -99,8 +99,8 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
     // --- LÓGICA DE AUTO-AJUSTE Y LIMITES ---
     // 1. Limitar el paneo y zoom
     const clampView = React.useCallback((vx: number, vy: number, vk: number) => {
-        // 1.1 Limitar zoom (0.3 mínimo para no ver un punto, 3.5 máximo)
-        const k = Math.max(0.3, Math.min(3.5, vk));
+        // 1.1 Limitar zoom (0.6 mínimo para no ver un punto, 4.0 máximo)
+        const k = Math.max(0.6, Math.min(4.0, vk));
         
         let minX = 0, minY = 0, maxX = 1000, maxY = 1000;
         if (geometry && geometry.length > 2) {
@@ -178,7 +178,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
         const scaleX = availableW / svgW;
         const scaleY = availableH / svgH;
         // Limitar el zoom inicial
-        const newK = Math.min(Math.max(Math.min(scaleX, scaleY), 0.3), 2.5);
+        const newK = Math.min(Math.max(Math.min(scaleX, scaleY), 0.6), 4.0);
 
         // 3. Lógica de centrado
         const newX = (cw / 2) - (svgCX * newK);
@@ -318,7 +318,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
         }
     }, {
         drag: { from: () => [view.x, view.y], filterTaps: true },
-        pinch: { scaleBounds: { min: 0.3, max: 3.5 }, rubberband: true, from: () => [view.k, 0] }
+        pinch: { scaleBounds: { min: 0.6, max: 4.0 }, rubberband: true, from: () => [view.k, 0] }
     });
 
     // Mejor Lógica de Zoom (Rueda del Ratón)
@@ -659,7 +659,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                 overflow: 'hidden'
             }}>
                 <button
-                    onClick={() => setView(v => ({ ...v, k: Math.min(5, v.k * 1.2) }))}
+                    onClick={() => setView(v => ({ ...v, k: Math.min(4.0, v.k * 1.2) }))}
                     className={styles.mapToolBtn}
                     style={{ padding: '10px', cursor: 'pointer', border: 'none', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
                     title="Acercar Zoom"
@@ -667,7 +667,7 @@ const WarehouseMap = forwardRef<WarehouseMapRef, WarehouseMapProps>(({
                     <ZoomIn size={20} />
                 </button>
                 <button
-                    onClick={() => setView(v => ({ ...v, k: Math.max(0.1, v.k / 1.2) }))}
+                    onClick={() => setView(v => ({ ...v, k: Math.max(0.6, v.k / 1.2) }))}
                     className={styles.mapToolBtn}
                     style={{ padding: '10px', cursor: 'pointer', border: 'none', background: 'transparent', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}
                     title="Alejar Zoom"
