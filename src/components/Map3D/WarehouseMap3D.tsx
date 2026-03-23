@@ -179,8 +179,9 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
             {/* Camera Mode UI Overlay */}
             <div style={{
                 position: 'absolute',
-                top: 20,
-                left: 20,
+                bottom: 30,
+                left: '50%',
+                transform: 'translateX(-50%)',
                 zIndex: 10,
                 display: 'flex',
                 gap: '10px'
@@ -191,14 +192,18 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                         setClickTarget(null);
                     }}
                     style={{
-                        padding: '8px 16px',
+                        padding: '10px 20px',
                         background: cameraMode === 'orbit' ? '#4CAF50' : '#333',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
                         fontWeight: 'bold',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                     }}
                 >
                     🚁 Modo Órbita
@@ -206,14 +211,18 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 <button
                     onClick={() => setCameraMode('fps')}
                     style={{
-                        padding: '8px 16px',
+                        padding: '10px 20px',
                         background: cameraMode === 'fps' ? '#4CAF50' : '#333',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '4px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
                         fontWeight: 'bold',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
                     }}
                 >
                     🚶 Modo Explorador
@@ -223,15 +232,18 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
             {cameraMode === 'fps' && (
                 <div style={{
                     position: 'absolute',
-                    top: 80,
+                    bottom: 30,
                     left: 20,
                     zIndex: 10,
-                    background: 'rgba(0,0,0,0.7)',
+                    background: 'rgba(0,0,0,0.8)',
                     color: '#ddd',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    pointerEvents: 'none'
+                    padding: '15px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    pointerEvents: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    backdropFilter: 'blur(4px)',
+                    lineHeight: '1.5'
                 }}>
                     <strong>Controles:</strong><br />
                     • Haz Click en el lienzo para girar la cabeza.<br />
