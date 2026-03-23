@@ -54,7 +54,9 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
                 case 'KeyS': setKeys(k => ({ ...k, backward: true })); setManualOverride(true); break;
                 case 'ArrowRight':
                 case 'KeyD': setKeys(k => ({ ...k, right: true })); setManualOverride(true); break;
-                case 'Space': setKeys(k => ({ ...k, jump: true })); setManualOverride(true); break;
+                case 'Space':
+                    e.preventDefault(); // Prevent browser 'click focused button' behavior
+                    setKeys(k => ({ ...k, jump: true })); setManualOverride(true); break;
             }
         };
 
