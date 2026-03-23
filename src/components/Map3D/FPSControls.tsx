@@ -86,11 +86,12 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         }
     }, [targetPosition]);
 
-    // Collision helper
     const checkCollision = (start: THREE.Vector3, dir: THREE.Vector3, dist: number) => {
         if (!collidablesRef?.current || dist === 0) return false;
-        // Dispara un raycaster desde la posición actual en la dirección del movimiento (+0.5 padding)
-        const raycaster = new THREE.Raycaster(start, dir, 0, dist + 0.5);
+        // Cast ray from chest level (1.2m) to collide with full pallets but step over floor bumps
+        const rayOrigin = start.clone();
+        rayOrigin.y = 1.2;
+        const raycaster = new THREE.Raycaster(rayOrigin, dir, 0, dist + 0.5);
         const intersects = raycaster.intersectObject(collidablesRef.current, true);
         return intersects.length > 0;
     };
@@ -174,7 +175,7 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
             cameraPoseRef.current = {
                 x: camera.position.x,
                 z: camera.position.z,
-                angle: euler.y + Math.PI, // Convert THREE yaw to canvas angle (north = up)
+                angle: -euler.y - Math.PI / 2, // Convert THREE yaw to canvas 2D angle
             };
         }
     });

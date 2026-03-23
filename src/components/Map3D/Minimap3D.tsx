@@ -95,19 +95,19 @@ export const Minimap3D: React.FC<MinimapProps> = ({ geometry, locations, cameraP
                 if (loc.tipo === 'puerta' || loc.tipo === 'muro') return;
 
                 const { cx, cy } = worldToCanvas(loc.x, -loc.y, t);
+                if (loc.tipo === 'estanteria_modulo') return; // Skip misleading point rendering for large structures
 
                 let color = '#6B8F71'; // default
-                if (loc.tipo === 'estanteria_modulo') color = '#4A90D9';
-                else if (loc.tipo === 'zona_carga') color = '#E8A838';
+                if (loc.tipo === 'zona_carga') color = '#E8A838';
                 else if (loc.id?.includes('van')) color = '#E05252';
                 else if (loc.tipo === 'palet') {
                     // Color by fill status
                     const hasContent = (loc.cajas && loc.cajas.length > 0) ||
                         (loc.cajasEstanteria && Object.keys(loc.cajasEstanteria).length > 0);
-                    color = hasContent ? '#4CAF50' : '#546E7A';
+                    if (hasContent) color = '#4CAF50';
                 }
 
-                const r = loc.tipo === 'estanteria_modulo' ? 3.5 : 2.5;
+                const r = 2.5;
                 ctx.beginPath();
                 ctx.arc(cx, cy, r, 0, Math.PI * 2);
                 ctx.fillStyle = color;

@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, useTexture, SoftShadows, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment, useTexture, SoftShadows } from '@react-three/drei';
 import type { Ubicacion } from '../../types';
 import { Pallet3D } from './Pallet3D';
 import { Shelf3D } from './Shelf3D';
@@ -174,8 +174,8 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
             maxZ = Math.max(maxZ, -p.y);
         });
         const centerX = (minX + maxX) / 2;
-        // Spawn 4 meters away from the "bottom" edge (maxZ) which is typically the entrance/loading area
-        return new THREE.Vector3(centerX, 1.7, maxZ - 4);
+        // The green dot in user's minimap is at the top (minZ), so we spawn 8 meters from the top boundary
+        return new THREE.Vector3(centerX, 1.7, minZ + 8);
     }, [geometry]);
 
     return (
@@ -262,11 +262,11 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 {/* Environment & Lighting */}
                 {/* Match the background color to the infinity floor to blend the horizon */}
                 <color attach="background" args={['#c8d6e5']} />
-                <ambientLight intensity={0.4} />
+                <ambientLight intensity={0.2} />
                 <directionalLight
                     castShadow
                     position={[20, 30, 20]}
-                    intensity={2.5}
+                    intensity={3.5}
                     shadow-bias={-0.0005}
                     shadow-mapSize={[2048, 2048]}
                     shadow-camera-left={-60}
@@ -295,11 +295,12 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                     />
                 )}
                 <Suspense fallback={null}>
-                    {/* Scene Content */}
-                    <FloorAndWalls geometry={geometry} solidsRef={solidsRef} cameraMode={cameraMode} setClickTarget={setClickTarget} />
+                    {/* ENTIRE SCENE CONTENT UNDER SOLIDSREF FOR COLLISIONS */}
+                    <group ref={solidsRef}>
+                        <FloorAndWalls geometry={geometry} cameraMode={cameraMode} setClickTarget={setClickTarget} />
 
-                    <group>
-                        {Object.entries(locations).map(([id, loc]) => {
+                        <group>
+                            {Object.entries(locations).map(([id, loc]) => {
                             if (loc.tipo === 'estanteria_modulo') {
                                 return <Shelf3D key={id} location={loc} activeFilter={activeFilter} onHover={handleHover} />;
                             } else if (id.includes('van') || loc.contenido === 'van_v3') {
@@ -411,9 +412,9 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                             return null;
                         })}
                     </group>
-
-                    {/* Contact Shadows to anchor objects visually, acting as a lightweight SSAO alternative */}
-                    <ContactShadows position={[0, 0.01, 0]} opacity={0.6} scale={100} blur={2} far={2} />
+                    
+                    {/* Contact Shadows removed as requested, using precise directional shadows instead */}
+                    </group>
                 </Suspense>
             </Canvas>
 
