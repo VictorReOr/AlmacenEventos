@@ -88,8 +88,21 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         const rayOrigin = start.clone();
         rayOrigin.y = 1.2;
         const raycaster = new THREE.Raycaster(rayOrigin, dir, 0, dist + 0.15); // Reduced padding from 0.5 to 0.15
+        
+        // The default threshold for Lines is 1 unit! This was creating massive invisible bubbles.
+        raycaster.params.Line.threshold = 0; 
+
         const intersects = raycaster.intersectObject(collidablesRef.current, true);
-        return intersects.length > 0;
+        
+        // Filter out non-solid meshes (Lines, UI indicators)
+        for (let i = 0; i < intersects.length; i++) {
+            if (intersects[i].object.type === 'LineSegments' || intersects[i].object.type === 'Points') {
+                continue;
+            }
+            return true; // Hit a solid mesh!
+        }
+        
+        return false;
     };
 
     useFrame((_, delta) => {

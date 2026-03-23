@@ -150,8 +150,8 @@ function AuthenticatedApp() {
         <AppShell
           header={
             <Header
-              title="SGA Eventos v1.5.15"
-              subtitle="Gestión de Almacén"
+              title="Gestión de almacén"
+              subtitle="Servicio de Eventos deportivos y programas"
               userRole={user?.role as any}
               isSyncing={isSyncing}
               leftAction={
