@@ -15,7 +15,7 @@ interface FPSControlsProps {
 export const FPSControls: React.FC<FPSControlsProps> = ({
     targetPosition,
     onTargetReached,
-    movementSpeed = 2.5,
+    movementSpeed = 1.8,
     initialPosition,
     collidablesRef,
     cameraPoseRef,

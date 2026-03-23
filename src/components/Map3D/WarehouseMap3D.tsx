@@ -252,6 +252,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                     <strong>Controles:</strong><br />
                     • Haz Click en el lienzo para girar la cabeza.<br />
                     • Usa W, A, S, D para caminar.<br />
+                    • Pulsa <strong>Espacio</strong> para saltar.<br />
                     • Doble Click / Click Derecho en el suelo para caminar allá automáticamente.<br />
                     • Pulsa ESC para liberar el ratón.
                 </div>
