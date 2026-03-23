@@ -12,19 +12,21 @@
 
 .panel {
     position: fixed;
-    top: 0;
-    right: 0;
-    width: 400px;
-    max-width: 90vw;
-    height: 100vh;
+    top: 20px;
+    right: 20px;
+    bottom: 20px;
+    width: 380px;
+    max-width: calc(100vw - 40px);
     background-color: #ffffff;
-    /* Blanco Limpio */
-    box-shadow: var(--shadow-float);
+    border-radius: 16px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0,0,0,0.05);
     z-index: 910;
     display: flex;
     flex-direction: column;
     animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     font-family: 'Inter', system-ui, sans-serif;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    overflow: hidden;
 }
 
 .header {

@@ -4,6 +4,7 @@ import type { Ubicacion, Caja, MaterialEnCaja } from './types';
 import { getLotAttributes } from './utils/lotVisualizer';
 import styles from './components/UI/PropertiesPanel.module.css';
 import { AddInventoryModal } from './components/UI/AddInventoryModal';
+import { Package, Box, Truck, Printer, AlertTriangle, Plus, Trash2, X } from 'lucide-react';
 
 interface PropertiesPanelProps {
     location: Ubicacion;
@@ -36,7 +37,6 @@ const ItemCard: React.FC<{
 
     // Auto-detect icon based on type or name
     const isBox = item.type === 'box' || item.name.toLowerCase().includes('caja');
-    const icon = isBox ? '📦' : '🔹';
 
     // Contract 2: Resolve colors using shared logic
     const stripePrograms = getLotAttributes(item.originalRef);
@@ -55,7 +55,9 @@ const ItemCard: React.FC<{
             <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {/* Header Row: Icon + Name + Delete */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', color: '#64748b' }}>
+                        {isBox ? <Package size={20} /> : <Box size={20} />}
+                    </span>
                     {readOnly ? (
                         <span style={{ flex: 1, fontSize: '1rem', fontWeight: 500, padding: '2px 0' }}>{item.name}</span>
                     ) : (
@@ -69,8 +71,8 @@ const ItemCard: React.FC<{
                         />
                     )}
                     {!readOnly && (
-                        <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '1.1rem' }}>
-                            &times;
+                        <button onClick={onDelete} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                            <Trash2 size={16} />
                         </button>
                     )}
                 </div>
@@ -264,7 +266,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                             {isShelf ? `Módulo ${selectedModule} • Nivel ${selectedLevel}` : (location.contenido || "Sin Descripción")}
                         </span>
                     </div>
-                    <button className={styles.closeBtn} onClick={onClose}>&times;</button>
+                    <button className={styles.closeBtn} onClick={onClose}>
+                        <X size={24} />
+                    </button>
                 </div>
 
                 {/* CONTENT */}
@@ -323,30 +327,30 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                         <button
                             className={styles.primaryAction}
                             onClick={() => setShowAddModal(true)}
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                         >
-                            <span>+</span> {isUser ? "Proponer Entrada Stock" : "Añadir Stock"}
+                            <Plus size={18} /> {isUser ? "Proponer Entrada Stock" : "Añadir Stock"}
                         </button>
 
                         {!isShelf && (
-                            <button className={styles.secondaryAction} onClick={() => {
+                            <button className={styles.secondaryAction} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }} onClick={() => {
                                 onAssistantAction({ type: 'MOVE_PALLET', payload: { sourceId: location.id, contentName: location.contenido } });
                                 if (isUser) {
                                    alert("Iniciando propuesta de movimiento...");
                                 }
                             }}>
-                                🚚 {isUser ? "Proponer Mover Palet" : "Mover Palet"}
+                                <Truck size={18} /> {isUser ? "Proponer Mover Palet" : "Mover Palet"}
                             </button>
                         )}
                         {onPrint && (
-                            <button className={styles.secondaryAction} onClick={() => onPrint(location)} title="Imprimir Ficha">
-                                🖨️
+                            <button className={styles.secondaryAction} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => onPrint(location)} title="Imprimir Ficha">
+                                <Printer size={20} />
                             </button>
                         )}
                         
                         <button 
                             className={styles.secondaryAction} 
-                            style={{ borderColor: '#f59e0b', color: '#d97706' }}
+                            style={{ borderColor: '#f59e0b', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                             onClick={() => {
                                 onAssistantAction({ type: 'REPORT_ERROR', payload: { locationId: location.id } });
                                 if (isUser) {
@@ -354,7 +358,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ location, onUpdate, o
                                 }
                             }}
                         >
-                            ⚠️ Reportar Error
+                            <AlertTriangle size={18} /> Reportar Error
                         </button>
                     </div>
                 )}

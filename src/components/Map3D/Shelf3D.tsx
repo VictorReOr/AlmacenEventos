@@ -96,6 +96,7 @@ export const Shelf3D: React.FC<Shelf3DProps> = ({ location, activeFilter, onHove
                             key={slotId}
                             position={[slotX, slotY, 0]}
                             castShadow
+                            receiveShadow
                             onPointerOver={(e) => {
                                 e.stopPropagation();
                                 setHoveredSlot(slotId);
@@ -154,12 +155,12 @@ export const Shelf3D: React.FC<Shelf3DProps> = ({ location, activeFilter, onHove
                     {/* Front Post */}
                     <mesh position={[0, 0, d / 2 - shelfThickness / 2]} receiveShadow castShadow>
                         <boxGeometry args={[shelfThickness, trueHeight, shelfThickness]} />
-                        <meshStandardMaterial map={metalTex} color="#b0b0b0" metalness={1.0} roughness={0.15} />
+                        <meshStandardMaterial map={metalTex} color="#b0b0b0" metalness={0.6} roughness={0.4} />
                     </mesh>
                     {/* Back Post */}
                     <mesh position={[0, 0, -d / 2 + shelfThickness / 2]} receiveShadow castShadow>
                         <boxGeometry args={[shelfThickness, trueHeight, shelfThickness]} />
-                        <meshStandardMaterial map={metalTex} color="#b0b0b0" metalness={1.0} roughness={0.15} />
+                        <meshStandardMaterial map={metalTex} color="#b0b0b0" metalness={0.6} roughness={0.4} />
                     </mesh>
                 </group>
             ))}

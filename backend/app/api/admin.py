@@ -9,7 +9,7 @@ router = APIRouter()
 
 def require_admin(current_user: User):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Admin privileges required")
+        raise HTTPException(status_code=403, detail="¡No, no, noooooo! ¡Palessito dice que no tienes poderes de Administrador para tocar aquí! 🛑")
     return current_user
 
 # --- PENDING ACTIONS ---
@@ -59,6 +59,15 @@ async def reject_pending_action(action_id: str, current_user: User = Depends(get
         
     sheet_service.delete_pending_action(action_id)
     return {"status": "REJECTED", "action_id": action_id}
+
+@router.post("/backup")
+async def create_database_backup(current_user: User = Depends(get_current_user)):
+    require_admin(current_user)
+    try:
+        backup_id = sheet_service.create_backup()
+        return {"status": "SUCCESS", "message": "Backup creado exitosamente en Google Drive.", "backup_id": backup_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- USER MANAGEMENT ---
 

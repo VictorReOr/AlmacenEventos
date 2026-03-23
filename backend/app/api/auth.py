@@ -42,7 +42,7 @@ async def login(request: LoginRequest):
     
     access_token = create_access_token(
         data={"sub": user["USER_ID"], "role": user["ROLE"]},
-        expires_delta=timedelta(hours=8)
+        expires_delta=timedelta(hours=1)
     )
     return {
         "access_token": access_token, 
@@ -72,7 +72,7 @@ async def google_login(request: GoogleLoginRequest):
         
     access_token = create_access_token(
         data={"sub": user["USER_ID"], "role": user["ROLE"]},
-        expires_delta=timedelta(hours=8)
+        expires_delta=timedelta(hours=1)
     )
     return {
         "access_token": access_token, 
@@ -102,7 +102,7 @@ async def register(request: RegisterRequest):
     # Generate Token
     access_token = create_access_token(
         data={"sub": email, "role": "VISITOR"},
-        expires_delta=timedelta(hours=8)
+        expires_delta=timedelta(hours=1)
     )
     return {
         "access_token": access_token, 

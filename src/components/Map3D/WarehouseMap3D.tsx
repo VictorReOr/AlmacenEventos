@@ -246,16 +246,17 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 {/* Environment & Lighting */}
                 {/* Match the background color to the infinity floor to blend the horizon */}
                 <color attach="background" args={['#c8d6e5']} />
-                <ambientLight intensity={0.8} />
+                <ambientLight intensity={0.4} />
                 <directionalLight
                     castShadow
-                    position={[10, 25, 15]}
-                    intensity={2.0}
+                    position={[20, 30, 20]}
+                    intensity={2.5}
+                    shadow-bias={-0.0005}
                     shadow-mapSize={[2048, 2048]}
-                    shadow-camera-left={-50}
-                    shadow-camera-right={50}
-                    shadow-camera-top={50}
-                    shadow-camera-bottom={-50}
+                    shadow-camera-left={-60}
+                    shadow-camera-right={60}
+                    shadow-camera-top={60}
+                    shadow-camera-bottom={-60}
                 />
                 <Environment preset="city" />
 

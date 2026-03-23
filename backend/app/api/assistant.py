@@ -421,7 +421,7 @@ async def submit_action(
 ):
     # Verify Role
     if current_user.role == "VISITOR":
-         raise HTTPException(status_code=403, detail="Visitors cannot execute actions.")
+         raise HTTPException(status_code=403, detail="¡No, no, noooooo! ¡Palessito dice que los visitantes solo pueden mirar, no tocar! 👀🛑")
 
     # USER -> Pending
     if current_user.role == "USER":

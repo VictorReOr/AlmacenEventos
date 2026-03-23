@@ -515,4 +515,21 @@ class SheetService:
             print(f"SHEETS ERROR: Could not calculate availability. {e}")
             return []
 
+    def create_backup(self) -> str:
+        """Crea una copia de seguridad nativa completa del Google Sheet en Google Drive."""
+        if not self.client:
+            self.connect()
+        try:
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_title = f"BACKUP_Almacen_{timestamp}"
+            
+            # gspread client.copy(file_id, title) duplica el archivo en el mismo Drive
+            copied_file = self.client.copy(self.doc.id, title=backup_title)
+            
+            # Devolver la ID o el link del nuevo archivo como confirmación
+            return copied_file.id
+        except Exception as e:
+            print(f"SHEETS ERROR: Fallo crítico al crear Backup: {e}")
+            raise e
+
 sheet_service = SheetService()
