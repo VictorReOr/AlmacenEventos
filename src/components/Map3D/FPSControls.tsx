@@ -27,10 +27,6 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
     // Track manual override to cancel auto-walk
     const [manualOverride, setManualOverride] = useState(false);
 
-    // We maintain velocity for smooth acceleration/deceleration
-    const velocity = useRef(new THREE.Vector3());
-    const direction = useRef(new THREE.Vector3());
-
     // Eye level height
     const EYE_LEVEL = 1.7;
 
@@ -122,23 +118,16 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         }
         // --- WASD MANUAL LOGIC ---
         else if (controlsRef.current && controlsRef.current.isLocked) {
-            // Calculate movement direction relative to camera facing
-            direction.current.z = Number(keys.forward) - Number(keys.backward);
-            direction.current.x = Number(keys.right) - Number(keys.left);
-            direction.current.normalize(); // Ensure diagonal is not faster
-
-            // Apply velocity damping and acceleration
-            const friction = 10.0;
-            velocity.current.x -= velocity.current.x * friction * delta;
-            velocity.current.z -= velocity.current.z * friction * delta;
-
-            const accel = 60.0;
-            if (keys.forward || keys.backward) velocity.current.z -= direction.current.z * accel * delta;
-            if (keys.left || keys.right) velocity.current.x -= direction.current.x * accel * delta;
-
             const oldPos = camera.position.clone();
-            controlsRef.current.moveRight(-velocity.current.x * delta);
-            controlsRef.current.moveForward(-velocity.current.z * delta);
+
+            // Crisp instant-stop movement (no momentum/friction delays)
+            const speed = movementSpeed * delta;
+            
+            if (keys.forward) controlsRef.current.moveForward(speed);
+            if (keys.backward) controlsRef.current.moveForward(-speed);
+            if (keys.right) controlsRef.current.moveRight(speed);
+            if (keys.left) controlsRef.current.moveRight(-speed);
+
             const targetPos = camera.position.clone();
             camera.position.copy(oldPos); // Revert back temporarily
 
@@ -147,17 +136,14 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         }
 
         // --- APPLY MOVEMENT WITH COLLISIONS ---
-        if (moveX !== 0 || moveZ !== 0) {
-            // Se testea el movimiento en X y Z por separado para permitir 'wall-sliding' sin atascarse
+        if (moveX !== 0) {
             const hitX = checkCollision(camera.position, new THREE.Vector3(Math.sign(moveX), 0, 0), Math.abs(moveX));
-            if (!hitX) {
-                camera.position.x += moveX;
-            }
+            if (!hitX) camera.position.x += moveX;
+        }
 
+        if (moveZ !== 0) {
             const hitZ = checkCollision(camera.position, new THREE.Vector3(0, 0, Math.sign(moveZ)), Math.abs(moveZ));
-            if (!hitZ) {
-                camera.position.z += moveZ;
-            }
+            if (!hitZ) camera.position.z += moveZ;
         }
 
         // Always enforce eye level (keep us grounded)
