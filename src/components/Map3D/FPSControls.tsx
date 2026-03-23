@@ -91,7 +91,7 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         // Cast ray from chest level (1.2m) to collide with full pallets but step over floor bumps
         const rayOrigin = start.clone();
         rayOrigin.y = 1.2;
-        const raycaster = new THREE.Raycaster(rayOrigin, dir, 0, dist + 0.5);
+        const raycaster = new THREE.Raycaster(rayOrigin, dir, 0, dist + 0.15); // Reduced padding from 0.5 to 0.15
         const intersects = raycaster.intersectObject(collidablesRef.current, true);
         return intersects.length > 0;
     };
