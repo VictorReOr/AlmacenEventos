@@ -464,3 +464,8 @@
     vertical-align: middle;
     animation: blink 0.8s step-start infinite;
 }
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,0.4); }
+    50%       { box-shadow: 0 0 0 8px rgba(229,57,53,0); }
+}
