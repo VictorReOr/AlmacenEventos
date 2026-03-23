@@ -28,10 +28,36 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
     wallTexture.wrapT = THREE.RepeatWrapping;
     wallTexture.repeat.set(4, 1);
 
-    const roofTexture = useTexture(`${import.meta.env.BASE_URL}textures/texture_corrugated_metal_roof.png`);
-    roofTexture.wrapS = THREE.RepeatWrapping;
-    roofTexture.wrapT = THREE.RepeatWrapping;
-    roofTexture.repeat.set(4, 1);
+    // Procedural corrugated metal texture (no external file needed)
+    const roofTexture = React.useMemo(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d')!;
+        const numRidges = 8;
+        const ridgeH = canvas.height / numRidges;
+        ctx.fillStyle = '#a8b4bc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < numRidges; i++) {
+            const y = i * ridgeH;
+            const grad = ctx.createLinearGradient(0, y, 0, y + ridgeH);
+            grad.addColorStop(0,    'rgba(220,230,235,0.95)');
+            grad.addColorStop(0.25, 'rgba(240,248,255,1.0)');
+            grad.addColorStop(0.5,  'rgba(170,185,195,0.95)');
+            grad.addColorStop(0.75, 'rgba(130,145,155,0.9)');
+            grad.addColorStop(1,    'rgba(160,175,185,0.85)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, y, canvas.width, ridgeH);
+            // thin highlight on ridge peak
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillRect(0, y + ridgeH * 0.2, canvas.width, 2);
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(6, 2);
+        return tex;
+    }, []);
 
     // The A logo of Junta de Andalucia
     const juntaLogo = useTexture(`${import.meta.env.BASE_URL}junta_a.svg`);
@@ -141,13 +167,13 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                 const panelMidY = wallH + ridgeH / 2;
                 const thickness = 0.08;
 
-                // Galvanized steel material with corrugated texture
+                // Corrugated galvanized steel - procedural bright silver
                 const roofMat = <meshStandardMaterial
                     map={roofTexture}
-                    roughness={0.55}
-                    metalness={0.45}
-                    emissive="#2c3e50"
-                    emissiveIntensity={0.1}
+                    roughness={0.5}
+                    metalness={0.4}
+                    emissive="#263238"
+                    emissiveIntensity={0.08}
                     side={THREE.DoubleSide}
                 />;
 
