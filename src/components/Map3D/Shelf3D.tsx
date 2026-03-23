@@ -146,6 +146,7 @@ export const Shelf3D: React.FC<Shelf3DProps> = ({ location, activeFilter, onHove
         <group
             position={[x, 0, z]}
             rotation={[0, rotationY, 0]}
+            userData={{ locationId: location.id, tipo: location.tipo }}
         >
             {/* Advanced Industrial Rack Frame */}
 

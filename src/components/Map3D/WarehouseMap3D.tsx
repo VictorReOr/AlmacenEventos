@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, useTexture, SoftShadows } from '@react-three/drei';
 import type { Ubicacion } from '../../types';
@@ -7,6 +7,7 @@ import { Shelf3D } from './Shelf3D';
 import { Van3D } from './Van3D';
 import { FPSControls } from './FPSControls';
 import { Minimap3D } from './Minimap3D';
+import { CrosshairRaycaster } from './CrosshairRaycaster';
 import * as THREE from 'three';
 
 interface WarehouseMap3DProps {
@@ -124,6 +125,16 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                     })}
                 </group>
             )}
+
+            {/* Warehouse ceiling — steel-panel look */}
+            <mesh
+                position={[centerX, 4.0, centerZ]}
+                rotation={[Math.PI / 2, 0, 0]}
+                receiveShadow
+            >
+                <planeGeometry args={[floorWidth, floorDepth]} />
+                <meshStandardMaterial color="#9eaab5" roughness={0.85} metalness={0.3} side={THREE.BackSide} />
+            </mesh>
         </group>
     );
 };
@@ -150,6 +161,8 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
 
     const [cameraMode, setCameraMode] = useState<'orbit' | 'fps'>('fps');
     const [clickTarget, setClickTarget] = useState<THREE.Vector3 | null>(null);
+    const [aimTarget, setAimTarget] = useState<{ id: string; tipo: string; cajas?: any[]; programa?: string } | null>(null);
+    const handleAim = useCallback((data: any) => setAimTarget(data), []);
 
     // Ref to all physical solid geometries in the scene for collisions
     const solidsRef = React.useRef<THREE.Group>(null);
@@ -295,6 +308,12 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                         cameraPoseRef={cameraPoseRef}
                     />
                 )}
+
+                    {/* Crosshair raycaster — only in FPS mode */}
+                    {cameraMode === 'fps' && (
+                        <CrosshairRaycaster solidsRef={solidsRef} onAim={handleAim} />
+                    )}
+
                 <Suspense fallback={null}>
                     {/* ENTIRE SCENE CONTENT UNDER SOLIDSREF FOR COLLISIONS */}
                     <group ref={solidsRef}>
@@ -426,6 +445,49 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                     locations={locations}
                     cameraPoseRef={cameraPoseRef}
                 />
+            )}
+
+            {/* Aim-target HUD — appears when crosshair points at a pallet/shelf */}
+            {cameraMode === 'fps' && aimTarget && (
+                <div style={{
+                    position: 'absolute',
+                    top: '36%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 20,
+                    pointerEvents: 'none',
+                }}>
+                    <div style={{
+                        background: 'rgba(10, 20, 15, 0.82)',
+                        backdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(105, 240, 174, 0.35)',
+                        borderRadius: '10px',
+                        padding: '10px 18px',
+                        color: '#e0f5ec',
+                        minWidth: '160px',
+                        textAlign: 'center',
+                    }}>
+                        <div style={{ fontWeight: 700, fontSize: '15px', color: '#69F0AE' }}>
+                            {aimTarget.id}
+                        </div>
+                        {aimTarget.programa && aimTarget.programa !== 'Vacio' && (
+                            <div style={{ fontSize: '12px', marginTop: '4px', color: 'rgba(255,255,255,0.7)' }}>
+                                📦 {aimTarget.programa}
+                            </div>
+                        )}
+                        {aimTarget.cajas && aimTarget.cajas.length > 0 && (
+                            <div style={{ fontSize: '11px', marginTop: '3px', color: 'rgba(255,255,255,0.5)' }}>
+                                {aimTarget.cajas.length} caja{aimTarget.cajas.length !== 1 ? 's' : ''}
+                            </div>
+                        )}
+                        {(!aimTarget.cajas || aimTarget.cajas.length === 0) && aimTarget.programa === 'Vacio' && (
+                            <div style={{ fontSize: '12px', marginTop: '4px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+                                Palet vacío
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ width: '1px', height: '28px', background: 'rgba(105, 240, 174, 0.25)', margin: '0 auto' }} />
+                </div>
             )}
 
             {/* FPS Sniper Crosshair Overlay */}

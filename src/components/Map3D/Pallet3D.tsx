@@ -90,6 +90,7 @@ export const Pallet3D: React.FC<Pallet3DProps> = ({ location, activeFilter, onHo
         <group
             position={[x, 0, z]}
             rotation={[0, rotationY, 0]}
+            userData={{ locationId: location.id, tipo: location.tipo, programa: location.programa, cajas: location.cajas }}
             onPointerOver={(e) => {
                 e.stopPropagation();
                 setHovered(true);
