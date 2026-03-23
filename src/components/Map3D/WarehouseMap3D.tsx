@@ -136,6 +136,17 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                 const panelMidY = wallH + ridgeH / 2;
                 const thickness = 0.08;
 
+                // Create a basic metallic material that doesn't go pitch black in shadow
+                const roofMat = <meshStandardMaterial color="#88929e" roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />;
+
+                // Triangle shape for the gable ends (front and back gaps)
+                const shape = new THREE.Shape();
+                shape.moveTo(-halfW, 0);
+                shape.lineTo(0, ridgeH);
+                shape.lineTo(halfW, 0);
+                shape.lineTo(-halfW, 0);
+                const extrudeSettings = { depth: 0.2, bevelEnabled: false };
+
                 return (
                     <>
                         {/* Left panel */}
@@ -144,8 +155,8 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                             rotation={[0, 0, slopeAngle]}
                             castShadow receiveShadow
                         >
-                            <boxGeometry args={[panelLen, thickness, floorDepth]} />
-                            <meshStandardMaterial color="#556270" roughness={0.3} metalness={0.8} />
+                            <boxGeometry args={[panelLen, thickness, floorDepth + 0.4]} />
+                            {roofMat}
                         </mesh>
 
                         {/* Right panel */}
@@ -154,18 +165,29 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                             rotation={[0, 0, -slopeAngle]}
                             castShadow receiveShadow
                         >
-                            <boxGeometry args={[panelLen, thickness, floorDepth]} />
-                            <meshStandardMaterial color="#556270" roughness={0.3} metalness={0.8} />
+                            <boxGeometry args={[panelLen, thickness, floorDepth + 0.4]} />
+                            {roofMat}
                         </mesh>
 
                         {/* Ridge beam */}
                         <mesh
-                            position={[centerX, wallH + ridgeH, centerZ]}
-                            rotation={[0, 0, 0]}
+                            position={[centerX, wallH + ridgeH - 0.05, centerZ]}
                             castShadow
                         >
-                            <boxGeometry args={[0.15, 0.15, floorDepth + 0.4]} />
-                            <meshStandardMaterial color="#3a4550" roughness={0.4} metalness={0.9} />
+                            <boxGeometry args={[0.3, 0.3, floorDepth + 0.5]} />
+                            <meshStandardMaterial color="#3a4550" roughness={0.7} metalness={0.5} />
+                        </mesh>
+
+                        {/* Back Gable Triangle (closes the gap above the back wall) */}
+                        <mesh position={[centerX, wallH, centerZ - floorDepth / 2]} castShadow receiveShadow>
+                            <extrudeGeometry args={[shape, extrudeSettings]} />
+                            <meshStandardMaterial color="#E8E8E8" roughness={0.9} />
+                        </mesh>
+
+                        {/* Front Gable Triangle (closes the gap above the front wall) */}
+                        <mesh position={[centerX, wallH, centerZ + floorDepth / 2 - 0.2]} castShadow receiveShadow>
+                            <extrudeGeometry args={[shape, extrudeSettings]} />
+                            <meshStandardMaterial color="#E8E8E8" roughness={0.9} />
                         </mesh>
                     </>
                 );
