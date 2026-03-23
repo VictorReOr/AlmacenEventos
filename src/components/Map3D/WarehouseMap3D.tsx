@@ -236,7 +236,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
             {cameraMode === 'fps' && (
                 <div style={{
                     position: 'absolute',
-                    bottom: 30,
+                    bottom: 90,
                     left: 20,
                     zIndex: 10,
                     background: 'rgba(0,0,0,0.8)',

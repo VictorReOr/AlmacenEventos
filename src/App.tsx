@@ -150,7 +150,7 @@ function AuthenticatedApp() {
         <AppShell
           header={
             <Header
-              title="SGA Eventos v1.5.12"
+              title="SGA Eventos v1.5.13"
               subtitle="Gestión de Almacén"
               userRole={user?.role as any}
               isSyncing={isSyncing}
@@ -505,7 +505,7 @@ function AuthenticatedApp() {
                   position: 'absolute',
                   top: '10px', // Adjusted to perfectly align vertically with Leaflet map controls
                   right: '140px', // Shifted further left to avoid overlapping the 2D map zoom controls
-                  zIndex: 1000,
+                  zIndex: 10,
                   display: 'flex',
                   gap: '10px'
                 }}

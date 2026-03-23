@@ -148,20 +148,15 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
 
         // --- APPLY MOVEMENT WITH COLLISIONS ---
         if (moveX !== 0 || moveZ !== 0) {
-            // Se testea el movimiento en X y Z por separado. Esto permite "deslizarse" por el muro
-            // si el jugador camina en diagonal contra él, en lugar de quedarse clavado en seco.
+            // Se testea el movimiento en X y Z por separado para permitir 'wall-sliding' sin atascarse
             const hitX = checkCollision(camera.position, new THREE.Vector3(Math.sign(moveX), 0, 0), Math.abs(moveX));
             if (!hitX) {
                 camera.position.x += moveX;
-            } else if (manualOverride) {
-                velocity.current.x = 0; // Stop pushing into the wall
             }
 
             const hitZ = checkCollision(camera.position, new THREE.Vector3(0, 0, Math.sign(moveZ)), Math.abs(moveZ));
             if (!hitZ) {
                 camera.position.z += moveZ;
-            } else if (manualOverride) {
-                velocity.current.z = 0; // Stop pushing into the wall
             }
         }
 
