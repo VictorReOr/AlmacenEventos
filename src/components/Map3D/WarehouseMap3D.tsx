@@ -136,8 +136,15 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                 const panelMidY = wallH + ridgeH / 2;
                 const thickness = 0.08;
 
-                // Create a basic metallic material that doesn't go pitch black in shadow
-                const roofMat = <meshStandardMaterial color="#88929e" roughness={0.6} metalness={0.3} side={THREE.DoubleSide} />;
+                // Galvanized steel material — steel blue-silver, low metalness so it stays visible in shadow
+                const roofMat = <meshStandardMaterial
+                    color="#b0bec5"
+                    roughness={0.55}
+                    metalness={0.55}
+                    emissive="#37474f"
+                    emissiveIntensity={0.15}
+                    side={THREE.DoubleSide}
+                />;
 
                 // Triangle shape for the gable ends (front and back gaps)
                 const shape = new THREE.Shape();
@@ -333,7 +340,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 {/* Environment & Lighting */}
                 {/* Match the background color to the infinity floor to blend the horizon */}
                 <color attach="background" args={['#c8d6e5']} />
-                <ambientLight intensity={0.2} />
+                <ambientLight intensity={0.7} />
                 <directionalLight
                     castShadow
                     position={[20, 30, 20]}
