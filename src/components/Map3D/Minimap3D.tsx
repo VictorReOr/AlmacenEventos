@@ -146,7 +146,7 @@ export const Minimap3D: React.FC<MinimapProps> = ({ geometry, locations, cameraP
             const triSize = 6;
             ctx.save();
             ctx.translate(camCx, camCy);
-            ctx.rotate(camAngle);
+            ctx.rotate(camAngle + Math.PI / 2);
             ctx.beginPath();
             ctx.moveTo(0, -triSize);
             ctx.lineTo(-triSize * 0.55, triSize * 0.65);

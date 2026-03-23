@@ -22,10 +22,14 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
 }) => {
     const { camera } = useThree();
     const controlsRef = useRef<any>(null);
-    const [keys, setKeys] = useState({ forward: false, backward: false, left: false, right: false });
+    const [keys, setKeys] = useState({ forward: false, backward: false, left: false, right: false, jump: false });
 
     // Track manual override to cancel auto-walk
     const [manualOverride, setManualOverride] = useState(false);
+
+    // Gravity state
+    const yVelocity = useRef(0);
+    const isJumping = useRef(false);
 
     // Eye level height
     const EYE_LEVEL = 1.7;
@@ -50,6 +54,7 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
                 case 'KeyS': setKeys(k => ({ ...k, backward: true })); setManualOverride(true); break;
                 case 'ArrowRight':
                 case 'KeyD': setKeys(k => ({ ...k, right: true })); setManualOverride(true); break;
+                case 'Space': setKeys(k => ({ ...k, jump: true })); setManualOverride(true); break;
             }
         };
 
@@ -63,6 +68,7 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
                 case 'KeyS': setKeys(k => ({ ...k, backward: false })); break;
                 case 'ArrowRight':
                 case 'KeyD': setKeys(k => ({ ...k, right: false })); break;
+                case 'Space': setKeys(k => ({ ...k, jump: false })); break;
             }
         };
 
@@ -159,10 +165,24 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
             if (!hitZ) camera.position.z += moveZ;
         }
 
-        // Always enforce eye level (keep us grounded)
-        camera.position.y = EYE_LEVEL;
+        // Gravity & Jumping physics
+        yVelocity.current -= 20.0 * delta; // Gravity (made snappy for FPS)
 
-        // Update minimap pose ref every frame
+        if (keys.jump && !isJumping.current) {
+            yVelocity.current = 6.0; // Snappy Jump force
+            isJumping.current = true;
+        }
+
+        camera.position.y += yVelocity.current * delta;
+
+        // Grounding (Basic floor check)
+        if (camera.position.y <= EYE_LEVEL) {
+            camera.position.y = EYE_LEVEL;
+            yVelocity.current = 0;
+            isJumping.current = false;
+        }
+
+        // Export pose for minimap pose ref every frame
         if (cameraPoseRef) {
             // Extract yaw from camera quaternion
             const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
