@@ -162,16 +162,20 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
         angle: 0,
     });
 
-    // Calculate a safe spawn point in the mathematical center of the warehouse walls
+    // Calculate a safe spawn point near the edge of the warehouse instead of the center
     const fpsSpawnPosition = React.useMemo(() => {
         if (!geometry || geometry.length === 0) return new THREE.Vector3(10, 1.7, 10);
-        let sumX = 0;
-        let sumY = 0;
+        let minX = Infinity, maxX = -Infinity;
+        let minZ = Infinity, maxZ = -Infinity;
         geometry.forEach(p => {
-            sumX += p.x;
-            sumY += -p.y; // Invert Z-axis (2D Y) to match physical warehouse chirality
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minZ = Math.min(minZ, -p.y);
+            maxZ = Math.max(maxZ, -p.y);
         });
-        return new THREE.Vector3(sumX / geometry.length, 1.7, sumY / geometry.length);
+        const centerX = (minX + maxX) / 2;
+        // Spawn 4 meters away from the "bottom" edge (maxZ) which is typically the entrance/loading area
+        return new THREE.Vector3(centerX, 1.7, maxZ - 4);
     }, [geometry]);
 
     return (
@@ -179,7 +183,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
             {/* Camera Mode UI Overlay */}
             <div style={{
                 position: 'absolute',
-                bottom: 30,
+                top: 20,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 10,
