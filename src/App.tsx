@@ -150,7 +150,7 @@ function AuthenticatedApp() {
         <AppShell
           header={
             <Header
-              title="Gestión de almacén"
+              title="Gestión de almacén v1.5.15"
               subtitle="Servicio de Eventos deportivos y programas"
               userRole={user?.role as any}
               isSyncing={isSyncing}

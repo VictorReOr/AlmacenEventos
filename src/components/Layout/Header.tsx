@@ -67,7 +67,6 @@ export const Header: React.FC<HeaderProps> = ({
                     </svg>
                     <div className={styles.titleGroup}>
                         <h1 className={styles.title}>{title}
-                            <span className={styles.versionBadge}>v1.1</span>
                             {/* Role badge */}
                             {roleCfg && (
                                 <span className={`${styles.roleBadge} ${roleCfg.class}`}>
