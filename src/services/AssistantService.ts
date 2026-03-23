@@ -32,18 +32,18 @@ export interface OCRResponse {
     status: string;
 }
 
+export interface ChatHistoryEntry {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
 export const AssistantService = {
-    async parseText(text: string): Promise<AssistantResponse> {
+    async parseText(text: string, history: ChatHistoryEntry[] = []): Promise<AssistantResponse> {
         try {
             const token = localStorage.getItem('auth_token');
             if (!token) {
                 return { status: 'ERROR', error: 'Sesión expirada. Por favor, recarga la página.', warnings: [] };
             }
-
-            console.log("\n\n🚀 [ASSISTANT SERVICE] INICIANDO PETICIÓN A BACKEND NLP");
-            console.log(`URL Destino: ${API_URL}/parse`);
-            console.log("Body enviado: ", { text, user_id: 'web-user' });
-            console.log("Token preseteado? ", !!token);
 
             const response = await fetch(`${API_URL}/parse`, {
                 method: 'POST',
@@ -53,25 +53,20 @@ export const AssistantService = {
                 },
                 body: JSON.stringify({
                     text,
-                    user_id: 'web-user'
+                    user_id: 'web-user',
+                    history: history.slice(-6) // last 6 turns for context
                 }),
             });
 
-            console.log("✅ [ASSISTANT SERVICE] RESPUESTA RECIBIDA HTTP", response.status);
-
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
-                    console.error("❌ Error de Sesión o Permisos (401/403)");
                     return { status: 'ERROR', error: 'Sesión inválida o expirada. Recarga.', warnings: [] };
                 }
                 const errText = await response.text();
-                console.error("❌ Error API: HTTP", response.status, errText);
                 throw new Error(`API Error: ${response.statusText} - ${errText}`);
             }
 
-            const data = await response.json();
-            console.log("🔍 [ASSISTANT SERVICE] JSON LEIDO:", data);
-            return data;
+            return await response.json();
         } catch (error) {
             console.warn("Assistant API Error (Parse):", error);
             return {
@@ -81,6 +76,7 @@ export const AssistantService = {
             };
         }
     },
+
 
     async uploadFile(file: File): Promise<OCRResponse> {
         try {

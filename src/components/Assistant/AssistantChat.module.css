@@ -350,3 +350,117 @@
         height: auto;
     }
 }
+
+/* ===== TYPING INDICATOR (animated dots) ===== */
+.typingDots {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 14px 16px;
+    background: white;
+    border: 1px solid var(--color-border);
+    border-left: 4px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    width: fit-content;
+}
+
+.typingDots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    opacity: 0.4;
+    animation: dotBounce 1.2s ease-in-out infinite;
+}
+
+.typingDots span:nth-child(2) { animation-delay: 0.2s; }
+.typingDots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotBounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ===== QUICK REPLY CHIPS ===== */
+.quickReplies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.chip {
+    background: white;
+    border: 1.5px solid var(--color-primary);
+    color: var(--color-primary);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.chip:hover {
+    background: var(--color-primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,122,51,0.3);
+}
+
+/* ===== SLOT-FILLING CONTEXT BADGE ===== */
+.contextBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff8e1;
+    border: 1px solid #ffc107;
+    color: #795548;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+/* ===== FUZZY MATCH SUGGESTIONS ===== */
+.suggestionList {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.suggestionBtn {
+    background: #f1f8e9;
+    border: 1px solid #aed581;
+    color: #33691e;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: 0.88rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+}
+
+.suggestionBtn:hover {
+    background: #dcedc8;
+    transform: translateX(3px);
+}
+
+/* ===== TYPEWRITER cursor ===== */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--color-primary);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 0.8s step-start infinite;
+}
