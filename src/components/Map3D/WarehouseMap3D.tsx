@@ -28,6 +28,11 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
     wallTexture.wrapT = THREE.RepeatWrapping;
     wallTexture.repeat.set(4, 1);
 
+    const roofTexture = useTexture(`${import.meta.env.BASE_URL}textures/texture_corrugated_metal_roof.png`);
+    roofTexture.wrapS = THREE.RepeatWrapping;
+    roofTexture.wrapT = THREE.RepeatWrapping;
+    roofTexture.repeat.set(4, 1);
+
     // The A logo of Junta de Andalucia
     const juntaLogo = useTexture(`${import.meta.env.BASE_URL}junta_a.svg`);
 
@@ -136,13 +141,13 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
                 const panelMidY = wallH + ridgeH / 2;
                 const thickness = 0.08;
 
-                // Galvanized steel material — steel blue-silver, low metalness so it stays visible in shadow
+                // Galvanized steel material with corrugated texture
                 const roofMat = <meshStandardMaterial
-                    color="#b0bec5"
+                    map={roofTexture}
                     roughness={0.55}
-                    metalness={0.55}
-                    emissive="#37474f"
-                    emissiveIntensity={0.15}
+                    metalness={0.45}
+                    emissive="#2c3e50"
+                    emissiveIntensity={0.1}
                     side={THREE.DoubleSide}
                 />;
 
