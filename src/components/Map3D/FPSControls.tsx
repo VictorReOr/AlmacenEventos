@@ -45,6 +45,11 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore ALL camera keys when user is typing in chat / any input
+            const tag = (document.activeElement as HTMLElement)?.tagName;
+            const isEditable = (document.activeElement as HTMLElement)?.isContentEditable;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || isEditable) return;
+
             switch (e.code) {
                 case 'ArrowUp':
                 case 'KeyW': setKeys(k => ({ ...k, forward: true })); setManualOverride(true); break;
@@ -61,6 +66,10 @@ export const FPSControls: React.FC<FPSControlsProps> = ({
         };
 
         const handleKeyUp = (e: KeyboardEvent) => {
+            // Same guard: ignore if user is typing
+            const tag = (document.activeElement as HTMLElement)?.tagName;
+            const isEditable = (document.activeElement as HTMLElement)?.isContentEditable;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || isEditable) return;
             switch (e.code) {
                 case 'ArrowUp':
                 case 'KeyW': setKeys(k => ({ ...k, forward: false })); break;
