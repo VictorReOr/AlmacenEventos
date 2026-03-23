@@ -129,11 +129,11 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
             {/* Warehouse ceiling — steel-panel look */}
             <mesh
                 position={[centerX, 4.0, centerZ]}
-                rotation={[Math.PI / 2, 0, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
                 receiveShadow
             >
                 <planeGeometry args={[floorWidth, floorDepth]} />
-                <meshStandardMaterial color="#9eaab5" roughness={0.85} metalness={0.3} side={THREE.BackSide} />
+                <meshStandardMaterial color="#4a5568" roughness={0.85} metalness={0.4} side={THREE.DoubleSide} />
             </mesh>
         </group>
     );
