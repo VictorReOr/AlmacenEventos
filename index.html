@@ -6,8 +6,8 @@
   <link rel="icon" type="image/png" href="./almacenito.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Almacén de Eventos</title>
-  <script type="module" crossorigin src="/AlmacenEventos/assets/index-DrnwR2OT.js"></script>
-  <link rel="stylesheet" crossorigin href="/AlmacenEventos/assets/index-DeUNEevV.css">
+  <script type="module" crossorigin src="/AlmacenEventos/assets/index-drfc_oaV.js"></script>
+  <link rel="stylesheet" crossorigin href="/AlmacenEventos/assets/index-DucEIUoh.css">
 <link rel="manifest" href="/AlmacenEventos/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/AlmacenEventos/registerSW.js"></script></head>
 
 <body>
@@ -25,6 +25,17 @@
       div.style.left = '0';
       div.innerText = 'Error: ' + message + '\nAt: ' + source + ':' + lineno;
       document.body.appendChild(div);
+    };
+
+    // --- SECURITY DETERRENTS ---
+    // Disable right click (context menu)
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+    document.onkeydown = function (e) {
+      if (e.keyCode == 123) { return false; } // F12
+      if (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) { return false; } // Ctrl+Shift+I/J
+      if (e.ctrlKey && e.keyCode == 85) { return false; } // Ctrl+U
     };
   </script>
 </body>
