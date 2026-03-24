@@ -9,6 +9,9 @@ export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     viteObfuscateFile({
+      include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.js', 'src/**/*.jsx'],
+      exclude: [/node_modules/],
+      apply: 'build',
       options: {
         compact: true,
         controlFlowFlattening: true,
