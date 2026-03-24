@@ -338,11 +338,15 @@
 }
 
 /* Mobile */
-@media (max-width: 480px) {
+@media (max-width: 600px) {
     .window {
-        width: calc(100vw - 32px);
-        right: 0;
+        width: calc(100vw - 16px) !important;
+        left: 8px !important;
+        right: auto !important;
+        transform: none !important; /* Disable manual drag position on mobile */
+        top: 80px !important;
         max-width: 100%;
+        max-height: calc(100vh - 180px); /* Deja espacio para el Footer móvil */
     }
 
     .characterImg {

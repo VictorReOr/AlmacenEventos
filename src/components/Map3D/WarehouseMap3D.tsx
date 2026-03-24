@@ -15,9 +15,10 @@ interface WarehouseMap3DProps {
     activeFilter: string | null;
     geometry: { x: number; y: number }[];
     onHover: (id: string | null, pos?: { x: number, y: number }, locationData?: any) => void;
+    isMobile?: boolean;
 }
 
-const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any) => {
+const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget, isMobile }: any) => {
     const floorTexture = useTexture(`${import.meta.env.BASE_URL}textures/texture_concrete_floor_1773221698115.png`);
     floorTexture.wrapS = THREE.RepeatWrapping;
     floorTexture.wrapT = THREE.RepeatWrapping;
@@ -158,7 +159,7 @@ const FloorAndWalls = ({ geometry, solidsRef, cameraMode, setClickTarget }: any)
             )}
 
             {/* === Gabled Metal Roof (techo a 2 aguas) === */}
-            {(() => {
+            {!isMobile && (() => {
                 const wallH = 4;           // wall height
                 const ridgeH = 2;          // ridge rises 2m above walls → peak at y=6
                 const halfW = floorWidth / 2;
@@ -238,7 +239,8 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
     locations,
     activeFilter,
     geometry,
-    onHover
+    onHover,
+    isMobile = false
 }) => {
     const [tooltipData, setTooltipData] = useState<{ id: string, x: number, y: number, payload?: any } | null>(null);
 
@@ -254,7 +256,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
         }
     };
 
-    const [cameraMode, setCameraMode] = useState<'orbit' | 'fps'>('fps');
+    const [cameraMode, setCameraMode] = useState<'orbit' | 'fps'>('orbit'); // Default to orbit on both to be safe, especially mobile
     const [clickTarget, setClickTarget] = useState<THREE.Vector3 | null>(null);
     const [aimTarget, setAimTarget] = useState<{ id: string; tipo: string; cajas?: any[]; programa?: string } | null>(null);
     const handleAim = useCallback((data: any) => setAimTarget(data), []);
@@ -320,6 +322,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 >
                     🚁 Modo Órbita
                 </button>
+                {!isMobile && (
                 <button
                     onClick={() => setCameraMode('fps')}
                     style={{
@@ -339,6 +342,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 >
                     🚶 Modo Explorador
                 </button>
+                )}
             </div>
 
             {cameraMode === 'fps' && (
@@ -366,18 +370,18 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 </div>
             )}
 
-            <Canvas shadows camera={{ position: [20, 20, 20], fov: 45 }}>
-                <SoftShadows size={10} samples={16} focus={0.5} />
+            <Canvas shadows={!isMobile} camera={{ position: [20, 20, 20], fov: 45 }} dpr={isMobile ? [1, 1] : [1, 2]}>
+                {!isMobile && <SoftShadows size={10} samples={16} focus={0.5} />}
                 {/* Environment & Lighting */}
                 {/* Match the background color to the infinity floor to blend the horizon */}
                 <color attach="background" args={['#c8d6e5']} />
                 <ambientLight intensity={0.7} />
                 <directionalLight
-                    castShadow
+                    castShadow={!isMobile}
                     position={[20, 30, 20]}
                     intensity={3.5}
                     shadow-bias={-0.0005}
-                    shadow-mapSize={[2048, 2048]}
+                    shadow-mapSize={isMobile ? [512, 512] : [2048, 2048]}
                     shadow-camera-left={-60}
                     shadow-camera-right={60}
                     shadow-camera-top={60}
@@ -412,7 +416,7 @@ export const WarehouseMap3D: React.FC<WarehouseMap3DProps> = ({
                 <Suspense fallback={null}>
                     {/* ENTIRE SCENE CONTENT UNDER SOLIDSREF FOR COLLISIONS */}
                     <group ref={solidsRef}>
-                        <FloorAndWalls geometry={geometry} cameraMode={cameraMode} setClickTarget={setClickTarget} />
+                        <FloorAndWalls geometry={geometry} cameraMode={cameraMode} setClickTarget={setClickTarget} isMobile={isMobile} />
 
                         <group>
                             {Object.entries(locations).map(([id, loc]) => {

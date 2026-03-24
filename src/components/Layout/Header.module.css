@@ -219,13 +219,33 @@
 /* ======================================================
    Mobile Responsiveness
    ====================================================== */
-@media (max-width: 600px) {
+@media (max-width: 800px) {
     .header {
-        padding: 0 6px;
+        padding: 0 8px;
+    }
+    .subtitle {
+        display: none; /* Hide subtitle to save space on mobile */
+    }
+    .title {
+        font-size: 0.95rem;
+    }
+    .warehouseIcon {
+        width: 26px;
+        height: 26px;
+    }
+    .right {
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .center {
+        flex: 0 1 auto;
+        padding-right: 4px;
     }
 
-    .center {
-        display: none;
+    .title {
+        display: none; /* Hide title string on very small screens, keep icon */
     }
 
     .right {
@@ -233,9 +253,10 @@
         flex: 1;
         justify-content: flex-end;
         overflow-x: auto;
-        padding-left: 8px;
+        padding-left: 2px;
         scrollbar-width: none;
         -ms-overflow-style: none;
+        gap: 2px;
     }
 
     .right::-webkit-scrollbar {

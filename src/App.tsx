@@ -343,6 +343,7 @@ function AuthenticatedApp() {
                   activeFilter={activeFilter}
                   geometry={state.geometry}
                   onHover={() => { }}
+                  isMobile={isMobile}
                 />
               )}
             </div>
@@ -503,17 +504,19 @@ function AuthenticatedApp() {
               <div
                 style={{
                   position: 'absolute',
-                  top: '10px', // Adjusted to perfectly align vertically with Leaflet map controls
-                  right: '140px', // Shifted further left to avoid overlapping the 2D map zoom controls
+                  top: isMobile ? '70px' : '70px', 
+                  right: isMobile ? '10px' : '140px',
                   zIndex: 10,
                   display: 'flex',
-                  gap: '10px'
+                  gap: '10px',
+                  pointerEvents: 'auto'
                 }}
               >
                 <button
                   onClick={() => setViewMode(prev => prev === '2D' ? '3D' : '2D')}
                   style={{
-                    padding: '8px 16px',
+                    padding: isMobile ? '6px 12px' : '8px 16px',
+                    fontSize: isMobile ? '12px' : '14px',
                     backgroundColor: viewMode === '3D' ? '#00E676' : '#2196F3',
                     color: 'white',
                     border: 'none',
