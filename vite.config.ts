@@ -1,28 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { viteObfuscateFile } from 'vite-plugin-obfuscator'
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
   base: command === 'serve' ? '/' : '/AlmacenEventos/',
   plugins: [
     react(),
-    viteObfuscateFile({
-      include: ['src/**/*.ts', 'src/**/*.tsx', 'src/**/*.js', 'src/**/*.jsx'],
-      exclude: [/node_modules/],
-      apply: 'build',
-      options: {
-        compact: true,
-        controlFlowFlattening: true,
-        controlFlowFlatteningThreshold: 0.75,
-        numbersToExpressions: true,
-        simplify: true,
-        stringArrayShuffle: true,
-        splitStrings: true,
-        stringArrayThreshold: 0.75
-      }
-    }),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

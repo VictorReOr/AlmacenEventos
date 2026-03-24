@@ -504,7 +504,7 @@ function AuthenticatedApp() {
               <div
                 style={{
                   position: 'absolute',
-                  top: isMobile ? '70px' : '70px', 
+                  top: isMobile ? '70px' : '10px', 
                   right: isMobile ? '10px' : '140px',
                   zIndex: 10,
                   display: 'flex',
