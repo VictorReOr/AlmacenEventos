@@ -162,6 +162,29 @@ function AuthenticatedApp() {
               rightAction={
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 
+                  {/* TOGGLE 3D/2D CONTROLS */}
+                  <button
+                    onClick={() => setViewMode(prev => prev === '2D' ? '3D' : '2D')}
+                    style={{
+                      padding: isMobile ? '4px 8px' : '6px 12px',
+                      fontSize: isMobile ? '11px' : '13px',
+                      backgroundColor: viewMode === '3D' ? '#00E676' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      transition: 'all 0.3s ease'
+                    }}
+                    title="Visión del Mapa"
+                  >
+                    {viewMode === '2D' ? 'Modo 3D 🧊' : 'Modo 2D 🗺️'}
+                  </button>
+
+                  <div style={{ width: 1, height: 24, background: '#ffffff30', margin: '0 4px', flexShrink: 0 }} />
+
                   {/* Controles de la Nube y Deshacer */}
                   {user?.role !== 'VISITOR' && (
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -499,37 +522,6 @@ function AuthenticatedApp() {
                   />
                 </div>
               )}
-
-              {/* TOGGLE 3D/2D CONTROLS */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: isMobile ? '70px' : '10px', 
-                  right: isMobile ? '10px' : '140px',
-                  zIndex: 10,
-                  display: 'flex',
-                  gap: '10px',
-                  pointerEvents: 'auto'
-                }}
-              >
-                <button
-                  onClick={() => setViewMode(prev => prev === '2D' ? '3D' : '2D')}
-                  style={{
-                    padding: isMobile ? '6px 12px' : '8px 16px',
-                    fontSize: isMobile ? '12px' : '14px',
-                    backgroundColor: viewMode === '3D' ? '#00E676' : '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {viewMode === '2D' ? 'Modo 3D' : 'Modo 2D'}
-                </button>
-              </div>
 
               {/* TOOLTIP EMERGENTE 2D/3D COMBINADO */}
               {/* Controles Flotantes Secundarios (Lado Izquierdo) */}
